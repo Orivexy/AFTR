@@ -1,0 +1,643 @@
+// NIGHTLY — data model.
+//
+// Conventions:
+// - Ids are cuid strings.
+// - Money is stored in minor units (cents) with the currency on the country.
+// - All timestamps are UTC; local display uses City.timezone.
+// - Counters (likeCount, ratingAvg…) are denormalised for fast reads and are
+//   updated transactionally by the service layer.
+// - `searchText` columns hold lower-cased, accent-free text maintained by the
+//   service layer so search works for "gracia" → "Gràcia".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Geography ───────────────────────────────────────────────────────────────
+
+model Country {
+  id       String @id @default(cuid())
+  code     String @unique // ISO 3166-1 alpha-2
+  name     String
+  currency String @default("EUR") // ISO 4217
+  cities   City[]
+}
+
+model City {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  countryId String
+  country   Country  @relation(fields: [countryId], references: [id])
+  timezone  String   @default("Europe/Madrid")
+  lat       Float
+  lng       Float
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  venues   Venue[]
+  events   Event[]
+  posts    Post[]
+  profiles Profile[]
+}
+
+// ─── Identity ────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  role          Role       @default(USER)
+  status        UserStatus @default(ACTIVE)
+  suspendedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  profile  Profile?
+  accounts Account[]
+  sessions Session[]
+
+  events         Event[]           @relation("EventOrganizer")
+  posts          Post[]
+  comments       Comment[]
+  likes          Like[]
+  reviews        Review[]
+  photos         Photo[]
+  videos         Video[]
+  savedEvents    SavedEvent[]
+  savedPosts     SavedPost[]
+  attendances    EventAttendance[]
+  venueFollows   VenueFollow[]
+  managedVenues  Venue[]           @relation("VenueManagers")
+  followers      Follow[]          @relation("Following")
+  following      Follow[]          @relation("Follower")
+  notifications  Notification[]    @relation("NotificationRecipient")
+  actedNotifs    Notification[]    @relation("NotificationActor")
+  reportsFiled   Report[]          @relation("ReportReporter")
+  reportsAgainst Report[]          @relation("ReportTargetUser")
+  reportsHandled Report[]          @relation("ReportResolver")
+  postTags       PostTag[]
+}
+
+model Profile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username       String   @unique
+  displayName    String
+  bio            String?
+  avatarKey      String?
+  cityId         String?
+  city           City?    @relation(fields: [cityId], references: [id])
+  isDemo         Boolean  @default(false)
+  followerCount  Int      @default(0)
+  followingCount Int      @default(0)
+  postCount      Int      @default(0)
+  searchText     String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([followerCount])
+}
+
+/// External identity providers (Google today; Apple/TikTok later).
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String
+  providerAccountId String
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+/// Server-side sessions. Only a SHA-256 hash of the cookie token is stored.
+model Session {
+  id        String   @id // sha256(token)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+  ipAddress String?
+
+  @@index([userId])
+}
+
+// ─── Taxonomy ────────────────────────────────────────────────────────────────
+
+model Category {
+  id     String  @id @default(cuid())
+  slug   String  @unique
+  name   String
+  emoji  String?
+  order  Int     @default(0)
+  events Event[]
+}
+
+model MusicGenre {
+  id     String       @id @default(cuid())
+  slug   String       @unique
+  name   String
+  order  Int          @default(0)
+  events EventGenre[]
+  venues VenueGenre[]
+}
+
+model EventGenre {
+  eventId String
+  genreId String
+  event   Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  genre   MusicGenre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, genreId])
+  @@index([genreId])
+}
+
+model VenueGenre {
+  venueId String
+  genreId String
+  venue   Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  genre   MusicGenre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([venueId, genreId])
+  @@index([genreId])
+}
+
+// ─── Venues ──────────────────────────────────────────────────────────────────
+
+enum VenueType {
+  CLUB
+  BAR
+  CONCERT_HALL
+  OPEN_AIR
+  OTHER
+}
+
+model Venue {
+  id            String    @id @default(cuid())
+  slug          String    @unique
+  name          String
+  type          VenueType @default(CLUB)
+  description   String?
+  cityId        String
+  city          City      @relation(fields: [cityId], references: [id])
+  address       String
+  neighborhood  String?
+  lat           Float
+  lng           Float
+  coverKey      String?
+  /// Weekly schedule: { mon: [{ open: "23:59", close: "06:00" }], ... }
+  openingHours  Json?
+  priceMin      Int? // cents
+  priceMax      Int? // cents
+  minAge        Int?
+  website       String?
+  instagram     String?
+  ratingAvg     Float     @default(0)
+  ratingCount   Int       @default(0)
+  followerCount Int       @default(0)
+  isFeatured    Boolean   @default(false)
+  isDemo        Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  searchText    String    @default("")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  genres    VenueGenre[]
+  events    Event[]
+  reviews   Review[]
+  photos    Photo[]
+  posts     Post[]
+  followers VenueFollow[]
+  managers  User[]        @relation("VenueManagers")
+  reports   Report[]
+
+  @@index([cityId, ratingAvg])
+  @@index([cityId, followerCount])
+  @@index([lat, lng])
+}
+
+model VenueFollow {
+  userId    String
+  venueId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, venueId])
+  @@index([venueId])
+}
+
+// ─── Events ──────────────────────────────────────────────────────────────────
+
+enum EventStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+  CANCELLED
+}
+
+enum EventSource {
+  USER
+  VENUE
+  IMPORT
+}
+
+enum AttendanceStatus {
+  INTERESTED
+  GOING
+}
+
+model Event {
+  id              String      @id @default(cuid())
+  slug            String      @unique
+  title           String
+  description     String?
+  categoryId      String
+  category        Category    @relation(fields: [categoryId], references: [id])
+  cityId          String
+  city            City        @relation(fields: [cityId], references: [id])
+  venueId         String?
+  venue           Venue?      @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  organizerId     String
+  organizer       User        @relation("EventOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  /// Free-text place name when the event is not tied to a venue (e.g. a street party).
+  locationName    String
+  address         String?
+  lat             Float
+  lng             Float
+  startsAt        DateTime
+  endsAt          DateTime?
+  priceMin        Int? // cents; 0 = free, null = unknown
+  priceMax        Int? // cents
+  ticketUrl       String?
+  minAge          Int?
+  coverKey        String?
+  status          EventStatus @default(PUBLISHED)
+  source          EventSource @default(USER)
+  /// Id in an external data source (for future importers).
+  externalId      String?
+  isFeatured      Boolean     @default(false)
+  isDemo          Boolean     @default(false)
+  interestedCount Int         @default(0)
+  goingCount      Int         @default(0)
+  searchText      String      @default("")
+  reminderSentAt  DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  genres        EventGenre[]
+  photos        Photo[]
+  posts         Post[]
+  attendances   EventAttendance[]
+  savedBy       SavedEvent[]
+  reports       Report[]
+  notifications Notification[]
+
+  @@unique([source, externalId])
+  @@index([cityId, status, startsAt])
+  @@index([venueId, startsAt])
+  @@index([organizerId])
+  @@index([lat, lng])
+}
+
+model EventAttendance {
+  userId    String
+  eventId   String
+  status    AttendanceStatus
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@id([userId, eventId])
+  @@index([eventId, status])
+}
+
+model SavedEvent {
+  userId    String
+  eventId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, eventId])
+  @@index([eventId])
+}
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+
+/// One review per user and venue (editable). Sub-scores are optional 1–5.
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  venueId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  rating    Int
+  ambience  Int?
+  music     Int?
+  staff     Int?
+  price     Int?
+  space     Int?
+  comment   String?
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, venueId])
+  @@index([venueId, createdAt])
+}
+
+// ─── Media ───────────────────────────────────────────────────────────────────
+
+enum ContentStatus {
+  VISIBLE
+  HIDDEN // auto-hidden by reports, pending review
+  REMOVED
+}
+
+/// A stored image. It can belong to a post (carousel), a venue gallery or an
+/// event gallery. Unattached photos (all FKs null) are pending uploads.
+model Photo {
+  id          String        @id @default(cuid())
+  uploaderId  String
+  uploader    User          @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  key         String        @unique
+  width       Int
+  height      Int
+  blurDataUrl String?
+  postId      String?
+  post        Post?         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  venueId     String?
+  venue       Venue?        @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  eventId     String?
+  event       Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  position    Int           @default(0)
+  likeCount   Int           @default(0)
+  status      ContentStatus @default(VISIBLE)
+  createdAt   DateTime      @default(now())
+
+  likes   Like[]
+  reports Report[]
+
+  @@index([postId, position])
+  @@index([venueId, status, createdAt])
+  @@index([eventId, status, createdAt])
+  @@index([uploaderId, createdAt])
+}
+
+enum VideoStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Video {
+  id          String      @id @default(cuid())
+  uploaderId  String
+  uploader    User        @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  key         String      @unique
+  posterKey   String?
+  width       Int?
+  height      Int?
+  durationSec Float?
+  sizeBytes   Int?
+  status      VideoStatus @default(PROCESSING)
+  postId      String?     @unique
+  post        Post?       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+
+  reports Report[]
+}
+
+// ─── Social ──────────────────────────────────────────────────────────────────
+
+enum PostType {
+  PHOTO
+  CAROUSEL
+  VIDEO
+}
+
+model Post {
+  id           String        @id @default(cuid())
+  authorId     String
+  author       User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  type         PostType
+  caption      String?
+  cityId       String?
+  city         City?         @relation(fields: [cityId], references: [id])
+  eventId      String?
+  event        Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  venueId      String?
+  venue        Venue?        @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  locationName String?
+  likeCount    Int           @default(0)
+  commentCount Int           @default(0)
+  saveCount    Int           @default(0)
+  status       ContentStatus @default(VISIBLE)
+  isDemo       Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  photos        Photo[]
+  video         Video?
+  comments      Comment[]
+  likes         Like[]
+  saves         SavedPost[]
+  tags          PostTag[]
+  reports       Report[]
+  notifications Notification[]
+
+  @@index([status, createdAt])
+  @@index([authorId, createdAt])
+  @@index([eventId, createdAt])
+  @@index([venueId, createdAt])
+  @@index([cityId, status, createdAt])
+}
+
+/// Users tagged in a post.
+model PostTag {
+  postId String
+  userId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model Comment {
+  id        String        @id @default(cuid())
+  postId    String
+  post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  status    ContentStatus @default(VISIBLE)
+  createdAt DateTime      @default(now())
+
+  reports       Report[]
+  notifications Notification[]
+
+  @@index([postId, createdAt])
+  @@index([authorId])
+}
+
+/// A like on exactly one target (post or photo).
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String?
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  photoId   String?
+  photo     Photo?   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@unique([userId, photoId])
+  @@index([postId])
+  @@index([photoId])
+}
+
+model SavedPost {
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+enum NotificationType {
+  FOLLOW
+  POST_LIKE
+  POST_COMMENT
+  POST_TAG
+  EVENT_REMINDER
+  VENUE_NEW_EVENT
+  EVENT_APPROVED
+  EVENT_REJECTED
+  CONTENT_REMOVED
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actor     User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  postId    String?
+  post      Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  eventId   String?
+  event     Event?           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  /// Prevents duplicates for idempotent notifications (reminders, likes).
+  dedupeKey String?          @unique
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+// ─── Moderation ──────────────────────────────────────────────────────────────
+
+enum ReportTargetType {
+  USER
+  EVENT
+  VENUE
+  POST
+  PHOTO
+  VIDEO
+  COMMENT
+}
+
+enum ReportReason {
+  SPAM
+  INAPPROPRIATE
+  HARASSMENT
+  FAKE_EVENT
+  WRONG_INFO
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+/// A report points to exactly one target through a nullable FK matching
+/// `targetType`, so deleting the target cascades the report away.
+model Report {
+  id           String           @id @default(cuid())
+  reporterId   String
+  reporter     User             @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType   ReportTargetType
+  targetKey    String // `${targetType}:${id}` — enforces one report per user and target
+  userId       String?
+  user         User?            @relation("ReportTargetUser", fields: [userId], references: [id], onDelete: Cascade)
+  eventId      String?
+  event        Event?           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  venueId      String?
+  venue        Venue?           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  postId       String?
+  post         Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  photoId      String?
+  photo        Photo?           @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  videoId      String?
+  video        Video?           @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  commentId    String?
+  comment      Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reason       ReportReason
+  details      String?
+  status       ReportStatus     @default(OPEN)
+  resolvedById String?
+  resolvedBy   User?            @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?
+  resolution   String?
+  createdAt    DateTime         @default(now())
+
+  @@unique([reporterId, targetKey])
+  @@index([status, createdAt])
+  @@index([targetKey])
+}

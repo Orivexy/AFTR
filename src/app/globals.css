@@ -1,0 +1,152 @@
+@import "tailwindcss";
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/unbounded";
+
+/* ─── Design tokens ─────────────────────────────────────────────────────────
+   Dark-first palette with a single brand accent ("volt"). Everything else
+   is neutral so photos and video carry the colour. */
+@theme {
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Unbounded Variable", "Manrope Variable", ui-sans-serif, sans-serif;
+
+  --color-ink: #07070b;
+  --color-surface: #0f0f16;
+  --color-surface-2: #17171f;
+  --color-surface-3: #20202b;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-line-strong: rgb(255 255 255 / 0.14);
+  --color-fg: #f4f4f7;
+  --color-muted: #a1a1b3;
+  --color-faint: #62627a;
+  --color-volt: #d7ff3a;
+  --color-volt-dim: #b8dd24;
+  --color-on-volt: #0b0b0f;
+  --color-heart: #ff4d6d;
+  --color-danger: #ff5a5f;
+  --color-warn: #ffb547;
+
+  --radius-card: 1.25rem;
+  --radius-pill: 999px;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --animate-fade-up: fade-up 0.45s var(--ease-out-soft) both;
+  --animate-fade-in: fade-in 0.3s ease both;
+  --animate-sheet-up: sheet-up 0.38s var(--ease-out-soft) both;
+  --animate-pop: pop 0.35s var(--ease-spring) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-pulse-dot: pulse-dot 1.8s ease-in-out infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: none; }
+  }
+  @keyframes pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.28); }
+    100% { transform: scale(1); }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+  @keyframes pulse-dot {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(215 255 58 / 0.55); }
+    50% { box-shadow: 0 0 0 6px rgb(215 255 58 / 0); }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-ink);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+  ::selection {
+    background: var(--color-volt);
+    color: var(--color-on-volt);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-volt);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  button, [role="button"] {
+    cursor: pointer;
+    user-select: none;
+  }
+  input, textarea, select {
+    font: inherit;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .glass {
+    background: rgb(12 12 18 / 0.72);
+    backdrop-filter: saturate(160%) blur(18px);
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
+  }
+  .pressable {
+    transition: transform 0.15s var(--ease-out-soft), background-color 0.2s, color 0.2s, border-color 0.2s, opacity 0.2s;
+  }
+  .pressable:active {
+    transform: scale(0.96);
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-surface-2) 0%, var(--color-surface-3) 50%, var(--color-surface-2) 100%);
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .image-fade {
+    background: linear-gradient(180deg, rgb(7 7 11 / 0) 35%, rgb(7 7 11 / 0.55) 65%, rgb(7 7 11 / 0.95) 100%);
+  }
+  .snap-feed {
+    scroll-snap-type: y mandatory;
+    overscroll-behavior-y: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Leaflet base styles (subset) + dark theme tweaks */
+.leaflet-container { background: #0c0c12; font: inherit; }
+.leaflet-control-attribution { background: rgb(7 7 11 / 0.7) !important; color: #777 !important; font-size: 10px; }
+.leaflet-control-attribution a { color: #999 !important; }
+.leaflet-control-zoom a { background: #17171f !important; color: #f4f4f7 !important; border-color: rgb(255 255 255 / 0.08) !important; }
