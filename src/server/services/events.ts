@@ -198,7 +198,7 @@ async function uniqueEventSlug(title: string): Promise<string> {
   return `${base}-${randomBytes(3).toString("hex")}`;
 }
 
-function needsModeration(user: SessionUser, accountCreatedAt: Date): boolean {
+export function needsModeration(user: Pick<SessionUser, "role">, accountCreatedAt: Date): boolean {
   if (user.role !== "USER") return false;
   if (env.EVENT_MODERATION === "all") return true;
   if (env.EVENT_MODERATION === "new_users") return Date.now() - accountCreatedAt.getTime() < 7 * 24 * 3600_000;

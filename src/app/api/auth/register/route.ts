@@ -9,7 +9,7 @@ import { checkRateLimit } from "@/server/security/rate-limit";
 export const POST = route({ rateLimit: "register" }, async ({ req }) => {
   const input = await parseJson(req, registerSchema);
   if (input.website) throw badRequest("Solicitud no válida"); // honeypot
-  if (!checkRateLimit("auth", `email:${input.email}`).ok) throw new ApiError(429, "Demasiados intentos. Espera un momento.");
+  if (!checkRateLimit("authAccount", input.email).ok) throw new ApiError(429, "Demasiados intentos. Espera un momento.");
 
   const [emailTaken, usernameTaken] = await Promise.all([
     db.user.findUnique({ where: { email: input.email }, select: { id: true } }),

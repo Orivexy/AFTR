@@ -6,7 +6,8 @@ import { getSessionUser } from "@/server/auth/session";
 import { getCurrentCity } from "@/server/services/cities";
 import { venueOptions } from "@/server/services/venues";
 import { getMapConfig } from "@/server/services/map";
-import { env } from "@/server/env";
+import { db } from "@/server/db";
+import { needsModeration } from "@/server/services/events";
 import { nightWindow, utcToLocalParts } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Crear evento" };
@@ -16,7 +17,10 @@ export default async function NewEventPage({ searchParams }: { searchParams: Pro
   const user = await getSessionUser();
   if (!user) redirect("/login?next=/events/new");
   const city = await getCurrentCity();
-  const venues = await venueOptions(city.id);
+  const [venues, account] = await Promise.all([
+    venueOptions(city.id),
+    db.user.findUniqueOrThrow({ where: { id: user.id }, select: { createdAt: true } }),
+  ]);
   const preset = venues.find((v) => v.id === venueParam);
   const today = utcToLocalParts(new Date(nightWindow(city.timezone).from.getTime() + 12 * 3600_000), city.timezone).date;
 
@@ -32,7 +36,7 @@ export default async function NewEventPage({ searchParams }: { searchParams: Pro
         cityName={city.name}
         venues={venues}
         mapConfig={getMapConfig()}
-        moderationNotice={env.EVENT_MODERATION !== "off"}
+        moderationNotice={needsModeration(user, account.createdAt)}
         initial={{
           title: "",
           description: "",

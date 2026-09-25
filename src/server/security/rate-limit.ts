@@ -42,7 +42,10 @@ export interface RateLimitRule {
 
 /** Named rules so limits are tuned in one place. */
 export const RATE_LIMITS = {
-  auth: { limit: 10, windowMs: 15 * 60_000 },
+  /** Per IP for login / OAuth. */
+  auth: { limit: 30, windowMs: 15 * 60_000 },
+  /** Per target account (credential stuffing); never scaled. */
+  authAccount: { limit: 8, windowMs: 15 * 60_000 },
   register: { limit: 5, windowMs: 60 * 60_000 },
   upload: { limit: 40, windowMs: 60 * 60_000 },
   createEvent: { limit: 10, windowMs: 60 * 60_000 },
@@ -55,8 +58,15 @@ export const RATE_LIMITS = {
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
 
+/**
+ * Multiplier for every rule except per-account ones, e.g. RATE_LIMIT_SCALE=10
+ * in local development / e2e runs where all traffic comes from one IP.
+ */
+const SCALE = Math.max(1, Number(process.env.RATE_LIMIT_SCALE) || 1);
+
 export function checkRateLimit(name: RateLimitName, identity: string) {
   const rule = RATE_LIMITS[name];
+  const limit = name === "authAccount" ? rule.limit : rule.limit * SCALE;
   const { count, resetAt } = store.hit(`${name}:${identity}`, rule.windowMs);
-  return { ok: count <= rule.limit, retryAfterSec: Math.ceil((resetAt - Date.now()) / 1000) };
+  return { ok: count <= limit, retryAfterSec: Math.ceil((resetAt - Date.now()) / 1000) };
 }

@@ -16,3 +16,6 @@ npm-debug.log*
 .shot.mjs
 .map-test.mjs
 .feed-test.mjs
+
+# tests
+/playwright/.cache/

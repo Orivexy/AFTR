@@ -10,7 +10,7 @@ const INVALID = "Email o contraseña incorrectos";
 export const POST = route({ rateLimit: "auth" }, async ({ req }) => {
   const input = await parseJson(req, loginSchema);
   // Per-account limit on top of the per-IP one (credential stuffing).
-  if (!checkRateLimit("auth", `email:${input.email}`).ok) {
+  if (!checkRateLimit("authAccount", input.email).ok) {
     throw new ApiError(429, "Demasiados intentos. Espera unos minutos.", "RATE_LIMITED");
   }
   const user = await db.user.findUnique({

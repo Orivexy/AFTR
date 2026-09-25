@@ -114,15 +114,32 @@ ${o.crowd === false ? "" : crowd(r, w, h)}
 </svg>`;
 }
 
+const grainCache = new Map<string, Promise<Buffer>>();
+
+/** Film-grain layer, cached per size (generating noise is surprisingly slow). */
+function grain(width: number, height: number): Promise<Buffer> {
+  const key = `${width}x${height}`;
+  let buf = grainCache.get(key);
+  if (!buf) {
+    buf = sharp({ create: { width, height, channels: 3, background: "#808080", noise: { type: "gaussian", mean: 128, sigma: 18 } } })
+      .png({ compressionLevel: 0 })
+      .toBuffer();
+    grainCache.set(key, buf);
+  }
+  return buf;
+}
+
 /** Renders artwork to a JPEG buffer (then fed through the normal upload pipeline). */
 export async function renderArt(o: ArtOptions): Promise<Buffer> {
-  const svg = Buffer.from(artSvg(o));
-  const noise = await sharp({
-    create: { width: o.width, height: o.height, channels: 3, background: "#808080", noise: { type: "gaussian", mean: 128, sigma: 18 } },
-  })
-    .png()
-    .toBuffer();
-  return sharp(svg)
+  // Rasterise at half resolution (SVG blur filters are the slow part) and
+  // upscale: the artwork is soft by nature, so quality is unaffected.
+  const half = { w: Math.round(o.width / 2), h: Math.round(o.height / 2) };
+  const svg = Buffer.from(
+    artSvg(o).replace(`width="${o.width}" height="${o.height}"`, `width="${half.w}" height="${half.h}"`),
+  );
+  const noise = await grain(o.width, o.height);
+  const base = await sharp(svg).resize(o.width, o.height).png().toBuffer();
+  return sharp(base)
     .composite([{ input: noise, blend: "soft-light" }])
     .jpeg({ quality: 88 })
     .toBuffer();
