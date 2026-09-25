@@ -22,6 +22,8 @@ export interface MapCanvasProps {
   markers: MapMarker[];
   selectedId?: string | null;
   onSelect?: (id: string | null) => void;
+  /** Tap on empty map (used by the location picker). */
+  onMapClick?: (latlng: { lat: number; lng: number }) => void;
   interactive?: boolean;
   user?: { lat: number; lng: number } | null;
   className?: string;
@@ -51,7 +53,7 @@ function escapeHtml(s: string) {
  * to `MapCanvasProps`, so swapping to Mapbox GL / Google Maps means writing
  * another component with the same props.
  */
-export default function MapCanvas({ config, center, zoom = 13, markers, selectedId, onSelect, interactive = true, user, className }: MapCanvasProps) {
+export default function MapCanvas({ config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, user, className }: MapCanvasProps) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
@@ -59,6 +61,8 @@ export default function MapCanvas({ config, center, zoom = 13, markers, selected
   const leaflet = useRef<typeof L | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
 
   // Init once
   useEffect(() => {
@@ -79,7 +83,12 @@ export default function MapCanvas({ config, center, zoom = 13, markers, selected
         keyboard: interactive,
       });
       Lf.tileLayer(config.tileUrl, { attribution: config.attribution, maxZoom: config.maxZoom, subdomains: "abcd", detectRetina: true }).addTo(m);
-      if (interactive) m.on("click", () => onSelectRef.current?.(null));
+      if (interactive) {
+        m.on("click", (e: L.LeafletMouseEvent) => {
+          if (onMapClickRef.current) onMapClickRef.current({ lat: e.latlng.lat, lng: e.latlng.lng });
+          else onSelectRef.current?.(null);
+        });
+      }
       layer.current = Lf.layerGroup().addTo(m);
       userLayer.current = Lf.layerGroup().addTo(m);
       map.current = m;

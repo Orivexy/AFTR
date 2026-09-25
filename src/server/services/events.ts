@@ -242,8 +242,10 @@ async function resolveEventInput(user: SessionUser, input: EventInput, existingE
     ? await db.photo.findMany({
         where: {
           id: { in: photoIds },
-          uploaderId: user.id,
-          OR: [{ eventId: null, postId: null, venueId: null }, ...(existingEventId ? [{ eventId: existingEventId }] : [])],
+          OR: [
+            { uploaderId: user.id, eventId: null, postId: null, venueId: null },
+            ...(existingEventId ? [{ eventId: existingEventId }] : []),
+          ],
         },
         select: { id: true, key: true },
       })
