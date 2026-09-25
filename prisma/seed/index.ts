@@ -16,12 +16,14 @@ import { promisify } from "node:util";
 import bcrypt from "bcryptjs";
 import { CITIES, COUNTRIES } from "../../src/config/cities";
 import { CATEGORIES, GENRES } from "../../src/config/taxonomy";
-import { buildSearchText } from "../../src/lib/text";
+import { buildSearchText, slugify } from "../../src/lib/text";
 import { localToUtc, nightWindow, utcToLocalParts } from "../../src/lib/time";
 import { processImage } from "../../src/server/media/image";
 import { processVideo } from "../../src/server/media/video";
 import { renderArt, renderAvatar } from "./art";
 import { createRandom } from "./random";
+import { pool } from "./pool";
+import { cpus } from "node:os";
 import {
   COMMENTS, DJS, POST_CAPTIONS, REVIEW_COMMENTS, STREET_EVENTS, USERS, VENUE_NIGHT_TITLES, VENUES, VIDEO_CAPTIONS,
 } from "./data";
@@ -32,6 +34,7 @@ const run = promisify(execFile);
 const TZ = "Europe/Madrid";
 const PASSWORD = process.env.SEED_PASSWORD || "nightly123";
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const CONCURRENCY = Math.max(2, Math.min(8, cpus().length));
 
 const log = (msg: string) => console.log(`  • ${msg}`);
 
@@ -158,14 +161,13 @@ async function main() {
   }
 
   const admin = await createUser({ email: "admin@nightly.demo", username: "nightly", displayName: "NIGHTLY Team", bio: "Cuenta oficial (demo)", role: "ADMIN" });
-  const users = [];
-  for (const u of USERS) users.push(await createUser({ email: `${u.username.replace(/\./g, "")}@nightly.demo`, ...u }));
+  const users = await pool(USERS.map((u) => () => createUser({ email: `${u.username.replace(/\./g, "")}@nightly.demo`, ...u })), CONCURRENCY);
   const demoUser = users[0]!; // "eric"
   log(`${users.length + 1} usuarios (contraseña demo: ${PASSWORD})`);
 
   // ─── Venues (each with a manager account) ────────────────────────────────
   const venues: Array<{ id: string; slug: string; name: string; cityId: string; genres: string[]; managerId: string; lat: number; lng: number; address: string; neighborhood: string; priceMin: number; priceMax: number; days: string[]; open: string; close: string; city: string }> = [];
-  for (const v of VENUES) {
+  await pool(VENUES.map((v) => async () => {
     const city = cities.get(v.city)!;
     const manager = await createUser({
       email: `${v.slug}@venues.nightly.demo`,
@@ -200,7 +202,8 @@ async function main() {
     });
     await db.photo.create({ data: { uploaderId: manager.id, venueId: venue.id, ...cover } });
     venues.push({ ...v, id: venue.id, cityId: city.id, managerId: manager.id });
-  }
+  }), CONCURRENCY);
+  venues.sort((a, b) => VENUES.findIndex((x) => x.slug === a.slug) - VENUES.findIndex((x) => x.slug === b.slug));
   log(`${venues.length} locales`);
 
   // ─── Events ──────────────────────────────────────────────────────────────
@@ -213,15 +216,16 @@ async function main() {
   };
   const eventRows: Array<{ id: string; startsAt: Date; venueId: string | null; cityId: string; title: string }> = [];
 
+  const eventTasks: Array<() => Promise<unknown>> = [];
   async function createEvent(e: {
     title: string; description: string; category: string; cityId: string; cityName: string; venueId?: string; organizerId: string;
     locationName: string; address: string; neighborhood?: string; lat: number; lng: number; startsAt: Date; endsAt: Date; price: number; priceMax?: number;
-    genres: string[]; featured?: boolean; minAge?: number; source: "USER" | "VENUE";
+    genres: string[]; featured?: boolean; minAge?: number; source: "USER" | "VENUE"; id: number;
   }) {
     const cover = await image(`event-${e.title}-${e.startsAt.toISOString()}`, 1280, 853);
     const created = await db.event.create({
       data: {
-        slug: `${e.title.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${r.int(1000, 9999)}`,
+        slug: `${slugify(e.title)}-${e.id}`,
         title: e.title,
         description: e.description,
         categoryId: categories.get(e.category)!,
@@ -254,11 +258,12 @@ async function main() {
   // Street parties / FM / open-air (organised by regular users)
   for (const s of STREET_EVENTS) {
     const city = cities.get(s.city)!;
-    await createEvent({
+    const id = eventTasks.length + 1000;
+    eventTasks.push(() => createEvent({ id,
       title: s.title, description: s.description, category: s.category, cityId: city.id, cityName: city.name,
       organizerId: r.pick(users).id, locationName: s.locationName, address: s.address, lat: s.lat, lng: s.lng,
       startsAt: at(s.day, s.start), endsAt: at(s.day, s.end), price: s.price, genres: s.genres, featured: s.featured, source: "USER",
-    });
+    }));
   }
 
   // Venue nights: every opening day over the next 3 weeks (+ yesterday for posts).
@@ -277,7 +282,9 @@ async function main() {
       const base = r.pick(VENUE_NIGHT_TITLES[genre] ?? VENUE_NIGHT_TITLES.comercial!);
       const title = v.slug === "sala-x" && day === 0 ? "NIGHT SESSION" : r.chance(0.3) ? `${base} · ${r.pick(DJS)}` : base;
       const price = v.priceMin === 0 ? r.pick([0, 0, 5, 8]) : r.pick([v.priceMin, v.priceMin, Math.round((v.priceMin + v.priceMax) / 2)]);
-      await createEvent({
+      const id = eventTasks.length + 1000;
+      eventTasks.push(() => createEvent({
+        id,
         title,
         description: `${title} en ${v.name}. ${genre === "techno" ? "Sesión larga, sonido envolvente y luces al mínimo." : "Pista llena, buena música y el mejor ambiente de la ciudad."} (Evento de demostración: no es un evento real.)`,
         category: r.chance(0.3) ? "dj" : "discoteca",
@@ -286,10 +293,12 @@ async function main() {
         startsAt: at(day, v.slug === "sala-x" && day === 0 ? "00:00" : v.open), endsAt: at(day, v.close),
         price: v.slug === "sala-x" && day === 0 ? 15 : price, priceMax: price > 0 && r.chance(0.4) ? price + 5 : undefined,
         genres: v.genres.slice(0, 2), featured: day >= 0 && day <= 3 && r.chance(0.12), minAge: 18, source: "VENUE",
-      });
+      }));
       count++;
     }
   }
+  await pool(eventTasks, CONCURRENCY);
+  eventRows.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
   log(`${eventRows.length} eventos`);
 
   // ─── Social graph ────────────────────────────────────────────────────────
@@ -338,18 +347,19 @@ async function main() {
   log(`${reviewCount} valoraciones`);
 
   // ─── Venue community photos ──────────────────────────────────────────────
-  let photoCount = 0;
+  const photoTasks: Array<() => Promise<unknown>> = [];
   for (const v of venues.filter((v) => v.city === "barcelona")) {
     for (let i = 0; i < r.int(3, 6); i++) {
       const author = r.pick(people);
-      const img = await image(`community-${v.slug}-${i}`, 1080, 1350);
-      await db.photo.create({
-        data: { uploaderId: author.id, venueId: v.id, ...img, likeCount: 0, createdAt: new Date(Date.now() - r.int(1, 60) * 86400_000) },
+      const createdAt = new Date(Date.now() - r.int(1, 60) * 86400_000);
+      photoTasks.push(async () => {
+        const img = await image(`community-${v.slug}-${i}`, 1080, 1350);
+        return db.photo.create({ data: { uploaderId: author.id, venueId: v.id, ...img, likeCount: 0, createdAt } });
       });
-      photoCount++;
     }
   }
-  log(`${photoCount} fotos de la comunidad`);
+  await pool(photoTasks, CONCURRENCY);
+  log(`${photoTasks.length} fotos de la comunidad`);
 
   // ─── Posts ───────────────────────────────────────────────────────────────
   const recentEvents = eventRows.filter((e) => e.startsAt < new Date() && e.cityId === bcn.id);
@@ -358,37 +368,40 @@ async function main() {
   const postCount = 30;
   const videoSlots = new Set(r.sample([...Array(postCount).keys()], 8));
   let videoIdx = 0;
+  const postTasks: Array<() => Promise<void>> = [];
   for (let i = 0; i < postCount; i++) {
+    // Random choices are drawn up-front so the dataset stays deterministic.
     const author = i < 3 ? demoUser : r.pick(people);
     const event = recentEvents.length && r.chance(0.5) ? r.pick(recentEvents) : null;
     const venue = event?.venueId ? bcnVenues.find((v) => v.id === event.venueId) : r.chance(0.6) ? r.pick(bcnVenues) : null;
     const createdAt = new Date(Date.now() - r.int(20, 5 * 24 * 60) * 60_000);
     const isVideo = videoSlots.has(i);
+    const photoCount = r.chance(0.35) ? r.int(2, 4) : 1;
+    const caption = isVideo ? VIDEO_CAPTIONS[videoIdx++ % VIDEO_CAPTIONS.length] : r.pick(POST_CAPTIONS);
 
-    let videoId: string | null = null;
-    if (isVideo) {
-      const v = await demoVideo(`video-${i}`);
-      if (v) videoId = (await db.video.create({ data: { uploaderId: author.id, ...v, status: "READY" } })).id;
-    }
-    const photos = videoId ? [] : await Promise.all([...Array(r.chance(0.35) ? r.int(2, 4) : 1).keys()].map((k) => image(`post-${i}-${k}`, 1080, 1350)));
-
-    const post = await db.post.create({
-      data: {
-        authorId: author.id,
-        type: videoId ? "VIDEO" : photos.length > 1 ? "CAROUSEL" : "PHOTO",
-        caption: videoId ? VIDEO_CAPTIONS[videoIdx++ % VIDEO_CAPTIONS.length] : r.pick(POST_CAPTIONS),
-        cityId: bcn.id,
-        eventId: event?.id,
-        venueId: venue?.id,
-        locationName: venue?.name ?? (event ? event.title : null),
-        isDemo: true,
-        createdAt,
-        photos: { create: photos.map((p, position) => ({ ...p, uploaderId: author.id, position, createdAt })) },
-      },
+    postTasks.push(async () => {
+      const v = isVideo ? await demoVideo(`video-${i}`) : null;
+      const videoId = v ? (await db.video.create({ data: { uploaderId: author.id, ...v, status: "READY" } })).id : null;
+      const photos = videoId ? [] : await Promise.all([...Array(photoCount).keys()].map((k) => image(`post-${i}-${k}`, 1080, 1350)));
+      const post = await db.post.create({
+        data: {
+          authorId: author.id,
+          type: videoId ? "VIDEO" : photos.length > 1 ? "CAROUSEL" : "PHOTO",
+          caption: videoId || !isVideo ? caption : r.pick(POST_CAPTIONS),
+          cityId: bcn.id,
+          eventId: event?.id,
+          venueId: venue?.id,
+          locationName: venue?.name ?? (event ? event.title : null),
+          isDemo: true,
+          createdAt,
+          photos: { create: photos.map((p, position) => ({ ...p, uploaderId: author.id, position, createdAt })) },
+        },
+      });
+      if (videoId) await db.video.update({ where: { id: videoId }, data: { postId: post.id } });
+      postIds.push(post.id);
     });
-    if (videoId) await db.video.update({ where: { id: videoId }, data: { postId: post.id } });
-    postIds.push(post.id);
   }
+  await pool(postTasks, CONCURRENCY);
   log(`${postIds.length} publicaciones (${videoIdx} vídeos)`);
 
   // Likes, comments, saves

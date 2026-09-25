@@ -32,9 +32,13 @@ export function isOpenNow(hours: Hours | null, tz: string, now = new Date()): bo
   return false;
 }
 
+function weekdayKey(tz: string, now = new Date()) {
+  return KEYS[new TZDate(now.getTime(), tz).getDay()];
+}
+
 export function OpeningHours({ hours, tz }: { hours: Hours | null; tz: string }) {
   if (!hours) return <p className="text-sm text-muted">Horario no disponible</p>;
-  const todayKey = KEYS[new TZDate(Date.now(), tz).getDay()];
+  const todayKey = weekdayKey(tz);
   return (
     <dl className="space-y-1.5 text-sm">
       {DAYS.map(([key, label]) => {

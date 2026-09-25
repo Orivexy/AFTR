@@ -31,8 +31,8 @@ export function EntityPicker({ label, placeholder, value, onChange, load, icon }
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    setLoading(true);
     const t = setTimeout(() => {
+      setLoading(true);
       load(q)
         .then((o) => !cancelled && setOptions(o))
         .catch(() => !cancelled && setOptions([]))

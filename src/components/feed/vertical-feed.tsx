@@ -42,14 +42,22 @@ export function VerticalFeed({ initial, mode, pinned }: { initial: Page<FeedPost
     }
   }, [cursor, loading, mode]);
 
-  // Track the item that fills most of the viewport.
+  const loadMoreRef = useRef(loadMore);
+  useEffect(() => {
+    loadMoreRef.current = loadMore;
+  });
+
+  // Track the item that fills most of the viewport; prefetch near the end.
   useEffect(() => {
     const root = container.current;
     if (!root) return;
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          if (e.isIntersecting && e.intersectionRatio >= 0.6) setActive(Number((e.target as HTMLElement).dataset.index));
+          if (!e.isIntersecting || e.intersectionRatio < 0.6) continue;
+          const index = Number((e.target as HTMLElement).dataset.index);
+          setActive(index);
+          if (index >= items.length - 3) void loadMoreRef.current();
         }
       },
       { root, threshold: [0.6] },
@@ -57,10 +65,6 @@ export function VerticalFeed({ initial, mode, pinned }: { initial: Page<FeedPost
     root.querySelectorAll("[data-index]").forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, [items.length]);
-
-  useEffect(() => {
-    if (active >= items.length - 3) void loadMore();
-  }, [active, items.length, loadMore]);
 
   // Keyboard navigation on desktop.
   useEffect(() => {

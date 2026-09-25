@@ -120,7 +120,7 @@ export function FeedItem({ post, active, nearby, muted, onToggleMute, onChange, 
       <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 to-transparent" />
 
       {/* Right action rail */}
-      <div className="absolute right-2 bottom-24 flex flex-col items-center gap-4 md:bottom-8">
+      <div className="absolute right-2 bottom-24 z-10 flex flex-col items-center gap-4 md:bottom-8">
         <RailButton label={post.viewer.liked ? "Quitar like" : "Me gusta"} count={post.likeCount} active={post.viewer.liked} onClick={() => setLike(!post.viewer.liked)}>
           <Heart className={cn("size-7", post.viewer.liked && "animate-pop text-heart")} fill={post.viewer.liked ? "currentColor" : "none"} />
         </RailButton>

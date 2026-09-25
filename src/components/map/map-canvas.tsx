@@ -129,7 +129,7 @@ export default function MapCanvas({ config, center, zoom = 13, markers, selected
   }
 
   useEffect(renderMarkers, [markers, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(renderUser, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(renderUser, [user]);
 
   useEffect(() => {
     map.current?.flyTo([center.lat, center.lng], Math.max(map.current.getZoom(), zoom), { duration: 0.6 });

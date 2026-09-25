@@ -14,6 +14,15 @@ import { timeAgo } from "@/lib/time";
 import type { CommentData, Page } from "@/lib/types";
 
 export function CommentsSheet({ postId, open, onClose, onCountChange }: { postId: string; open: boolean; onClose: () => void; onCountChange: (delta: number) => void }) {
+  // The body only mounts while the sheet is open, so every opening fetches fresh comments.
+  return (
+    <Sheet open={open} onClose={onClose} title="Comentarios" tall>
+      <CommentsBody postId={postId} onCountChange={onCountChange} />
+    </Sheet>
+  );
+}
+
+function CommentsBody({ postId, onCountChange }: { postId: string; onCountChange: (delta: number) => void }) {
   const [page, setPage] = useState<Page<CommentData> | null>(null);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -23,9 +32,7 @@ export function CommentsSheet({ postId, open, onClose, onCountChange }: { postId
   const report = useReport();
 
   useEffect(() => {
-    if (!open) return;
     let cancelled = false;
-    setPage(null);
     api
       .get<Page<CommentData>>(`/api/posts/${postId}/comments`)
       .then((p) => !cancelled && setPage(reviveDates(p)))
@@ -33,7 +40,7 @@ export function CommentsSheet({ postId, open, onClose, onCountChange }: { postId
     return () => {
       cancelled = true;
     };
-  }, [open, postId]);
+  }, [postId]);
 
   const loadMore = async () => {
     if (!page?.nextCursor) return;
@@ -68,7 +75,7 @@ export function CommentsSheet({ postId, open, onClose, onCountChange }: { postId
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title="Comentarios" tall>
+    <>
       <div className="flex h-full flex-col">
         <div className="flex-1 space-y-4 pb-4">
           {!page && (
@@ -127,6 +134,6 @@ export function CommentsSheet({ postId, open, onClose, onCountChange }: { postId
         </form>
       </div>
       {report.dialog}
-    </Sheet>
+    </>
   );
 }

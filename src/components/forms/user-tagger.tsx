@@ -16,9 +16,9 @@ export function UserTagger({ value, onChange, max = 10 }: { value: Found[]; onCh
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Found[]>([]);
 
+  const term = q.replace(/^@/, "").trim();
   useEffect(() => {
-    const term = q.replace(/^@/, "").trim();
-    if (!term) return setResults([]);
+    if (!term) return;
     const t = setTimeout(() => {
       api
         .get<{ items: Found[] }>(`/api/users/lookup?q=${encodeURIComponent(term)}`)
@@ -26,7 +26,7 @@ export function UserTagger({ value, onChange, max = 10 }: { value: Found[]; onCh
         .catch(() => setResults([]));
     }, 200);
     return () => clearTimeout(t);
-  }, [q, value]);
+  }, [term, value]);
 
   return (
     <div className="space-y-2">
@@ -44,7 +44,7 @@ export function UserTagger({ value, onChange, max = 10 }: { value: Found[]; onCh
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={value.length ? "" : "Etiquetar personas"} aria-label="Etiquetar personas" className="h-8 min-w-32 flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint" />
         )}
       </div>
-      {results.length > 0 && (
+      {term && results.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-line bg-surface-2">
           {results.map((u) => (
             <button

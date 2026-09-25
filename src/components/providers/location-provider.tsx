@@ -23,10 +23,12 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const [coords, setCoords] = useState<LatLng | null>(null);
   const [status, setStatus] = useState<Status>("idle");
 
+  // Restore after mount (not in the initial state) so server and client HTML match.
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(KEY);
       if (saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from browser storage
         setCoords(JSON.parse(saved) as LatLng);
         setStatus("granted");
       }

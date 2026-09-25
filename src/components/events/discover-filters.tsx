@@ -38,6 +38,14 @@ export const GENRE_OPTIONS = [
   { value: "latin", label: "Latin" },
 ] as const;
 
+function Row({ children, label }: { children: React.ReactNode; label: string }) {
+  return (
+    <div className="scrollbar-none -mx-4 flex items-center gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0" role="group" aria-label={label}>
+      {children}
+    </div>
+  );
+}
+
 /** URL-driven filter chips: every change is a shareable, server-rendered URL. */
 export function DiscoverFilters() {
   const router = useRouter();
@@ -79,12 +87,6 @@ export function DiscoverFilters() {
   };
 
   const active = ["when", "price", "category", "genre", "near"].some((k) => params.has(k));
-
-  const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
-    <div className="scrollbar-none -mx-4 flex items-center gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0" role="group" aria-label={label}>
-      {children}
-    </div>
-  );
 
   return (
     <div className="space-y-2.5">

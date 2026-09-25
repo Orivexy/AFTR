@@ -67,7 +67,8 @@ export function ProfileForm({ initial, cities, email }: Props) {
 
   const logout = async () => {
     await api.post("/api/auth/logout");
-    window.location.assign("/");
+    router.replace("/");
+    router.refresh();
   };
 
   return (

@@ -15,12 +15,17 @@ export function useInfinite<T extends { id: string }>(initial: Page<T>, buildUrl
   const [error, setError] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
   const build = useRef(buildUrl);
-  build.current = buildUrl;
-
   useEffect(() => {
+    build.current = buildUrl;
+  });
+
+  // Reset when the server sends a new first page (e.g. filters changed).
+  const [prevInitial, setPrevInitial] = useState(initial);
+  if (initial !== prevInitial) {
+    setPrevInitial(initial);
     setItems(initial.items);
     setCursor(initial.nextCursor);
-  }, [initial]);
+  }
 
   const loadMore = useCallback(async () => {
     if (!cursor || loading) return;

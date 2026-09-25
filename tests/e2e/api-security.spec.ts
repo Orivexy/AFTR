@@ -8,13 +8,13 @@ test.describe("API security", () => {
   });
 
   test("cross-origin mutations are rejected", async ({ request }) => {
-    await request.post("/api/auth/login", { data: { email: "eric@nightly.demo", password: DEMO_PASSWORD } });
+    await request.post("/api/auth/login", { data: { email: "nil@nightly.demo", password: DEMO_PASSWORD } });
     const res = await request.put("/api/events/abcdefghijkl/save", { data: { saved: true }, headers: { origin: "https://evil.example" } });
     expect(res.status()).toBe(403);
   });
 
   test("uploads are validated by content, not extension", async ({ request }) => {
-    await request.post("/api/auth/login", { data: { email: "eric@nightly.demo", password: DEMO_PASSWORD } });
+    await request.post("/api/auth/login", { data: { email: "biel@nightly.demo", password: DEMO_PASSWORD } });
     const res = await request.post("/api/uploads", {
       multipart: { kind: "image", file: { name: "x.jpg", mimeType: "image/jpeg", buffer: Buffer.from("<script>alert(1)</script>") } },
     });
