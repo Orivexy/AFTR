@@ -17,7 +17,8 @@ import type { EventInput } from "@/lib/validators";
 export type EventSort = "soonest" | "popular" | "newest";
 
 export interface EventQuery {
-  cityId: string;
+  /** Omit to query across cities (e.g. a venue's own agenda). */
+  cityId?: string;
   timezone: string;
   when?: DateFilter;
   window?: TimeWindow;
@@ -43,7 +44,8 @@ function notEndedWhere(now: Date): Prisma.EventWhereInput {
 }
 
 export function buildEventWhere(q: EventQuery, now = new Date()): Prisma.EventWhereInput {
-  const and: Prisma.EventWhereInput[] = [{ cityId: q.cityId, status: "PUBLISHED" }, notEndedWhere(now)];
+  const and: Prisma.EventWhereInput[] = [{ status: "PUBLISHED" }, notEndedWhere(now)];
+  if (q.cityId) and.push({ cityId: q.cityId });
 
   const window = q.window ?? (q.when ? dateFilterWindow(q.when, q.timezone, now) : undefined);
   if (window) {

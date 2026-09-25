@@ -146,7 +146,17 @@
 }
 
 /* Leaflet base styles (subset) + dark theme tweaks */
-.leaflet-container { background: #0c0c12; font: inherit; }
+.leaflet-container.leaflet-container { background: #0c0c12; font: inherit; }
 .leaflet-control-attribution { background: rgb(7 7 11 / 0.7) !important; color: #777 !important; font-size: 10px; }
 .leaflet-control-attribution a { color: #999 !important; }
 .leaflet-control-zoom a { background: #17171f !important; color: #f4f4f7 !important; border-color: rgb(255 255 255 / 0.08) !important; }
+
+/* Map markers */
+.nm-marker { position: relative; width: 100%; height: 100%; display: grid; place-items: center; }
+.nm-dot { flex-shrink: 0; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; font-size: 14px; line-height: 1; background: #17171f; border: 2px solid rgb(255 255 255 / 0.85); box-shadow: 0 4px 14px rgb(0 0 0 / 0.5); transition: transform .2s var(--ease-spring); }
+.nm-venue .nm-dot { width: 18px; height: 18px; background: var(--color-volt); border: 3px solid #07070b; box-shadow: 0 0 0 2px rgb(215 255 58 / 0.35), 0 4px 12px rgb(0 0 0 / 0.5); }
+.nm-live .nm-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
+.nm-selected .nm-dot { transform: scale(1.35); }
+.nm-label { position: absolute; left: calc(100% + 2px); top: 50%; transform: translateY(-50%); white-space: nowrap; font: 700 12px/1 var(--font-sans); color: #07070b; background: var(--color-volt); padding: 6px 9px; border-radius: 999px; box-shadow: 0 6px 18px rgb(0 0 0 / 0.5); }
+.nm-user { width: 16px; height: 16px; margin: 7px; border-radius: 999px; background: #3d8bff; border: 3px solid #fff; box-shadow: 0 0 0 8px rgb(61 139 255 / 0.25); }
+@media (max-width: 767px) { .leaflet-control-zoom { display: none; } }

@@ -1,0 +1,185 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { AtSign, Clock, ExternalLink, MapPin, Music2, Users, Wallet } from "lucide-react";
+import { getSessionUser } from "@/server/auth/session";
+import { getVenueDetail, listReviews, venueGallery } from "@/server/services/venues";
+import { listEvents } from "@/server/services/events";
+import { listPosts } from "@/server/services/posts";
+import { getMapConfig } from "@/server/services/map";
+import { Cover } from "@/components/ui/cover";
+import { Badge, DemoBadge, LiveDot, SectionHeader, Stars } from "@/components/ui/misc";
+import { buttonClass } from "@/components/ui/button";
+import { BackButton } from "@/components/events/event-header-actions";
+import { EventRow } from "@/components/events/event-card";
+import { VenueActions } from "@/components/venues/venue-actions";
+import { ReviewsSection } from "@/components/venues/reviews-section";
+import { CommunityGallery } from "@/components/venues/community-gallery";
+import { OpeningHours, isOpenNow } from "@/components/venues/opening-hours";
+import { PostGrid } from "@/components/feed/post-grid";
+import { StaticMap } from "@/components/map/static-map";
+import { Distance } from "@/components/ui/distance";
+import { formatPrice } from "@/lib/money";
+import { formatNumber } from "@/lib/text";
+import { imageUrl } from "@/lib/media";
+
+type Props = { params: Promise<{ slug: string }> };
+
+const TYPE_LABEL: Record<string, string> = { CLUB: "Discoteca", BAR: "Bar musical", CONCERT_HALL: "Sala de conciertos", OPEN_AIR: "Open air", OTHER: "Local" };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const v = await getVenueDetail(slug, null);
+  if (!v) return { title: "Local" };
+  const img = imageUrl(v.coverKey, "lg");
+  return { title: v.name, description: v.description ?? undefined, openGraph: img ? { images: [img] } : undefined };
+}
+
+export default async function VenuePage({ params }: Props) {
+  const { slug } = await params;
+  const user = await getSessionUser();
+  const venue = await getVenueDetail(slug, user);
+  if (!venue) notFound();
+
+  const [events, reviews, gallery, posts] = await Promise.all([
+    listEvents({ timezone: venue.timezone, venueId: venue.id, limit: 8 }),
+    listReviews(venue.id),
+    venueGallery(venue.id, user?.id),
+    listPosts({ venueId: venue.id, viewerId: user?.id, limit: 9 }),
+  ]);
+  const open = isOpenNow(venue.openingHours, venue.timezone);
+  const official = events.items.filter((e) => e.venue?.id === venue.id);
+
+  return (
+    <article className="mx-auto max-w-6xl md:px-6 md:pt-6">
+      <div className="relative md:overflow-hidden md:rounded-[1.75rem]">
+        <Cover imageKey={venue.coverKey} alt={venue.name} sizes="(min-width: 768px) 1100px, 100vw" priority className="aspect-[4/3] w-full md:aspect-[21/8]" />
+        <div className="image-fade absolute inset-0" />
+        <div className="absolute top-4 left-4">
+          <BackButton />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 p-5 md:p-8">
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            <Badge tone="glass">{TYPE_LABEL[venue.type] ?? "Local"}</Badge>
+            {open && (
+              <Badge tone="volt">
+                <LiveDot className="!bg-on-volt" /> Abierto ahora
+              </Badge>
+            )}
+            {venue.isDemo && <DemoBadge />}
+          </div>
+          <h1 className="font-display text-[34px] leading-none font-bold tracking-tight uppercase md:text-6xl">{venue.name}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px]">
+            {venue.ratingCount > 0 && (
+              <span className="flex items-center gap-2">
+                <Stars value={venue.ratingAvg} size={15} />
+                <b>{venue.ratingAvg.toFixed(1).replace(".", ",")}</b>
+                <span className="text-muted">{formatNumber(venue.ratingCount)} valoraciones</span>
+              </span>
+            )}
+            <span className="flex items-center gap-1 text-muted">
+              <MapPin className="size-4" /> {venue.neighborhood ? `${venue.neighborhood}, ` : ""}
+              {venue.city.name}
+              <Distance lat={venue.lat} lng={venue.lng} />
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-8 px-4 pt-5 md:grid-cols-[1fr_340px] md:px-0">
+        <div className="min-w-0 space-y-10">
+          <VenueActions venueId={venue.id} slug={venue.slug} name={venue.name} following={venue.viewer.following} followerCount={venue.followerCount} />
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Info icon={<Music2 className="size-4" />} label="Música" value={venue.genres.map((g) => g.name).join(" · ") || "Variada"} />
+            <Info icon={<Wallet className="size-4" />} label="Precio habitual" value={formatPrice(venue.priceMin, venue.priceMax, venue.currency)} />
+            <Info icon={<Users className="size-4" />} label="Edad mínima" value={venue.minAge ? `+${venue.minAge}` : "Sin restricción"} />
+          </div>
+
+          {venue.description && <p className="text-[15px] leading-relaxed text-fg/90">{venue.description}</p>}
+
+          <section>
+            <SectionHeader
+              eyebrow="Agenda"
+              title="Próximos eventos"
+              action={venue.viewer.canManage && <Link href={`/events/new?venue=${venue.id}`} className={buttonClass("secondary", "sm")}>Crear evento</Link>}
+            />
+            {events.items.length ? (
+              <div className="divide-y divide-line">
+                {events.items.map((e) => (
+                  <div key={e.id} className="py-1">
+                    <EventRow event={e} showDay />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-2xl border border-dashed border-line-strong px-4 py-6 text-center text-sm text-muted">No hay eventos anunciados.</p>
+            )}
+            {official.length > 0 && <p className="mt-2 text-[12px] text-faint">Los eventos publicados por el propio local aparecen como “Oficial”.</p>}
+          </section>
+
+          <CommunityGallery venueId={venue.id} initial={gallery} />
+
+          {posts.items.length > 0 && (
+            <section>
+              <SectionHeader title="Publicaciones" />
+              <PostGrid posts={posts.items} />
+            </section>
+          )}
+
+          <section>
+            <SectionHeader title="Valoraciones" />
+            <ReviewsSection
+              venue={{ id: venue.id, name: venue.name, ratingAvg: venue.ratingAvg, ratingCount: venue.ratingCount, subScores: venue.subScores, ratingDistribution: venue.ratingDistribution }}
+              myReview={venue.viewer.review}
+              initial={reviews}
+            />
+          </section>
+        </div>
+
+        <aside className="space-y-4 md:sticky md:top-24 md:self-start">
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface">
+            <StaticMap config={getMapConfig()} lat={venue.lat} lng={venue.lng} variant="venue" className="h-40 w-full" />
+            <div className="space-y-3 p-4">
+              <p className="text-sm">{venue.address}</p>
+              <a href={`https://www.google.com/maps/dir/?api=1&destination=${venue.lat},${venue.lng}`} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary", "sm", "w-full")}>
+                Cómo llegar <ExternalLink className="size-3.5" />
+              </a>
+            </div>
+          </div>
+          <div className="rounded-[var(--radius-card)] border border-line bg-surface p-4">
+            <h3 className="mb-3 flex items-center gap-2 text-[13px] font-bold tracking-wider text-muted uppercase">
+              <Clock className="size-4" /> Horario
+            </h3>
+            <OpeningHours hours={venue.openingHours} tz={venue.timezone} />
+          </div>
+          {(venue.instagram || venue.website) && (
+            <div className="flex gap-2">
+              {venue.instagram && (
+                <span className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 text-sm">
+                  <AtSign className="size-4" /> {venue.instagram}
+                </span>
+              )}
+              {venue.website && (
+                <a href={venue.website} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 text-sm">
+                  Web <ExternalLink className="size-3.5" />
+                </a>
+              )}
+            </div>
+          )}
+        </aside>
+      </div>
+    </article>
+  );
+}
+
+function Info({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-line bg-surface p-3.5">
+      <p className="flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+        {icon} {label}
+      </p>
+      <p className="mt-1 text-[15px] font-bold">{value}</p>
+    </div>
+  );
+}

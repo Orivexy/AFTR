@@ -326,7 +326,10 @@ async function main() {
           userId: u.id, venueId: v.id, rating: around(), ambience: around(), music: around(),
           staff: r.chance(0.8) ? around() : null, price: r.chance(0.8) ? around() : null, space: r.chance(0.7) ? around() : null,
           comment: r.chance(0.65) ? r.pick(REVIEW_COMMENTS) : null,
-          createdAt: new Date(Date.now() - r.int(1, 200) * 86400_000),
+          ...(() => {
+            const at = new Date(Date.now() - r.int(1, 200) * 86400_000);
+            return { createdAt: at, updatedAt: at };
+          })(),
         },
       });
       reviewCount++;

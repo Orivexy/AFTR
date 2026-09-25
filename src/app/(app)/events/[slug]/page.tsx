@@ -1,0 +1,249 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import Image from "next/image";
+import { notFound } from "next/navigation";
+import { Calendar, Camera, Clock, Euro, ExternalLink, MapPin, Music2, ShieldCheck, Ticket, Users } from "lucide-react";
+import { getSessionUser } from "@/server/auth/session";
+import { getEventDetail, listEvents } from "@/server/services/events";
+import { listPosts } from "@/server/services/posts";
+import { getMapConfig } from "@/server/services/map";
+import { Cover } from "@/components/ui/cover";
+import { Avatar, AvatarStack } from "@/components/ui/avatar";
+import { Badge, DemoBadge, LiveDot, SectionHeader } from "@/components/ui/misc";
+import { buttonClass } from "@/components/ui/button";
+import { Rail } from "@/components/ui/rail";
+import { EventActions } from "@/components/events/event-actions";
+import { BackButton, EventHeaderActions } from "@/components/events/event-header-actions";
+import { EventCard } from "@/components/events/event-card";
+import { RatingPill } from "@/components/venues/venue-card";
+import { PostGrid } from "@/components/feed/post-grid";
+import { StaticMap } from "@/components/map/static-map";
+import { Distance } from "@/components/ui/distance";
+import { formatPrice } from "@/lib/money";
+import { formatLongDate, formatTime, isHappeningNow } from "@/lib/time";
+import { imageUrl } from "@/lib/media";
+
+type Props = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const event = await getEventDetail(slug, null);
+  if (!event) return { title: "Evento" };
+  const img = imageUrl(event.coverKey, "lg");
+  return {
+    title: event.title,
+    description: `${formatLongDate(event.startsAt, event.timezone)} · ${event.locationName} · ${formatPrice(event.priceMin, event.priceMax, event.currency)}`,
+    openGraph: img ? { images: [img] } : undefined,
+  };
+}
+
+const STATUS_BANNER: Record<string, { tone: "warn" | "danger"; text: string }> = {
+  PENDING: { tone: "warn", text: "Pendiente de revisión: solo tú y el equipo de moderación podéis verlo." },
+  REJECTED: { tone: "danger", text: "Este evento no ha sido aprobado. Edítalo para volver a enviarlo a revisión." },
+  CANCELLED: { tone: "danger", text: "Evento cancelado por la organización." },
+};
+
+export default async function EventPage({ params }: Props) {
+  const { slug } = await params;
+  const user = await getSessionUser();
+  const event = await getEventDetail(slug, user);
+  if (!event) notFound();
+
+  const [posts, more] = await Promise.all([
+    listPosts({ eventId: event.id, viewerId: user?.id, limit: 9 }),
+    event.venue
+      ? listEvents({ timezone: event.timezone, venueId: event.venue.id, excludeIds: [event.id], limit: 6 })
+      : Promise.resolve({ items: [] }),
+  ]);
+  const live = isHappeningNow(event.startsAt, event.endsAt);
+  const ended = (event.endsAt ?? new Date(event.startsAt.getTime() + 6 * 3600_000)) < new Date();
+  const tz = event.timezone;
+  const directions = `https://www.google.com/maps/dir/?api=1&destination=${event.lat},${event.lng}`;
+  const banner = STATUS_BANNER[event.status];
+
+  return (
+    <article className="mx-auto max-w-6xl md:px-6 md:pt-6">
+      {/* Hero */}
+      <div className="relative md:overflow-hidden md:rounded-[1.75rem]">
+        <Cover imageKey={event.coverKey} alt={event.title} sizes="(min-width: 768px) 1100px, 100vw" priority className="aspect-[4/5] w-full sm:aspect-[16/9] md:aspect-[21/9]" />
+        <div className="image-fade absolute inset-0" />
+        <div className="absolute inset-x-4 top-4 flex justify-between">
+          <BackButton />
+          <EventHeaderActions eventId={event.id} slug={event.slug} canEdit={event.canEdit} status={event.status} />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 p-5 md:p-8">
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <Badge tone="glass">
+              {event.category.emoji} {event.category.name}
+            </Badge>
+            {live && (
+              <Badge tone="volt">
+                <LiveDot className="!bg-on-volt" /> Ahora
+              </Badge>
+            )}
+            {event.isOfficial && (
+              <Badge tone="glass">
+                <ShieldCheck className="size-3" /> Oficial
+              </Badge>
+            )}
+            {event.isDemo && <DemoBadge />}
+          </div>
+          <h1 className="font-display text-[34px] leading-[1.02] font-bold tracking-tight text-balance uppercase md:text-6xl">{event.title}</h1>
+          <p className="mt-2 flex items-center gap-1.5 text-[15px] text-muted">
+            <MapPin className="size-4" /> {event.venue?.name ?? event.locationName}
+            {event.city && `, ${event.city.name}`}
+          </p>
+        </div>
+      </div>
+
+      {banner && (
+        <div className={`mx-4 mt-4 rounded-2xl px-4 py-3 text-sm md:mx-0 ${banner.tone === "warn" ? "bg-warn/10 text-warn" : "bg-danger/10 text-danger"}`}>{banner.text}</div>
+      )}
+
+      <div className="grid gap-8 px-4 pt-6 md:grid-cols-[1fr_360px] md:gap-x-8 md:px-0">
+        <div className="min-w-0 md:col-start-1">
+          {/* Key facts */}
+          <dl className="grid grid-cols-2 gap-3">
+            <Fact icon={<Calendar className="size-4" />} label="Fecha" value={formatLongDate(event.startsAt, tz)} />
+            <Fact icon={<Clock className="size-4" />} label="Horario" value={`${formatTime(event.startsAt, tz)}${event.endsAt ? ` — ${formatTime(event.endsAt, tz)}` : ""}`} />
+            <Fact icon={<Euro className="size-4" />} label="Entrada" value={formatPrice(event.priceMin, event.priceMax, event.currency)} highlight={event.priceMin === 0} />
+            <Fact icon={<Users className="size-4" />} label="Edad" value={event.minAge ? `+${event.minAge}` : "Todas las edades"} />
+          </dl>
+        </div>
+
+        {/* Sidebar: actions + people */}
+        <aside className="space-y-6 md:sticky md:top-24 md:col-start-2 md:row-span-2 md:row-start-1 md:self-start">
+          <div className="rounded-[var(--radius-card)] border border-line bg-surface p-4">
+            <EventActions
+              eventId={event.id}
+              slug={event.slug}
+              title={event.title}
+              disabled={event.status !== "PUBLISHED" || ended}
+              initial={{ ...event.viewer, interestedCount: event.interestedCount, goingCount: event.goingCount }}
+            />
+            {event.ticketUrl && (
+              <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer nofollow" className={buttonClass("outline", "md", "mt-3 w-full")}>
+                <Ticket className="size-4" /> Comprar entradas
+              </a>
+            )}
+            {event.attendeesPreview.length > 0 && (
+              <div className="mt-4 flex items-center gap-3 border-t border-line pt-4">
+                <AvatarStack users={event.attendeesPreview} max={5} />
+                <p className="text-[13px] text-muted">
+                  {event.attendeesPreview[0]!.displayName}
+                  {event.goingCount + event.interestedCount > 1 && ` y ${event.goingCount + event.interestedCount - 1} más`} se apuntan
+                </p>
+              </div>
+            )}
+          </div>
+
+          <Link href={`/u/${event.organizer.username}`} className="pressable flex items-center gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 hover:bg-surface-2">
+            <Avatar user={event.organizer} size={44} />
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold tracking-wide text-muted uppercase">Organiza</p>
+              <p className="truncate font-semibold">{event.organizer.displayName}</p>
+              <p className="truncate text-[13px] text-faint">@{event.organizer.username}</p>
+            </div>
+          </Link>
+        </aside>
+
+        <div className="min-w-0 space-y-8 md:col-start-1">
+          {event.genres.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Music2 className="size-4 text-muted" />
+              {event.genres.map((g) => (
+                <Link key={g.slug} href={`/discover?genre=${g.slug}`} className="rounded-full bg-surface-2 px-3 py-1 text-[13px] font-semibold hover:bg-surface-3">
+                  {g.name}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {event.description && (
+            <section>
+              <h2 className="mb-2 text-[13px] font-bold tracking-wider text-muted uppercase">Descripción</h2>
+              <p className="text-[15px] leading-relaxed whitespace-pre-line text-fg/90">{event.description}</p>
+            </section>
+          )}
+
+          {/* Location */}
+          <section className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface">
+            <StaticMap config={getMapConfig()} lat={event.lat} lng={event.lng} variant={event.category.slug} className="h-44 w-full" />
+            <div className="flex items-center gap-3 p-4">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{event.venue?.name ?? event.locationName}</p>
+                <p className="truncate text-sm text-muted">
+                  {event.address ?? event.locationName}
+                  <Distance lat={event.lat} lng={event.lng} />
+                </p>
+              </div>
+              <a href={directions} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary", "sm")}>
+                Cómo llegar <ExternalLink className="size-3.5" />
+              </a>
+            </div>
+            {event.venue && (
+              <Link href={`/venues/${event.venue.slug}`} className="flex items-center justify-between border-t border-line px-4 py-3 text-sm hover:bg-surface-2">
+                <span className="font-semibold">Ver local</span>
+                <RatingPill avg={event.venue.ratingAvg} count={event.venue.ratingCount} />
+              </Link>
+            )}
+          </section>
+
+          {event.photos.length > 1 && (
+            <section>
+              <SectionHeader title="Fotos" />
+              <div className="grid grid-cols-3 gap-1.5">
+                {event.photos.map((p) => (
+                  <div key={p.id} className="relative aspect-square overflow-hidden rounded-xl bg-surface-2">
+                    <Image src={imageUrl(p.key, "sm")!} alt="" fill sizes="(min-width: 768px) 240px, 33vw" className="object-cover" placeholder={p.blurDataUrl ? "blur" : "empty"} blurDataURL={p.blurDataUrl ?? undefined} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section>
+            <SectionHeader
+              title="De la comunidad"
+              action={
+                user && (
+                  <Link href={`/create/post?event=${event.id}`} className={buttonClass("secondary", "sm")}>
+                    <Camera className="size-4" /> Subir
+                  </Link>
+                )
+              }
+            />
+            {posts.items.length ? (
+              <PostGrid posts={posts.items} />
+            ) : (
+              <p className="rounded-2xl border border-dashed border-line-strong px-4 py-6 text-center text-sm text-muted">
+                {ended ? "¿Estuviste? Sube tus fotos y vídeos de la noche." : "Después de la fiesta, las fotos y vídeos aparecerán aquí."}
+              </p>
+            )}
+          </section>
+        </div>
+
+      </div>
+
+      {more.items.length > 0 && event.venue && (
+        <section className="mt-10 px-4 md:px-0">
+          <SectionHeader title={`Más en ${event.venue.name}`} />
+          <Rail itemClassName="w-[70vw] sm:w-[260px]">
+            {more.items.map((e) => <EventCard key={e.id} event={e} />)}
+          </Rail>
+        </section>
+      )}
+    </article>
+  );
+}
+
+function Fact({ icon, label, value, highlight }: { icon: React.ReactNode; label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-line bg-surface p-3.5">
+      <dt className="flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+        {icon} {label}
+      </dt>
+      <dd className={`mt-1 text-[15px] font-bold ${highlight ? "text-volt" : ""}`}>{value}</dd>
+    </div>
+  );
+}
