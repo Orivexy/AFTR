@@ -5,6 +5,7 @@ import { eventCardSelect, parseOffset, nextOffset, toEventCard, toUserMini, user
 import { buildSearchText, normalizeSearch } from "@/lib/text";
 import type { z } from "zod";
 import type { venueAdminUpdateSchema } from "@/lib/validators";
+import type { AppRole } from "@/lib/roles";
 
 /** Read models and actions for the admin panel (role-checked at the route). */
 
@@ -127,6 +128,6 @@ export async function deleteEvent(eventId: string) {
   await db.event.delete({ where: { id: eventId } });
 }
 
-export async function setUserRole(userId: string, role: "USER" | "MODERATOR" | "ADMIN") {
+export async function setUserRole(userId: string, role: AppRole) {
   await db.user.update({ where: { id: userId }, data: { role } });
 }

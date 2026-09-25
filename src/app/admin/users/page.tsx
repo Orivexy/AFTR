@@ -6,6 +6,7 @@ import { AdminSearch } from "@/components/admin/admin-search";
 import { Pager } from "@/components/admin/pager";
 import { Avatar } from "@/components/ui/avatar";
 import { timeAgo } from "@/lib/time";
+import { ROLE_LABEL } from "@/lib/roles";
 
 export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<{ q?: string; cursor?: string }> }) {
   const sp = await searchParams;
@@ -30,7 +31,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                 {u._count.reportsAgainst > 0 && <span className="text-warn"> · {u._count.reportsAgainst} reportes</span>}
               </p>
               <p className="text-[12px] font-bold">
-                <span className={u.role === "USER" ? "text-faint" : "text-volt"}>{u.role}</span>
+                <span className={u.role === "USER" ? "text-faint" : "text-volt"}>{ROLE_LABEL[u.role]}</span>
                 {u.status === "SUSPENDED" && <span className="ml-2 text-danger">SUSPENDIDO</span>}
                 {u.profile?.isDemo && <span className="ml-2 text-faint">DEMO</span>}
               </p>

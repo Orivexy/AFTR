@@ -8,6 +8,7 @@ import { notify, notifyMany } from "./notifications";
 import type { CommentData, FeedPost, Page } from "@/lib/types";
 import type { z } from "zod";
 import type { postInputSchema } from "@/lib/validators";
+import { isStaff } from "@/lib/roles";
 
 const postSelect = {
   id: true,
@@ -19,6 +20,7 @@ const postSelect = {
   saveCount: true,
   locationName: true,
   isDemo: true,
+  promotionType: true,
   authorId: true,
   author: { select: userMiniSelect },
   photos: { where: { status: "VISIBLE" }, select: photoSelect, orderBy: { position: "asc" } },
@@ -61,6 +63,7 @@ async function hydrate(rows: PostRow[], viewerId?: string): Promise<FeedPost[]> 
     saveCount: r.saveCount,
     locationName: r.locationName,
     isDemo: r.isDemo,
+    promotionType: r.promotionType,
     author: toUserMini(r.author),
     photos: r.photos,
     video: r.video && r.video.status === "READY"
@@ -240,7 +243,7 @@ export async function createPost(user: SessionUser, input: z.infer<typeof postIn
 export async function deletePost(user: SessionUser, postId: string) {
   const post = await db.post.findUnique({ where: { id: postId }, select: { authorId: true, status: true } });
   if (!post) throw notFound("Publicación no encontrada");
-  if (post.authorId !== user.id && user.role === "USER") throw forbidden();
+  if (post.authorId !== user.id && !isStaff(user.role)) throw forbidden();
   await db.$transaction(async (tx) => {
     await tx.post.update({ where: { id: postId }, data: { status: "REMOVED" } });
     if (post.status !== "REMOVED") {
@@ -305,7 +308,7 @@ export async function listComments(postId: string, viewer: SessionUser | null, c
       body: c.body,
       createdAt: c.createdAt,
       author: toUserMini(c.author),
-      canDelete: Boolean(viewer && (viewer.id === c.authorId || viewer.id === c.post.authorId || viewer.role !== "USER")),
+      canDelete: Boolean(viewer && (viewer.id === c.authorId || viewer.id === c.post.authorId || isStaff(viewer.role))),
     })),
     nextCursor: nextOffset(offset, limit, rows.length),
   };
@@ -341,7 +344,7 @@ export async function deleteComment(user: SessionUser, commentId: string) {
     select: { authorId: true, postId: true, status: true, post: { select: { authorId: true } } },
   });
   if (!c) throw notFound("Comentario no encontrado");
-  if (c.authorId !== user.id && c.post.authorId !== user.id && user.role === "USER") throw forbidden();
+  if (c.authorId !== user.id && c.post.authorId !== user.id && !isStaff(user.role)) throw forbidden();
   await removeComment(commentId);
 }
 

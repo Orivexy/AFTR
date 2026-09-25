@@ -3,8 +3,9 @@
  * every visible name, cookie prefix and metadata string derives from it.
  */
 export const site = {
-  name: "NIGHTLY",
-  shortName: "Nightly",
+  name: "NIVEX",
+  shortName: "Nivex",
+  /** Technical prefix (cookies, storage keys). Changing it signs everyone out. */
   slug: "nightly",
   tagline: "Qué pasa esta noche",
   description:

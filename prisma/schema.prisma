@@ -29,27 +29,34 @@ model Country {
 }
 
 model City {
-  id        String   @id @default(cuid())
-  slug      String   @unique
-  name      String
-  countryId String
-  country   Country  @relation(fields: [countryId], references: [id])
-  timezone  String   @default("Europe/Madrid")
-  lat       Float
-  lng       Float
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  countryId      String
+  country        Country  @relation(fields: [countryId], references: [id])
+  timezone       String   @default("Europe/Madrid")
+  lat            Float
+  lng            Float
+  /// Radius (km) around the centre considered "in the city" (discovery, near-me defaults).
+  searchRadiusKm Float    @default(25)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
 
-  venues   Venue[]
-  events   Event[]
-  posts    Post[]
-  profiles Profile[]
+  venues           Venue[]
+  events           Event[]
+  posts            Post[]
+  profiles         Profile[]
+  discoverySources DiscoverySource[]
 }
 
 // ─── Identity ────────────────────────────────────────────────────────────────
 
+/// USER: regular account. ORGANIZER / VENUE: commercial accounts (no staff
+/// powers). MODERATOR / ADMIN: staff. Use the helpers in src/lib/roles.ts.
 enum Role {
   USER
+  ORGANIZER
+  VENUE
   MODERATOR
   ADMIN
 }
@@ -94,6 +101,13 @@ model User {
   reportsAgainst Report[]          @relation("ReportTargetUser")
   reportsHandled Report[]          @relation("ReportResolver")
   postTags       PostTag[]
+
+  businesses       BusinessProfile[]
+  orders           Order[]
+  tickets          Ticket[]
+  refundsRequested Refund[]
+  auditLogs        AuditLog[]
+  reviewedImports  SourceEventRecord[]
 }
 
 model Profile {
@@ -194,13 +208,13 @@ enum VenueType {
 }
 
 model Venue {
-  id            String    @id @default(cuid())
-  slug          String    @unique
+  id            String      @id @default(cuid())
+  slug          String      @unique
   name          String
-  type          VenueType @default(CLUB)
+  type          VenueType   @default(CLUB)
   description   String?
   cityId        String
-  city          City      @relation(fields: [cityId], references: [id])
+  city          City        @relation(fields: [cityId], references: [id])
   address       String
   neighborhood  String?
   lat           Float
@@ -213,15 +227,22 @@ model Venue {
   minAge        Int?
   website       String?
   instagram     String?
-  ratingAvg     Float     @default(0)
-  ratingCount   Int       @default(0)
-  followerCount Int       @default(0)
-  isFeatured    Boolean   @default(false)
-  isDemo        Boolean   @default(false)
-  isActive      Boolean   @default(true)
-  searchText    String    @default("")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  phone         String?
+  /// Google Place id (the only Places field that may be stored indefinitely).
+  googlePlaceId String?     @unique
+  trust         TrustLevel  @default(COMMUNITY)
+  importedAt    DateTime?
+  lastSyncedAt  DateTime?
+  promotionType SponsorType @default(NONE)
+  ratingAvg     Float       @default(0)
+  ratingCount   Int         @default(0)
+  followerCount Int         @default(0)
+  isFeatured    Boolean     @default(false)
+  isDemo        Boolean     @default(false)
+  isActive      Boolean     @default(true)
+  searchText    String      @default("")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   genres    VenueGenre[]
   events    Event[]
@@ -231,6 +252,11 @@ model Venue {
   followers VenueFollow[]
   managers  User[]        @relation("VenueManagers")
   reports   Report[]
+
+  business         BusinessProfile?
+  promotions       Promotion[]
+  sourceRecords    SourceVenueRecord[]
+  discoverySources DiscoverySource[]
 
   @@index([cityId, ratingAvg])
   @@index([cityId, followerCount])
@@ -255,6 +281,48 @@ enum EventStatus {
   PUBLISHED
   REJECTED
   CANCELLED
+  /// No longer listed by its source (hidden, kept for history).
+  INACTIVE
+}
+
+/// Where an item's information comes from / how much we trust it.
+/// COMMUNITY: created by a user · IMPORTED: found by the discovery engine ·
+/// OFFICIAL: published by the venue/organizer itself · VERIFIED: reviewed by staff.
+enum TrustLevel {
+  COMMUNITY
+  IMPORTED
+  OFFICIAL
+  VERIFIED
+}
+
+enum EventPricing {
+  FREE
+  PAID
+}
+
+/// How tickets are sold. NIVEX = native ticketing (requires TICKETS_ENABLED).
+enum TicketProvider {
+  NONE
+  EXTERNAL
+  NIVEX
+}
+
+enum SalesStatus {
+  NOT_ON_SALE
+  SCHEDULED
+  ON_SALE
+  PAUSED
+  SOLD_OUT
+  CLOSED
+}
+
+/// Paid placement marker. NONE = organic content. Anything else must be
+/// labelled in the UI and never mixed deceptively with organic content.
+enum SponsorType {
+  NONE
+  FEATURED
+  SPONSORED
+  AD
 }
 
 enum EventSource {
@@ -269,18 +337,18 @@ enum AttendanceStatus {
 }
 
 model Event {
-  id              String      @id @default(cuid())
-  slug            String      @unique
+  id              String           @id @default(cuid())
+  slug            String           @unique
   title           String
   description     String?
   categoryId      String
-  category        Category    @relation(fields: [categoryId], references: [id])
+  category        Category         @relation(fields: [categoryId], references: [id])
   cityId          String
-  city            City        @relation(fields: [cityId], references: [id])
+  city            City             @relation(fields: [cityId], references: [id])
   venueId         String?
-  venue           Venue?      @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  venue           Venue?           @relation(fields: [venueId], references: [id], onDelete: SetNull)
   organizerId     String
-  organizer       User        @relation("EventOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  organizer       User             @relation("EventOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
   /// Free-text place name when the event is not tied to a venue (e.g. a street party).
   locationName    String
   address         String?
@@ -288,23 +356,47 @@ model Event {
   lng             Float
   startsAt        DateTime
   endsAt          DateTime?
+  /// Door opening time, when different from the start time.
+  doorsAt         DateTime?
+  /// IANA timezone override; defaults to the city's timezone.
+  timezone        String?
   priceMin        Int? // cents; 0 = free, null = unknown
   priceMax        Int? // cents
+  /// Overrides the country currency when set (ISO 4217).
+  currency        String?
+  pricing         EventPricing     @default(FREE)
+  ticketProvider  TicketProvider   @default(NONE)
   ticketUrl       String?
+  officialUrl     String?
+  capacity        Int?
+  salesStartAt    DateTime?
+  salesEndAt      DateTime?
+  refundPolicy    String?
+  salesStatus     SalesStatus      @default(NOT_ON_SALE)
   minAge          Int?
   coverKey        String?
-  status          EventStatus @default(PUBLISHED)
-  source          EventSource @default(USER)
-  /// Id in an external data source (for future importers).
-  externalId      String?
-  isFeatured      Boolean     @default(false)
-  isDemo          Boolean     @default(false)
-  interestedCount Int         @default(0)
-  goingCount      Int         @default(0)
-  searchText      String      @default("")
+  status          EventStatus      @default(PUBLISHED)
+  source          EventSource      @default(USER)
+  trust           TrustLevel       @default(COMMUNITY)
+  /// Organizer name as given by an external source (imported events).
+  organizerName   String?
+  businessId      String?
+  business        BusinessProfile? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  /// Source whose data wins on sync updates (see src/server/discovery).
+  primarySourceId String?
+  primarySource   DiscoverySource? @relation("EventPrimarySource", fields: [primarySourceId], references: [id], onDelete: SetNull)
+  importedAt      DateTime?
+  lastSyncedAt    DateTime?
+  /// Editorial pick by staff (free). Paid placement lives in `promotionType`.
+  isFeatured      Boolean          @default(false)
+  promotionType   SponsorType      @default(NONE)
+  isDemo          Boolean          @default(false)
+  interestedCount Int              @default(0)
+  goingCount      Int              @default(0)
+  searchText      String           @default("")
   reminderSentAt  DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   genres        EventGenre[]
   photos        Photo[]
@@ -313,12 +405,19 @@ model Event {
   savedBy       SavedEvent[]
   reports       Report[]
   notifications Notification[]
+  ticketTypes   TicketType[]
+  orders        Order[]
+  tickets       Ticket[]
+  promotions    Promotion[]
+  sourceRecords SourceEventRecord[]
+  changes       EventChange[]
 
-  @@unique([source, externalId])
   @@index([cityId, status, startsAt])
   @@index([venueId, startsAt])
   @@index([organizerId])
   @@index([lat, lng])
+  @@index([primarySourceId])
+  @@index([businessId])
 }
 
 model EventAttendance {
@@ -440,25 +539,26 @@ enum PostType {
 }
 
 model Post {
-  id           String        @id @default(cuid())
-  authorId     String
-  author       User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  type         PostType
-  caption      String?
-  cityId       String?
-  city         City?         @relation(fields: [cityId], references: [id])
-  eventId      String?
-  event        Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  venueId      String?
-  venue        Venue?        @relation(fields: [venueId], references: [id], onDelete: SetNull)
-  locationName String?
-  likeCount    Int           @default(0)
-  commentCount Int           @default(0)
-  saveCount    Int           @default(0)
-  status       ContentStatus @default(VISIBLE)
-  isDemo       Boolean       @default(false)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  authorId      String
+  author        User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  type          PostType
+  caption       String?
+  cityId        String?
+  city          City?         @relation(fields: [cityId], references: [id])
+  eventId       String?
+  event         Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  venueId       String?
+  venue         Venue?        @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  locationName  String?
+  likeCount     Int           @default(0)
+  commentCount  Int           @default(0)
+  saveCount     Int           @default(0)
+  status        ContentStatus @default(VISIBLE)
+  isDemo        Boolean       @default(false)
+  promotionType SponsorType   @default(NONE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   photos        Photo[]
   video         Video?
@@ -468,6 +568,7 @@ model Post {
   tags          PostTag[]
   reports       Report[]
   notifications Notification[]
+  promotions    Promotion[]
 
   @@index([status, createdAt])
   @@index([authorId, createdAt])
@@ -640,4 +741,623 @@ model Report {
   @@unique([reporterId, targetKey])
   @@index([status, createdAt])
   @@index([targetKey])
+}
+
+// ─── Commerce (prepared, DISABLED by feature flags) ──────────────────────────
+//
+// Nothing in this section charges money today. Every write path is gated by
+// the flags in src/server/monetization/flags.ts and there is no real payment
+// provider wired in (see PaymentProvider in src/server/monetization/payments.ts).
+
+enum BusinessType {
+  ORGANIZER
+  VENUE
+}
+
+enum BusinessVerification {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum CommercialStatus {
+  INACTIVE
+  ACTIVE
+  SUSPENDED
+}
+
+enum PlanCode {
+  PLAN_FREE
+  PLAN_PREMIUM
+  PLAN_BUSINESS
+}
+
+/// Commercial identity of an organizer or venue account.
+model BusinessProfile {
+  id               String               @id @default(cuid())
+  ownerId          String
+  owner            User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  type             BusinessType
+  tradeName        String
+  contactEmail     String?
+  contactPhone     String?
+  website          String?
+  venueId          String?              @unique
+  venue            Venue?               @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  verification     BusinessVerification @default(UNVERIFIED)
+  verifiedAt       DateTime?
+  commercialStatus CommercialStatus     @default(INACTIVE)
+  plan             PlanCode             @default(PLAN_FREE)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  billingProfile  BillingProfile?
+  subscriptions   Subscription[]
+  events          Event[]
+  commissionRules CommissionRule[]
+  promotions      Promotion[]
+  transactions    Transaction[]
+  invoices        Invoice[]
+
+  @@index([ownerId])
+  @@index([type, verification])
+}
+
+/// Legal/billing data for invoices. Never read from the client without an ownership check.
+model BillingProfile {
+  id           String          @id @default(cuid())
+  businessId   String          @unique
+  business     BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  legalName    String
+  taxId        String?
+  email        String?
+  addressLine1 String?
+  addressLine2 String?
+  postalCode   String?
+  city         String?
+  countryCode  String          @default("ES")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+/// Catalogue of business plans. Prices are placeholders until configured by an admin.
+model Plan {
+  id          String   @id @default(cuid())
+  code        PlanCode @unique
+  name        String
+  description String?
+  /// Feature keys enabled by the plan (see PLAN_FEATURES in src/server/monetization/plans.ts).
+  features    String[]
+  priceCents  Int?
+  currency    String   @default("EUR")
+  interval    String   @default("month")
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+enum SubscriptionStatus {
+  INACTIVE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  businessId             String
+  business               BusinessProfile    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  planId                 String
+  plan                   Plan               @relation(fields: [planId], references: [id])
+  status                 SubscriptionStatus @default(INACTIVE)
+  provider               String?
+  providerSubscriptionId String?            @unique
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelledAt            DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  invoices Invoice[]
+
+  @@index([businessId, status])
+}
+
+/// Configurable fee rules (basis points: 100 bps = 1 %). The most specific
+/// active rule wins: event business → global. No rule = no sales possible.
+model CommissionRule {
+  id               String           @id @default(cuid())
+  name             String
+  businessId       String?
+  business         BusinessProfile? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  platformFeeBps   Int              @default(0)
+  platformFeeFixed Int              @default(0) // cents per ticket
+  providerFeeBps   Int              @default(0)
+  providerFeeFixed Int              @default(0) // cents per order
+  taxRateBps       Int              @default(0)
+  /// true: ticket prices already include tax (typical B2C in Spain).
+  taxIncluded      Boolean          @default(true)
+  /// true: the buyer pays the platform fee on top of the ticket price.
+  feesPaidByBuyer  Boolean          @default(true)
+  currency         String           @default("EUR")
+  isActive         Boolean          @default(false)
+  validFrom        DateTime?
+  validUntil       DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([businessId, isActive])
+}
+
+enum TicketTypeStatus {
+  DRAFT
+  ACTIVE
+  HIDDEN
+  SOLD_OUT
+}
+
+model TicketType {
+  id           String           @id @default(cuid())
+  eventId      String
+  event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  priceCents   Int
+  currency     String           @default("EUR")
+  capacity     Int?
+  soldCount    Int              @default(0)
+  maxPerOrder  Int              @default(10)
+  salesStartAt DateTime?
+  salesEndAt   DateTime?
+  status       TicketTypeStatus @default(DRAFT)
+  sortOrder    Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  orderItems OrderItem[]
+  tickets    Ticket[]
+
+  @@index([eventId, status])
+}
+
+enum OrderStatus {
+  CREATED
+  PAID
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+/// Amounts are computed server-side from TicketType + CommissionRule and
+/// frozen here at creation time. All in cents of `currency`.
+model Order {
+  id               String      @id @default(cuid())
+  number           String      @unique
+  userId           String
+  user             User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  eventId          String
+  event            Event       @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  status           OrderStatus @default(CREATED)
+  currency         String
+  subtotal         Int
+  platformFee      Int
+  providerFee      Int
+  tax              Int
+  total            Int
+  organizerAmount  Int
+  commissionRuleId String?
+  idempotencyKey   String?     @unique
+  expiresAt        DateTime?
+  paidAt           DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  items        OrderItem[]
+  tickets      Ticket[]
+  payments     Payment[]
+  refunds      Refund[]
+  transactions Transaction[]
+  invoices     Invoice[]
+
+  @@index([userId, createdAt])
+  @@index([eventId, status])
+}
+
+model OrderItem {
+  id           String     @id @default(cuid())
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  quantity     Int
+  unitPrice    Int
+  total        Int
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+  REFUNDED
+}
+
+model Ticket {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  orderId      String
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketTypeId String
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  eventId      String
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  ownerId      String
+  owner        User         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  status       TicketStatus @default(VALID)
+  checkedInAt  DateTime?
+  createdAt    DateTime     @default(now())
+
+  @@index([ownerId])
+  @@index([eventId, status])
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+/// A charge attempt at the payment provider. Status changes ONLY through
+/// verified provider callbacks (webhooks), never from the admin UI or client.
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider          String
+  providerPaymentId String?       @unique
+  status            PaymentStatus @default(PENDING)
+  amount            Int
+  currency          String
+  failureReason     String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  refunds      Refund[]
+  transactions Transaction[]
+
+  @@index([orderId])
+}
+
+enum RefundStatus {
+  REQUESTED
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+/// Full or partial refund. It becomes SUCCEEDED only when the provider confirms it.
+model Refund {
+  id               String       @id @default(cuid())
+  orderId          String
+  order            Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  paymentId        String?
+  payment          Payment?     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  amount           Int
+  currency         String
+  reason           String?
+  status           RefundStatus @default(REQUESTED)
+  providerRefundId String?      @unique
+  requestedById    String?
+  requestedBy      User?        @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+  createdAt        DateTime     @default(now())
+  resolvedAt       DateTime?
+
+  transactions Transaction[]
+
+  @@index([orderId])
+}
+
+enum TransactionType {
+  CHARGE
+  REFUND
+  PLATFORM_FEE
+  PROVIDER_FEE
+  PAYOUT
+  ADJUSTMENT
+}
+
+/// Append-only money ledger (history of operations per business).
+model Transaction {
+  id                String           @id @default(cuid())
+  type              TransactionType
+  amount            Int
+  currency          String
+  businessId        String?
+  business          BusinessProfile? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  orderId           String?
+  order             Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  paymentId         String?
+  payment           Payment?         @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  refundId          String?
+  refund            Refund?          @relation(fields: [refundId], references: [id], onDelete: SetNull)
+  providerReference String?
+  description       String?
+  createdAt         DateTime         @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([orderId])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+}
+
+/// Invoice record prepared for an external invoicing provider. No legal
+/// invoices are issued while INVOICING_ENABLED is false (numbers stay null).
+model Invoice {
+  id                String           @id @default(cuid())
+  number            String?          @unique
+  status            InvoiceStatus    @default(DRAFT)
+  businessId        String?
+  business          BusinessProfile? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  orderId           String?
+  order             Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  subscriptionId    String?
+  subscription      Subscription?    @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  customerName      String
+  customerTaxId     String?
+  /// Snapshot of billing data at issue time.
+  billingDetails    Json?
+  subtotal          Int
+  tax               Int
+  total             Int
+  currency          String
+  provider          String?
+  providerInvoiceId String?          @unique
+  createdAt         DateTime         @default(now())
+  issuedAt          DateTime?
+  paidAt            DateTime?
+
+  lines InvoiceLine[]
+
+  @@index([businessId, createdAt])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int
+  unitAmount  Int
+  taxRateBps  Int     @default(0)
+  total       Int
+}
+
+enum PromotionType {
+  FEATURED_EVENT
+  FEATURED_VENUE
+  SPONSORED_POST
+  AD
+}
+
+enum PromotionStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  ENDED
+  REJECTED
+}
+
+/// Paid visibility campaign. Only ACTIVE promotions set `promotionType` on
+/// the target, which the UI always labels ("Destacado" / "Patrocinado" / "Publicidad").
+model Promotion {
+  id          String           @id @default(cuid())
+  businessId  String?
+  business    BusinessProfile? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  type        PromotionType
+  status      PromotionStatus  @default(DRAFT)
+  placement   String?
+  eventId     String?
+  event       Event?           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  venueId     String?
+  venue       Venue?           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  postId      String?
+  post        Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  budgetCents Int?
+  currency    String           @default("EUR")
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([status, startsAt])
+}
+
+/// Staff and commercial operations log (who did what, when, from where).
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([actorId, createdAt])
+}
+
+// ─── Event discovery ─────────────────────────────────────────────────────────
+//
+// Sources → connector → normalisation → deduplication → validation → Event.
+// See src/server/discovery.
+
+enum DiscoverySourceType {
+  ICS_FEED
+  JSON_LD_PAGE
+  PARTNER_FEED
+  TICKETMASTER
+  GOOGLE_PLACES
+}
+
+enum DiscoverySyncStatus {
+  IDLE
+  RUNNING
+  OK
+  ERROR
+}
+
+model DiscoverySource {
+  id                String              @id @default(cuid())
+  key               String              @unique
+  name              String
+  type              DiscoverySourceType
+  enabled           Boolean             @default(false)
+  url               String?
+  cityId            String
+  city              City                @relation(fields: [cityId], references: [id])
+  /// Club/promoter the source belongs to (official website or partner feed).
+  venueId           String?
+  venue             Venue?              @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  /// Trust assigned to items from this source (IMPORTED or OFFICIAL).
+  trust             TrustLevel          @default(IMPORTED)
+  /// Publish automatically when an item passes every quality check.
+  autoPublish       Boolean             @default(false)
+  /// Allowed to store images from this source (licence/permission confirmed).
+  allowImages       Boolean             @default(false)
+  /// Hide events that disappear from the source.
+  deactivateMissing Boolean             @default(true)
+  /// Minutes between syncs; null = EVENT_SYNC_INTERVAL.
+  syncIntervalMin   Int?
+  /// Connector options (never secrets: API keys come from env).
+  config            Json?
+  status            DiscoverySyncStatus @default(IDLE)
+  lockedUntil       DateTime?
+  lastSyncAt        DateTime?
+  nextSyncAt        DateTime?
+  lastError         String?
+  eventsFound       Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  runs          SyncRun[]
+  eventRecords  SourceEventRecord[]
+  venueRecords  SourceVenueRecord[]
+  primaryEvents Event[]             @relation("EventPrimarySource")
+  changes       EventChange[]
+
+  @@index([enabled, nextSyncAt])
+}
+
+model SyncRun {
+  id          String              @id @default(cuid())
+  sourceId    String
+  source      DiscoverySource     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  status      DiscoverySyncStatus
+  startedAt   DateTime            @default(now())
+  finishedAt  DateTime?
+  found       Int                 @default(0)
+  created     Int                 @default(0)
+  updated     Int                 @default(0)
+  unchanged   Int                 @default(0)
+  duplicates  Int                 @default(0)
+  queued      Int                 @default(0)
+  skipped     Int                 @default(0)
+  deactivated Int                 @default(0)
+  errors      Int                 @default(0)
+  log         String?
+
+  @@index([sourceId, startedAt])
+}
+
+enum ImportReviewStatus {
+  /// Linked to a published event automatically.
+  AUTO
+  PENDING
+  APPROVED
+  REJECTED
+  MERGED
+}
+
+/// One item as seen in one source. Several records can point to the same
+/// Event (deduplication); records without an event form the review queue.
+model SourceEventRecord {
+  id            String             @id @default(cuid())
+  sourceId      String
+  source        DiscoverySource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  externalId    String
+  sourceUrl     String?
+  eventId       String?
+  event         Event?             @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  /// Normalised payload (NormalizedEvent) from the last sync.
+  data          Json
+  contentHash   String
+  reviewStatus  ImportReviewStatus @default(PENDING)
+  reviewReasons String[]
+  /// Suggested existing event when a possible duplicate was detected.
+  duplicateOfId String?
+  matchScore    Float?
+  reviewedById  String?
+  reviewedBy    User?              @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt    DateTime?
+  missedSyncs   Int                @default(0)
+  importedAt    DateTime           @default(now())
+  lastSeenAt    DateTime           @default(now())
+  lastSyncedAt  DateTime           @default(now())
+
+  @@unique([sourceId, externalId])
+  @@index([eventId])
+  @@index([reviewStatus, importedAt])
+}
+
+model SourceVenueRecord {
+  id            String             @id @default(cuid())
+  sourceId      String
+  source        DiscoverySource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  externalId    String
+  venueId       String?
+  venue         Venue?             @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  data          Json
+  contentHash   String
+  reviewStatus  ImportReviewStatus @default(PENDING)
+  reviewReasons String[]
+  duplicateOfId String?
+  /// Data from sources with caching limits (e.g. Google Places) is purged after this date.
+  expiresAt     DateTime?
+  importedAt    DateTime           @default(now())
+  lastSeenAt    DateTime           @default(now())
+
+  @@unique([sourceId, externalId])
+  @@index([reviewStatus, importedAt])
+}
+
+/// Field-level history of changes applied by sync or staff.
+model EventChange {
+  id        String           @id @default(cuid())
+  eventId   String
+  event     Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sourceId  String?
+  source    DiscoverySource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  field     String
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime         @default(now())
+
+  @@index([eventId, createdAt])
 }

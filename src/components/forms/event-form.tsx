@@ -247,6 +247,11 @@ export function EventForm({ mode, eventId, citySlug, cityName, venues, mapConfig
             </div>
           )}
         </div>
+        {!v.isFree && (
+          <p className="text-[12px] text-faint">
+            La venta de entradas dentro de NIVEX todavía no está disponible. Indica el precio y, si quieres, un enlace de venta externo.
+          </p>
+        )}
       </Field>
 
       <div className="grid grid-cols-2 gap-3">

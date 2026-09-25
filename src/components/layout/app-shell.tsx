@@ -14,6 +14,7 @@ import { buttonClass } from "@/components/ui/button";
 import { useSession } from "@/components/providers/session-provider";
 import { useRequireAuth } from "@/components/providers/auth-gate";
 import { cn } from "@/lib/cn";
+import { isStaff } from "@/lib/roles";
 
 interface ShellProps {
   cities: CityOption[];
@@ -60,7 +61,7 @@ export function AppShell({ cities, city, children }: ShellProps) {
             </Link>
             {user ? (
               <>
-                {user.role !== "USER" && (
+                {isStaff(user.role) && (
                   <Link href="/admin" aria-label="Administración" className="pressable grid size-10 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg">
                     <Shield className="size-5" />
                   </Link>

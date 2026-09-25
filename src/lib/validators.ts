@@ -79,6 +79,14 @@ export const eventInputSchema = z
     price: z.number().min(0).max(1000).optional().nullable(),
     minAge: z.number().int().min(0).max(25).optional().nullable(),
     ticketUrl: z.url({ protocol: /^https$/ }).max(300).optional().nullable().or(z.literal("")),
+    /**
+     * NONE / EXTERNAL: informative price + optional external ticket link.
+     * NIVEX: native ticket sales — rejected while TICKETS_ENABLED is off.
+     * Prices of NIVEX tickets always come from TicketType rows, never from here.
+     */
+    ticketing: z.enum(["NONE", "EXTERNAL", "NIVEX"]).optional(),
+    capacity: z.number().int().min(1).max(100_000).optional().nullable(),
+    refundPolicy: optionalText(1000).nullable(),
     coverPhotoId: cuid.optional().nullable(),
     photoIds: z.array(cuid).max(8).default([]),
   })
@@ -152,4 +160,82 @@ export const venueAdminUpdateSchema = z.object({
   instagram: optionalText(60).nullable(),
   isFeatured: z.boolean().optional(),
   isActive: z.boolean().optional(),
+});
+
+// ─── Commerce (admin + owners) ────────────────────────────────────────────────
+
+const bpsRate = z.number().int().min(0).max(10_000);
+const cents = z.number().int().min(0).max(10_000_000);
+
+export const commissionRuleSchema = z.object({
+  name: text(80).pipe(z.string().min(2)),
+  businessId: cuid.nullable().optional(),
+  platformFeeBps: bpsRate,
+  platformFeeFixed: cents,
+  providerFeeBps: bpsRate,
+  providerFeeFixed: cents,
+  taxRateBps: bpsRate,
+  taxIncluded: z.boolean(),
+  feesPaidByBuyer: z.boolean(),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  isActive: z.boolean(),
+  validFrom: z.coerce.date().nullable().optional(),
+  validUntil: z.coerce.date().nullable().optional(),
+});
+
+export const planUpdateSchema = z.object({
+  name: text(60).pipe(z.string().min(2)).optional(),
+  description: optionalText(300).nullable(),
+  priceCents: cents.nullable().optional(),
+  currency: z.string().regex(/^[A-Z]{3}$/).optional(),
+  interval: z.enum(["month", "year"]).optional(),
+});
+
+export const businessCreateSchema = z.object({
+  username: usernameSchema,
+  type: z.enum(["ORGANIZER", "VENUE"]),
+  tradeName: text(80).pipe(z.string().min(2)),
+  contactEmail: emailSchema.optional(),
+  contactPhone: optionalText(30),
+  website: z.url({ protocol: /^https?$/ }).max(300).optional(),
+  venueSlug: z.string().max(80).optional(),
+});
+
+export const businessAdminUpdateSchema = z.object({
+  verification: z.enum(["UNVERIFIED", "PENDING", "VERIFIED", "REJECTED"]).optional(),
+  commercialStatus: z.enum(["INACTIVE", "ACTIVE", "SUSPENDED"]).optional(),
+  plan: z.enum(["PLAN_FREE", "PLAN_PREMIUM", "PLAN_BUSINESS"]).optional(),
+});
+
+/** Owners may only edit contact data — never verification, status or plan. */
+export const businessOwnerUpdateSchema = z
+  .object({
+    contactEmail: emailSchema.nullable().optional(),
+    contactPhone: optionalText(30).nullable(),
+    website: z.url({ protocol: /^https?$/ }).max(300).nullable().optional(),
+  })
+  .strict();
+
+export const orderCreateSchema = z.object({
+  eventId: cuid,
+  items: z.array(z.object({ ticketTypeId: cuid, quantity: z.number().int().min(1).max(20) })).min(1).max(10),
+  idempotencyKey: z.string().min(16).max(64).optional(),
+});
+
+export const promotionCreateSchema = z.object({
+  type: z.enum(["FEATURED_EVENT", "FEATURED_VENUE", "SPONSORED_POST", "AD"]),
+  /** Event slug, venue slug or post id depending on the type. */
+  target: z.string().trim().min(3).max(120),
+  businessId: cuid.optional(),
+  placement: z.enum(["HOME", "DISCOVER", "FEED", "SEARCH", "MAP"]).optional(),
+  startsAt: z.coerce.date().optional(),
+  endsAt: z.coerce.date().optional(),
+  budgetCents: cents.optional(),
+  notes: optionalText(500),
+});
+
+export const refundRequestSchema = z.object({
+  orderId: cuid,
+  amount: cents.min(1).nullable(),
+  reason: optionalText(300),
 });

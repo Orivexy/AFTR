@@ -13,6 +13,10 @@ import { buildSearchText, slugify } from "@/lib/text";
 import { dateFilterWindow, localToUtc, type DateFilter, type TimeWindow } from "@/lib/time";
 import type { EventCardData, EventDetail, Page, UserMini, ViewerEventState } from "@/lib/types";
 import type { EventInput } from "@/lib/validators";
+import { isStaff } from "@/lib/roles";
+import { assertFeature } from "../monetization/flags";
+import { businessForOrganizer } from "../monetization/business";
+import { onEventCancelled } from "../monetization/refunds";
 
 export type EventSort = "soonest" | "popular" | "newest";
 
@@ -120,7 +124,7 @@ export async function viewerEventStates(userId: string | undefined, eventIds: st
 }
 
 function canEditEvent(user: SessionUser | null, organizerId: string) {
-  return Boolean(user && (user.id === organizerId || user.role !== "USER"));
+  return Boolean(user && (user.id === organizerId || isStaff(user.role)));
 }
 
 export async function getEventDetail(slug: string, viewer: SessionUser | null): Promise<EventDetail | null> {
@@ -199,7 +203,7 @@ async function uniqueEventSlug(title: string): Promise<string> {
 }
 
 export function needsModeration(user: Pick<SessionUser, "role">, accountCreatedAt: Date): boolean {
-  if (user.role !== "USER") return false;
+  if (isStaff(user.role)) return false;
   if (env.EVENT_MODERATION === "all") return true;
   if (env.EVENT_MODERATION === "new_users") return Date.now() - accountCreatedAt.getTime() < 7 * 24 * 3600_000;
   return false;
@@ -253,6 +257,9 @@ async function resolveEventInput(user: SessionUser, input: EventInput, existingE
   if (photos.length !== photoIds.length) throw badRequest("Alguna foto no es válida");
   const cover = input.coverPhotoId ? photos.find((p) => p.id === input.coverPhotoId) : photos[0];
 
+  // Native ticket sales are not available yet; informative prices are.
+  if (input.ticketing === "NIVEX") assertFeature("tickets");
+
   return {
     city,
     categoryId: category.id,
@@ -263,6 +270,8 @@ async function resolveEventInput(user: SessionUser, input: EventInput, existingE
     photoIds,
     coverKey: cover?.key ?? null,
     priceMin: input.isFree ? 0 : Math.round((input.price ?? 0) * 100),
+    pricing: input.isFree ? ("FREE" as const) : ("PAID" as const),
+    ticketProvider: input.ticketUrl ? ("EXTERNAL" as const) : ("NONE" as const),
     isVenueManager: Boolean(venue?.managers.length),
   };
 }
@@ -271,6 +280,8 @@ export async function createEvent(user: SessionUser, input: EventInput) {
   const r = await resolveEventInput(user, input);
   const account = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { createdAt: true } });
   const status: EventStatus = needsModeration(user, account.createdAt) ? "PENDING" : "PUBLISHED";
+  // Owner and business are always derived from the session, never from the request.
+  const businessId = await businessForOrganizer(user.id, r.venue?.id ?? null);
 
   const event = await db.$transaction(async (tx) => {
     const created = await tx.event.create({
@@ -289,11 +300,17 @@ export async function createEvent(user: SessionUser, input: EventInput) {
         startsAt: r.startsAt,
         endsAt: r.endsAt,
         priceMin: r.priceMin,
+        pricing: r.pricing,
+        ticketProvider: r.ticketProvider,
+        capacity: input.capacity ?? null,
+        refundPolicy: input.refundPolicy ?? null,
         minAge: input.minAge ?? null,
         ticketUrl: input.ticketUrl || null,
         coverKey: r.coverKey,
         status,
         source: r.isVenueManager ? "VENUE" : "USER",
+        trust: r.isVenueManager ? "OFFICIAL" : "COMMUNITY",
+        businessId,
         searchText: buildSearchText(input.title, input.locationName, r.venue?.name, r.venue?.neighborhood, input.address, r.city.name),
         genres: { create: r.genreIds.map((genreId) => ({ genreId })) },
       },
@@ -334,6 +351,10 @@ export async function updateEvent(user: SessionUser, eventId: string, input: Eve
         startsAt: r.startsAt,
         endsAt: r.endsAt,
         priceMin: r.priceMin,
+        pricing: r.pricing,
+        ticketProvider: r.ticketProvider,
+        ...(input.capacity !== undefined ? { capacity: input.capacity } : {}),
+        ...(input.refundPolicy !== undefined ? { refundPolicy: input.refundPolicy } : {}),
         minAge: input.minAge ?? null,
         ticketUrl: input.ticketUrl || null,
         ...(r.coverKey ? { coverKey: r.coverKey } : {}),
@@ -356,7 +377,8 @@ export async function cancelEvent(user: SessionUser, eventId: string) {
   const e = await db.event.findUnique({ where: { id: eventId }, select: { organizerId: true } });
   if (!e) throw notFound("Evento no encontrado");
   if (!canEditEvent(user, e.organizerId)) throw forbidden();
-  await db.event.update({ where: { id: eventId }, data: { status: "CANCELLED" } });
+  await db.event.update({ where: { id: eventId }, data: { status: "CANCELLED", salesStatus: "CLOSED" } });
+  await onEventCancelled(eventId, user.id);
 }
 
 export async function notifyVenueFollowers(eventId: string, venueId: string | null, actorId: string) {

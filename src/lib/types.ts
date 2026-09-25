@@ -28,6 +28,9 @@ export interface VenueMini {
   ratingCount: number;
 }
 
+/** Paid placement marker; anything but NONE must be labelled in the UI. */
+export type SponsorType = "NONE" | "FEATURED" | "SPONSORED" | "AD";
+
 export interface EventCardData {
   id: string;
   slug: string;
@@ -50,7 +53,9 @@ export interface EventCardData {
   goingCount: number;
   isFeatured: boolean;
   isDemo: boolean;
-  status: "PENDING" | "PUBLISHED" | "REJECTED" | "CANCELLED";
+  promotionType: SponsorType;
+  trust: "COMMUNITY" | "IMPORTED" | "OFFICIAL" | "VERIFIED";
+  status: "PENDING" | "PUBLISHED" | "REJECTED" | "CANCELLED" | "INACTIVE";
 }
 
 export interface ViewerEventState {
@@ -104,6 +109,7 @@ export interface VenueCardData {
   currency: string;
   genres: GenreMini[];
   isDemo: boolean;
+  promotionType: SponsorType;
 }
 
 export interface OpeningHours {
@@ -147,6 +153,7 @@ export interface FeedPost {
   saveCount: number;
   locationName: string | null;
   isDemo: boolean;
+  promotionType: SponsorType;
   author: UserMini;
   photos: PhotoData[];
   video: { id: string; key: string; posterKey: string | null; width: number | null; height: number | null } | null;

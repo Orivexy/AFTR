@@ -8,6 +8,7 @@ import { boundingBox, distanceKm, type LatLng } from "@/lib/geo";
 import type { GalleryPhoto, OpeningHours, Page, ReviewData, VenueCardData, VenueDetail } from "@/lib/types";
 import type { z } from "zod";
 import type { reviewSchema } from "@/lib/validators";
+import { isStaff } from "@/lib/roles";
 
 export type VenueSort = "popular" | "rating" | "name";
 
@@ -79,7 +80,7 @@ export async function getVenueDetail(slug: string, viewer: SessionUser | null): 
       city: { select: { slug: true, name: true, timezone: true, country: { select: { currency: true } } } },
     },
   });
-  if (!v || (!v.isActive && viewer?.role === "USER")) return null;
+  if (!v || (!v.isActive && !isStaff(viewer?.role))) return null;
 
   const [agg, dist, following, myReview, manager] = await Promise.all([
     db.review.aggregate({
@@ -116,7 +117,7 @@ export async function getVenueDetail(slug: string, viewer: SessionUser | null): 
     viewer: {
       following: Boolean(following),
       review: myReview ? toReview(myReview) : null,
-      canManage: Boolean(manager) || (viewer ? viewer.role !== "USER" : false),
+      canManage: Boolean(manager) || isStaff(viewer?.role),
     },
   };
 }

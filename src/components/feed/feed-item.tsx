@@ -1,11 +1,12 @@
 "use client";
 
+import { site } from "@/config/site";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bookmark, CalendarDays, Flag, Heart, MapPin, MessageCircle, Share2, Trash2, Volume2, VolumeX } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
-import { DemoBadge } from "@/components/ui/misc";
+import { DemoBadge, SponsorBadge } from "@/components/ui/misc";
 import { MoreMenu, type MenuItem } from "@/components/social/more-menu";
 import { shareLink } from "@/components/social/share-button";
 import { useReport } from "@/components/social/report-dialog";
@@ -130,7 +131,7 @@ export function FeedItem({ post, active, nearby, muted, onToggleMute, onChange, 
         <RailButton label={post.viewer.saved ? "Quitar de guardados" : "Guardar"} count={post.saveCount} active={post.viewer.saved} onClick={toggleSave}>
           <Bookmark className={cn("size-7", post.viewer.saved && "text-volt")} fill={post.viewer.saved ? "currentColor" : "none"} />
         </RailButton>
-        <RailButton label="Compartir" onClick={() => shareLink(`/p/${post.id}`, post.caption ?? "Mira esto en NIGHTLY", toast)}>
+        <RailButton label="Compartir" onClick={() => shareLink(`/p/${post.id}`, post.caption ?? `Mira esto en ${site.name}`, toast)}>
           <Share2 className="size-6" />
         </RailButton>
         <MoreMenu items={menu} className="size-11 bg-black/25 text-white" />
@@ -158,7 +159,8 @@ export function FeedItem({ post, active, nearby, muted, onToggleMute, onChange, 
               Seguir
             </button>
           )}
-          {post.isDemo && <DemoBadge className="ml-auto" />}
+          <SponsorBadge type={post.promotionType} className="ml-auto" />
+          {post.isDemo && <DemoBadge className={post.promotionType === "NONE" ? "ml-auto" : ""} />}
         </div>
         {post.caption && <p className="line-clamp-3 text-[15px] leading-snug">{post.caption}</p>}
         {post.tagged.length > 0 && (

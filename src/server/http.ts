@@ -5,9 +5,11 @@ import { Prisma } from "@prisma/client";
 import { env } from "./env";
 import { checkRateLimit, type RateLimitName } from "./security/rate-limit";
 import { getSessionUser, type SessionUser } from "./auth/session";
+import { audit } from "./audit";
 
 export { ApiError, unauthorized, forbidden, notFound, badRequest } from "./errors";
 import { ApiError, unauthorized, forbidden, badRequest } from "./errors";
+import { isAdmin, isStaff } from "@/lib/roles";
 
 export function clientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for");
@@ -72,6 +74,8 @@ interface RouteOptions {
   /** Require an authenticated, active user. */
   auth?: boolean | "moderator" | "admin";
   rateLimit?: RateLimitName;
+  /** Record successful calls in the audit log (targetId = params.id). */
+  audit?: { action: string; targetType: string };
 }
 
 type RouteHandler<P> = (ctx: HandlerContext<P>) => Promise<Response | unknown>;
@@ -91,8 +95,8 @@ export function route<P = Record<string, never>>(options: RouteOptions, handler:
       if (options.auth) {
         if (!user) throw unauthorized();
         if (user.status === "SUSPENDED") throw forbidden("Tu cuenta está suspendida");
-        if (options.auth === "admin" && user.role !== "ADMIN") throw forbidden();
-        if (options.auth === "moderator" && user.role === "USER") throw forbidden();
+        if (options.auth === "admin" && !isAdmin(user.role)) throw forbidden();
+        if (options.auth === "moderator" && !isStaff(user.role)) throw forbidden();
       }
 
       const ip = clientIp(req);
@@ -107,7 +111,18 @@ export function route<P = Record<string, never>>(options: RouteOptions, handler:
       }
 
       const params = (await context?.params) ?? ({} as P);
+      const auditBody = options.audit && mutating ? await req.clone().json().catch(() => null) : null;
       const result = await handler({ req, params, user, ip });
+      if (options.audit) {
+        await audit({
+          actorId: user?.id ?? null,
+          action: options.audit.action,
+          targetType: options.audit.targetType,
+          targetId: (params as { id?: string }).id,
+          metadata: auditBody,
+          ip,
+        });
+      }
       if (result instanceof Response) return result;
       return NextResponse.json(result ?? { ok: true });
     } catch (err) {

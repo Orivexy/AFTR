@@ -7,7 +7,7 @@ const body = z.object({
   note: z.string().max(300).optional(),
 });
 
-export const POST = route<{ id: string }>({ auth: "moderator" }, async ({ req, params, user }) => {
+export const POST = route<{ id: string }>({ auth: "moderator", audit: { action: "report.resolve", targetType: "REPORT" } }, async ({ req, params, user }) => {
   const { action, note } = await parseJson(req, body);
   await resolveReport(params.id, user!.id, action, note);
   return { ok: true };

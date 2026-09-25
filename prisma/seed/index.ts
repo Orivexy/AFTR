@@ -41,6 +41,27 @@ const log = (msg: string) => console.log(`  • ${msg}`);
 async function wipe() {
   // Order matters only for tables without cascading FKs.
   await db.$transaction([
+    db.auditLog.deleteMany(),
+    db.eventChange.deleteMany(),
+    db.sourceEventRecord.deleteMany(),
+    db.sourceVenueRecord.deleteMany(),
+    db.syncRun.deleteMany(),
+    db.discoverySource.deleteMany(),
+    db.transaction.deleteMany(),
+    db.invoiceLine.deleteMany(),
+    db.invoice.deleteMany(),
+    db.refund.deleteMany(),
+    db.payment.deleteMany(),
+    db.ticket.deleteMany(),
+    db.orderItem.deleteMany(),
+    db.order.deleteMany(),
+    db.ticketType.deleteMany(),
+    db.promotion.deleteMany(),
+    db.commissionRule.deleteMany(),
+    db.subscription.deleteMany(),
+    db.plan.deleteMany(),
+    db.billingProfile.deleteMany(),
+    db.businessProfile.deleteMany(),
     db.notification.deleteMany(),
     db.report.deleteMany(),
     db.like.deleteMany(),
@@ -135,7 +156,7 @@ async function main() {
   const passwordHash = await bcrypt.hash(PASSWORD, 10);
   const bcn = cities.get("barcelona")!;
 
-  async function createUser(u: { email: string; username: string; displayName: string; bio?: string; role?: "USER" | "ADMIN" | "MODERATOR"; avatar?: boolean; daysAgo?: number }) {
+  async function createUser(u: { email: string; username: string; displayName: string; bio?: string; role?: "USER" | "ADMIN" | "MODERATOR" | "VENUE" | "ORGANIZER"; avatar?: boolean; daysAgo?: number }) {
     const avatar = u.avatar === false ? null : await processImage(await renderAvatar(u.username), { square: true });
     return db.user.create({
       data: {
@@ -174,6 +195,7 @@ async function main() {
       username: v.slug.replace(/-/g, "_").slice(0, 24),
       displayName: v.name,
       bio: `Cuenta del local ${v.name} (demo)`,
+      role: "VENUE",
     });
     const cover = await image(`venue-${v.slug}`, 1280, 853);
     const venue = await db.venue.create({
@@ -201,10 +223,21 @@ async function main() {
       },
     });
     await db.photo.create({ data: { uploaderId: manager.id, venueId: venue.id, ...cover } });
+    // Commercial profile (unverified, free plan — nothing is charged).
+    await db.businessProfile.create({ data: { ownerId: manager.id, type: "VENUE", tradeName: v.name, venueId: venue.id } });
     venues.push({ ...v, id: venue.id, cityId: city.id, managerId: manager.id });
   }), CONCURRENCY);
   venues.sort((a, b) => VENUES.findIndex((x) => x.slug === a.slug) - VENUES.findIndex((x) => x.slug === b.slug));
   log(`${venues.length} locales`);
+
+  // Business plans: catalogue only (inactive, prices undefined).
+  await db.plan.createMany({
+    data: [
+      { code: "PLAN_FREE", name: "Free", description: "Perfil y eventos básicos", features: [] },
+      { code: "PLAN_PREMIUM", name: "Premium", description: "Destacar eventos y perfil, estadísticas", features: ["featured_events", "featured_profile", "stats"] },
+      { code: "PLAN_BUSINESS", name: "Business", description: "Todo Premium + mayor visibilidad y herramientas", features: ["featured_events", "featured_profile", "stats", "priority_visibility", "organizer_tools"] },
+    ],
+  });
 
   // ─── Events ──────────────────────────────────────────────────────────────
   const tonight = nightWindow(TZ, 0).from; // 06:00 local of the current night
@@ -245,6 +278,9 @@ async function main() {
         isFeatured: Boolean(e.featured),
         isDemo: true,
         source: e.source,
+        trust: e.source === "VENUE" ? "OFFICIAL" : "COMMUNITY",
+        pricing: e.price > 0 ? "PAID" : "FREE",
+        businessId: e.venueId ? (await db.businessProfile.findUnique({ where: { venueId: e.venueId }, select: { id: true } }))?.id : undefined,
         status: "PUBLISHED",
         searchText: buildSearchText(e.title, e.locationName, e.neighborhood, e.address, e.cityName, e.genres.join(" ")),
         genres: { create: e.genres.map((g) => ({ genreId: genres.get(g)! })) },

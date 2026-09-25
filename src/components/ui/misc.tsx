@@ -50,6 +50,17 @@ export function DemoBadge({ className }: { className?: string }) {
   );
 }
 
+/** Mandatory, always-visible label for paid placements. Renders nothing for organic content. */
+export function SponsorBadge({ type, className }: { type: "NONE" | "FEATURED" | "SPONSORED" | "AD"; className?: string }) {
+  if (type === "NONE") return null;
+  const label = type === "AD" ? "Publicidad" : type === "SPONSORED" ? "Patrocinado" : "Destacado";
+  return (
+    <Badge tone="warn" className={className}>
+      {label}
+    </Badge>
+  );
+}
+
 export function LiveDot({ className }: { className?: string }) {
   return <span className={cn("animate-pulse-dot inline-block size-2 rounded-full bg-volt", className)} aria-hidden />;
 }

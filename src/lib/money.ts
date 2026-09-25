@@ -20,3 +20,8 @@ export function formatPrice(
 export function isFree(priceMin: number | null | undefined): boolean {
   return priceMin === 0;
 }
+
+/** Plain amount formatting (reports, admin): "0 €", "12,50 €". */
+export function formatMoney(cents: number, currency = "EUR"): string {
+  return new Intl.NumberFormat("es-ES", { style: "currency", currency, maximumFractionDigits: cents % 100 === 0 ? 0 : 2 }).format(cents / 100);
+}

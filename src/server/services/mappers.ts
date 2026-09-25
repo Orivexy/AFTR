@@ -37,6 +37,10 @@ export const eventCardSelect = {
   goingCount: true,
   isFeatured: true,
   isDemo: true,
+  promotionType: true,
+  trust: true,
+  timezone: true,
+  currency: true,
   status: true,
   category: { select: { slug: true, name: true, emoji: true } },
   genres: { select: { genre: { select: { slug: true, name: true } } }, orderBy: { genre: { order: "asc" } } },
@@ -47,12 +51,12 @@ export const eventCardSelect = {
 export type EventCardRow = Prisma.EventGetPayload<{ select: typeof eventCardSelect }>;
 
 export function toEventCard(e: EventCardRow): EventCardData {
-  const { genres, city, ...rest } = e;
+  const { genres, city, timezone, currency, ...rest } = e;
   return {
     ...rest,
     genres: genres.map((g) => g.genre),
-    timezone: city.timezone,
-    currency: city.country.currency,
+    timezone: timezone ?? city.timezone,
+    currency: currency ?? city.country.currency,
   };
 }
 
@@ -72,6 +76,7 @@ export const venueCardSelect = {
   priceMin: true,
   priceMax: true,
   isDemo: true,
+  promotionType: true,
   genres: { select: { genre: { select: { slug: true, name: true } } }, orderBy: { genre: { order: "asc" } } },
   city: { select: { country: { select: { currency: true } } } },
 } satisfies Prisma.VenueSelect;

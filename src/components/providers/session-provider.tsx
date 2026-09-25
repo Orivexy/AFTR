@@ -1,13 +1,14 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { AppRole } from "@/lib/roles";
 
 export interface ClientUser {
   id: string;
   username: string;
   displayName: string;
   avatarKey: string | null;
-  role: "USER" | "MODERATOR" | "ADMIN";
+  role: AppRole;
 }
 
 const SessionContext = createContext<ClientUser | null>(null);

@@ -7,6 +7,7 @@ import { db } from "@/server/db";
 import { venueOptions } from "@/server/services/venues";
 import { getMapConfig } from "@/server/services/map";
 import { utcToLocalParts } from "@/lib/time";
+import { isStaff } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "Editar evento" };
 
@@ -19,7 +20,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ slug
     include: { category: true, genres: { include: { genre: true } }, city: true },
   });
   if (!e) notFound();
-  if (e.organizerId !== user.id && user.role === "USER") redirect(`/events/${slug}`);
+  if (e.organizerId !== user.id && !isStaff(user.role)) redirect(`/events/${slug}`);
 
   const tz = e.city.timezone;
   const start = utcToLocalParts(e.startsAt, tz);

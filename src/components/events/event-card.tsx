@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MapPin, Users } from "lucide-react";
 import { Cover } from "@/components/ui/cover";
-import { Badge, DemoBadge, LiveDot } from "@/components/ui/misc";
+import { Badge, DemoBadge, LiveDot, SponsorBadge } from "@/components/ui/misc";
 import { Distance } from "@/components/ui/distance";
 import { formatPrice } from "@/lib/money";
 import { formatRelativeDay, formatTime, isHappeningNow } from "@/lib/time";
@@ -38,6 +38,7 @@ export function EventCard({ event, className, priority, size = "md" }: { event: 
           <Badge tone="glass">
             {event.category.emoji} {event.category.name}
           </Badge>
+          <SponsorBadge type={event.promotionType} />
           {live && (
             <Badge tone="volt">
               <LiveDot className="!bg-on-volt" /> Ahora
@@ -93,6 +94,7 @@ export function EventRow({ event, showDay }: { event: EventCardData; showDay?: b
             </span>
           )}
           <span className="text-faint">{event.category.name}</span>
+          <SponsorBadge type={event.promotionType} className="!px-1.5 !py-0 !text-[9px]" />
         </div>
         <h3 className="truncate text-[15px] leading-snug font-bold">{event.title}</h3>
         <p className="flex items-center gap-1 truncate text-[13px] text-muted">

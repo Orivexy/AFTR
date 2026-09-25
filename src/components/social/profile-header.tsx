@@ -1,5 +1,6 @@
 "use client";
 
+import { site } from "@/config/site";
 import { useState } from "react";
 import Link from "next/link";
 import { Flag, MapPin, Settings } from "lucide-react";
@@ -74,7 +75,7 @@ export function ProfileHeader({ profile }: { profile: ProfileData }) {
         ) : (
           <FollowButton targetId={profile.id} initial={profile.viewer.following} onChange={(_, c) => c != null && setFollowers(c)} className="flex-1" />
         )}
-        <ShareButton url={`/u/${profile.username}`} title={`${profile.displayName} en NIGHTLY`} iconOnly className="size-10 rounded-full border border-line-strong hover:bg-surface-2" />
+        <ShareButton url={`/u/${profile.username}`} title={`${profile.displayName} en ${site.name}`} iconOnly className="size-10 rounded-full border border-line-strong hover:bg-surface-2" />
         {!profile.viewer.isSelf && <MoreMenu items={[{ label: "Reportar usuario", icon: <Flag className="size-4" />, onSelect: () => report.open("USER", profile.id) }]} className="border border-line-strong" />}
       </div>
       {report.dialog}

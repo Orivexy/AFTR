@@ -8,14 +8,14 @@ const body = z.object({
   featured: z.boolean().optional(),
 });
 
-export const PATCH = route<{ id: string }>({ auth: "moderator" }, async ({ req, params }) => {
+export const PATCH = route<{ id: string }>({ auth: "moderator", audit: { action: "event.moderate", targetType: "EVENT" } }, async ({ req, params }) => {
   const input = await parseJson(req, body);
   if (input.decision) await moderateEvent(params.id, input.decision);
   if (input.featured !== undefined) await setEventFeatured(params.id, input.featured);
   return { ok: true };
 });
 
-export const DELETE = route<{ id: string }>({ auth: "admin" }, async ({ params }) => {
+export const DELETE = route<{ id: string }>({ auth: "admin", audit: { action: "event.delete", targetType: "EVENT" } }, async ({ params }) => {
   await deleteEvent(params.id);
   return { ok: true };
 });
