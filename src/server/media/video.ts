@@ -10,14 +10,17 @@ import { badRequest } from "../errors";
 import { newMediaKey, processImage } from "./image";
 
 const run = promisify(execFile);
-const require = createRequire(import.meta.url);
+// Resolve from the project root: `import.meta.url` points inside the build
+// output once Next.js bundles this module.
+const require = createRequire(path.join(process.cwd(), "package.json"));
 
 export const MAX_VIDEO_SECONDS = 90;
 
 function binary(pkg: string): string | null {
   try {
     return (require(pkg) as { path: string }).path;
-  } catch {
+  } catch (err) {
+    console.warn(`[media] ${pkg} not available — videos will be stored without transcoding`, (err as Error).message);
     return null;
   }
 }
