@@ -8,7 +8,7 @@ import { venueOptions } from "@/server/services/venues";
 import { getMapConfig } from "@/server/services/map";
 import { db } from "@/server/db";
 import { needsModeration } from "@/server/services/events";
-import { nightWindow, utcToLocalParts } from "@/lib/time";
+import { utcToLocalParts } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Crear evento" };
 
@@ -22,7 +22,9 @@ export default async function NewEventPage({ searchParams }: { searchParams: Pro
     db.user.findUniqueOrThrow({ where: { id: user.id }, select: { createdAt: true } }),
   ]);
   const preset = venues.find((v) => v.id === venueParam);
-  const today = utcToLocalParts(new Date(nightWindow(city.timezone).from.getTime() + 12 * 3600_000), city.timezone).date;
+  // Default: the next 23:00 that is still ahead (after midnight → the same calendar day).
+  const nowLocal = utcToLocalParts(new Date(), city.timezone);
+  const today = nowLocal.time < "23:00" ? nowLocal.date : utcToLocalParts(new Date(Date.now() + 24 * 3600_000), city.timezone).date;
 
   return (
     <div className="mx-auto max-w-2xl px-4 pt-4 md:pt-10">

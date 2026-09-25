@@ -468,6 +468,14 @@ async function main() {
   }
   await db.notification.createMany({ data: notifs.filter((n) => n.actorId !== demoUser.id) });
 
+  // ─── Event discovery: example sources (disabled; need API keys) ───────────
+  await db.discoverySource.createMany({
+    data: [
+      { key: "ticketmaster-bcn-music", name: "Ticketmaster · música en Barcelona", type: "TICKETMASTER", cityId: bcn.id, trust: "IMPORTED", config: { classificationName: "music", maxPages: 3 } },
+      { key: "google-places-bcn-clubs", name: "Google Places · discotecas de Barcelona", type: "GOOGLE_PLACES", cityId: bcn.id, trust: "IMPORTED", syncIntervalMin: 7 * 24 * 60, config: { query: "discoteca Barcelona", includedType: "night_club" } },
+    ],
+  });
+
   // ─── Denormalised counters ───────────────────────────────────────────────
   await recount();
   console.log(`✅ Listo. Entra con eric@nightly.demo o admin@nightly.demo · contraseña: ${PASSWORD}`);

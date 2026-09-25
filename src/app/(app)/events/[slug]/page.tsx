@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { Calendar, Camera, Clock, Euro, ExternalLink, MapPin, Music2, ShieldCheck, Ticket, Users } from "lucide-react";
+import { BadgeCheck, Calendar, Camera, Clock, Euro, ExternalLink, MapPin, Music2, ShieldCheck, Ticket, Users } from "lucide-react";
 import { getSessionUser } from "@/server/auth/session";
 import { getEventDetail, listEvents } from "@/server/services/events";
 import { listPosts } from "@/server/services/posts";
@@ -20,7 +20,7 @@ import { PostGrid } from "@/components/feed/post-grid";
 import { StaticMap } from "@/components/map/static-map";
 import { Distance } from "@/components/ui/distance";
 import { formatPrice } from "@/lib/money";
-import { formatLongDate, formatTime, isHappeningNow } from "@/lib/time";
+import { formatLongDate, formatTime, isHappeningNow, timeAgo } from "@/lib/time";
 import { imageUrl } from "@/lib/media";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -81,6 +81,11 @@ export default async function EventPage({ params }: Props) {
                 <LiveDot className="!bg-on-volt" /> Ahora
               </Badge>
             )}
+            {event.trust === "VERIFIED" && (
+              <Badge tone="volt">
+                <BadgeCheck className="size-3" /> Verificado
+              </Badge>
+            )}
             {event.isOfficial && (
               <Badge tone="glass">
                 <ShieldCheck className="size-3" /> Oficial
@@ -105,7 +110,11 @@ export default async function EventPage({ params }: Props) {
           {/* Key facts */}
           <dl className="grid grid-cols-2 gap-3">
             <Fact icon={<Calendar className="size-4" />} label="Fecha" value={formatLongDate(event.startsAt, tz)} />
-            <Fact icon={<Clock className="size-4" />} label="Horario" value={`${formatTime(event.startsAt, tz)}${event.endsAt ? ` — ${formatTime(event.endsAt, tz)}` : ""}`} />
+            <Fact
+              icon={<Clock className="size-4" />}
+              label="Horario"
+              value={`${formatTime(event.startsAt, tz)}${event.endsAt ? ` — ${formatTime(event.endsAt, tz)}` : ""}${event.doorsAt ? ` · puertas ${formatTime(event.doorsAt, tz)}` : ""}`}
+            />
             <Fact icon={<Euro className="size-4" />} label="Entrada" value={formatPrice(event.priceMin, event.priceMax, event.currency)} highlight={event.priceMin === 0} />
             <Fact icon={<Users className="size-4" />} label="Edad" value={event.minAge ? `+${event.minAge}` : "Todas las edades"} />
           </dl>
@@ -137,14 +146,28 @@ export default async function EventPage({ params }: Props) {
             )}
           </div>
 
-          <Link href={`/u/${event.organizer.username}`} className="pressable flex items-center gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 hover:bg-surface-2">
-            <Avatar user={event.organizer} size={44} />
-            <div className="min-w-0">
-              <p className="text-[12px] font-semibold tracking-wide text-muted uppercase">Organiza</p>
-              <p className="truncate font-semibold">{event.organizer.displayName}</p>
-              <p className="truncate text-[13px] text-faint">@{event.organizer.username}</p>
-            </div>
-          </Link>
+          {event.organizer ? (
+            <Link href={`/u/${event.organizer.username}`} className="pressable flex items-center gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 hover:bg-surface-2">
+              <Avatar user={event.organizer} size={44} />
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold tracking-wide text-muted uppercase">Organiza</p>
+                <p className="truncate font-semibold">{event.organizer.displayName}</p>
+                <p className="truncate text-[13px] text-faint">@{event.organizer.username}</p>
+              </div>
+            </Link>
+          ) : (
+            event.organizerName && (
+              <div className="rounded-[var(--radius-card)] border border-line bg-surface p-4">
+                <p className="text-[12px] font-semibold tracking-wide text-muted uppercase">Organiza</p>
+                <p className="truncate font-semibold">{event.organizerName}</p>
+              </div>
+            )
+          )}
+          {event.officialUrl && (
+            <a href={event.officialUrl} target="_blank" rel="noopener noreferrer nofollow" className={buttonClass("ghost", "sm", "w-full")}>
+              Web oficial del evento <ExternalLink className="size-3.5" />
+            </a>
+          )}
         </aside>
 
         <div className="min-w-0 space-y-8 md:col-start-1">
@@ -232,6 +255,24 @@ export default async function EventPage({ params }: Props) {
             {more.items.map((e) => <EventCard key={e.id} event={e} />)}
           </Rail>
         </section>
+      )}
+      {event.attribution && event.attribution.sources.length > 0 && (
+        <p className="mt-10 px-4 text-[12px] text-faint md:px-0">
+          Información obtenida de{" "}
+          {event.attribution.sources.map((src, i) => (
+            <span key={`${src.name}-${i}`}>
+              {i > 0 && ", "}
+              {src.url ? (
+                <a href={src.url} target="_blank" rel="noopener noreferrer nofollow" className="underline-offset-2 hover:underline">
+                  {src.name}
+                </a>
+              ) : (
+                src.name
+              )}
+            </span>
+          ))}
+          {event.attribution.lastSyncedAt && ` · actualizada ${timeAgo(event.attribution.lastSyncedAt)}`}. Confirma los detalles con la organización.
+        </p>
       )}
     </article>
   );

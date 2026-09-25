@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select } from "@/components/ui/field";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/providers/toast-provider";
 import { api, ApiClientError } from "@/lib/api-client";
 
 export type SimpleField =
-  | { name: string; label: string; type?: "text" | "email" | "url" | "number" | "date"; required?: boolean; placeholder?: string; hint?: string }
-  | { name: string; label: string; type: "select"; options: Array<{ value: string; label: string }>; required?: boolean; hint?: string };
+  | { name: string; label: string; type?: "text" | "email" | "url" | "number" | "integer" | "date" | "textarea" | "json" | "checkbox"; required?: boolean; placeholder?: string; hint?: string; defaultValue?: string | boolean }
+  | { name: string; label: string; type: "select"; options: Array<{ value: string; label: string }>; required?: boolean; hint?: string; defaultValue?: string };
 
 /**
  * Generic admin form in a sheet: posts the field values as JSON (empty
@@ -28,9 +28,22 @@ export function SimpleForm({ trigger, title, url, method = "POST", fields, submi
     const data = new FormData(e.currentTarget);
     const body: Record<string, unknown> = {};
     for (const f of fields) {
+      if (f.type === "checkbox") {
+        body[f.name] = data.get(f.name) === "on";
+        continue;
+      }
       const value = String(data.get(f.name) ?? "").trim();
       if (!value) continue;
-      body[f.name] = f.type === "number" ? Math.round(Number(value.replace(",", ".")) * 100) : value;
+      if (f.type === "number") body[f.name] = Math.round(Number(value.replace(",", ".")) * 100);
+      else if (f.type === "integer") body[f.name] = Number.parseInt(value, 10);
+      else if (f.type === "json") {
+        try {
+          body[f.name] = JSON.parse(value);
+        } catch {
+          setErrors({ [f.name]: "JSON no válido" });
+          return;
+        }
+      } else body[f.name] = value;
     }
     setSaving(true);
     setErrors({});
@@ -55,14 +68,20 @@ export function SimpleForm({ trigger, title, url, method = "POST", fields, submi
       <Sheet open={open} onClose={() => setOpen(false)} title={title}>
         <form onSubmit={submit} className="space-y-4 pb-4">
           {fields.map((f) => (
-            <Field key={f.name} label={f.label} htmlFor={f.name} error={errors[f.name]} hint={f.hint}>
-              {f.type === "select" ? (
-                <Select id={f.name} name={f.name} required={f.required} defaultValue="">
+            <Field key={f.name} label={f.label} htmlFor={f.name} error={errors[f.name]} hint={f.type === "checkbox" ? undefined : f.hint}>
+              {f.type === "checkbox" ? (
+                <label className="flex items-center gap-3 text-sm font-semibold">
+                  <input type="checkbox" name={f.name} defaultChecked={f.defaultValue === true} className="size-4 accent-[#d7ff3a]" /> {f.hint}
+                </label>
+              ) : f.type === "textarea" || f.type === "json" ? (
+                <Textarea id={f.name} name={f.name} required={f.required} placeholder={f.placeholder} defaultValue={typeof f.defaultValue === "string" ? f.defaultValue : undefined} className="min-h-24 font-mono text-[13px]" />
+              ) : f.type === "select" ? (
+                <Select id={f.name} name={f.name} required={f.required} defaultValue={typeof f.defaultValue === "string" ? f.defaultValue : ""}>
                   <option value="" disabled>Elige…</option>
                   {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </Select>
               ) : (
-                <Input id={f.name} name={f.name} type={f.type === "number" ? "text" : (f.type ?? "text")} inputMode={f.type === "number" ? "decimal" : undefined} required={f.required} placeholder={"placeholder" in f ? f.placeholder : undefined} />
+                <Input id={f.name} name={f.name} type={f.type === "number" || f.type === "integer" ? "text" : (f.type ?? "text")} inputMode={f.type === "number" ? "decimal" : f.type === "integer" ? "numeric" : undefined} required={f.required} placeholder={"placeholder" in f ? f.placeholder : undefined} defaultValue={"defaultValue" in f && typeof f.defaultValue === "string" ? f.defaultValue : undefined} />
               )}
             </Field>
           ))}

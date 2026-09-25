@@ -19,3 +19,4 @@ npm-debug.log*
 
 # tests
 /playwright/.cache/
+.disc-test.mjs

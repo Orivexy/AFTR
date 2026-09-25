@@ -82,8 +82,14 @@ export interface EventDetail extends EventCardData {
   description: string | null;
   minAge: number | null;
   ticketUrl: string | null;
-  organizer: UserMini;
+  /** null for imported events (organizer shown as `organizerName`). */
+  organizer: UserMini | null;
+  organizerName: string | null;
   isOfficial: boolean;
+  officialUrl: string | null;
+  doorsAt: Date | null;
+  /** Discreet provenance for imported events. */
+  attribution: { sources: Array<{ name: string; url: string | null }>; lastSyncedAt: Date | null } | null;
   city: { slug: string; name: string };
   photos: PhotoData[];
   attendeesPreview: UserMini[];

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { MapPin, Users } from "lucide-react";
+import { MapPin, Music2, Users } from "lucide-react";
+import { CardActions } from "./card-actions";
 import { Cover } from "@/components/ui/cover";
 import { Badge, DemoBadge, LiveDot, SponsorBadge } from "@/components/ui/misc";
 import { Distance } from "@/components/ui/distance";
@@ -17,12 +18,12 @@ function PriceTag({ event, className }: { event: EventCardData; className?: stri
   );
 }
 
-/** Large visual card for rails and grids. */
+/** Large visual card for rails and grids (stretched link + independent venue/save/share actions). */
 export function EventCard({ event, className, priority, size = "md" }: { event: EventCardData; className?: string; priority?: boolean; size?: "md" | "lg" }) {
   const live = isHappeningNow(event.startsAt, event.endsAt);
+  const genres = event.genres.slice(0, 2).map((g) => g.name).join(" · ");
   return (
-    <Link
-      href={`/events/${event.slug}`}
+    <article
       className={cn(
         "group pressable relative block overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface",
         size === "lg" ? "aspect-[4/5] md:aspect-[16/10]" : "aspect-[4/5]",
@@ -33,7 +34,8 @@ export function EventCard({ event, className, priority, size = "md" }: { event: 
         <Cover imageKey={event.coverKey} alt={event.title} sizes={size === "lg" ? "(min-width: 768px) 60vw, 90vw" : "(min-width: 768px) 280px, 72vw"} priority={priority} className="size-full" />
       </div>
       <div className="image-fade absolute inset-0" />
-      <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
+      <Link href={`/events/${event.slug}`} className="absolute inset-0 z-[1]" aria-label={event.title} />
+      <div className="pointer-events-none absolute inset-x-3 top-3 z-[2] flex items-start justify-between gap-2">
         <div className="flex flex-wrap gap-1.5">
           <Badge tone="glass">
             {event.category.emoji} {event.category.name}
@@ -47,7 +49,7 @@ export function EventCard({ event, className, priority, size = "md" }: { event: 
         </div>
         <PriceTag event={event} />
       </div>
-      <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] space-y-1.5 p-4">
         <p className="text-[12px] font-bold tracking-wide text-volt uppercase">
           {formatRelativeDay(event.startsAt, event.timezone)} · {formatTime(event.startsAt, event.timezone)}
           {event.endsAt && ` — ${formatTime(event.endsAt, event.timezone)}`}
@@ -55,22 +57,34 @@ export function EventCard({ event, className, priority, size = "md" }: { event: 
         <h3 className={cn("font-display leading-tight font-semibold text-balance", size === "lg" ? "text-2xl md:text-3xl" : "text-lg")}>{event.title}</h3>
         <p className="flex items-center gap-1 text-[13px] text-muted">
           <MapPin className="size-3.5 shrink-0" />
-          <span className="truncate">{event.venue?.name ?? event.locationName}</span>
+          {event.venue ? (
+            <Link href={`/venues/${event.venue.slug}`} className="pointer-events-auto relative z-[3] truncate hover:text-fg hover:underline">
+              {event.venue.name}
+            </Link>
+          ) : (
+            <span className="truncate">{event.locationName}</span>
+          )}
           <Distance lat={event.lat} lng={event.lng} className="shrink-0" />
         </p>
-        <div className="flex items-center justify-between pt-1">
-          {event.goingCount + event.interestedCount > 0 ? (
-            <span className="flex items-center gap-1.5 text-[12px] text-muted">
-              <Users className="size-3.5" />
-              {event.goingCount} van · {event.interestedCount} interesados
-            </span>
-          ) : (
-            <span />
-          )}
-          {event.isDemo && <DemoBadge />}
+        {genres && (
+          <p className="flex items-center gap-1 text-[12px] text-muted">
+            <Music2 className="size-3.5 shrink-0" /> <span className="truncate">{genres}</span>
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <span className="flex min-w-0 items-center gap-2">
+            {event.goingCount + event.interestedCount > 0 && (
+              <span className="flex items-center gap-1.5 truncate text-[12px] text-muted">
+                <Users className="size-3.5 shrink-0" />
+                {event.goingCount} van · {event.interestedCount} interesados
+              </span>
+            )}
+            {event.isDemo && <DemoBadge />}
+          </span>
+          <CardActions eventId={event.id} slug={event.slug} title={event.title} className="pointer-events-auto z-[3] shrink-0" />
         </div>
       </div>
-    </Link>
+    </article>
   );
 }
 
@@ -93,7 +107,10 @@ export function EventRow({ event, showDay }: { event: EventCardData; showDay?: b
               {formatTime(event.startsAt, event.timezone)}
             </span>
           )}
-          <span className="text-faint">{event.category.name}</span>
+          <span className="truncate text-faint">
+            {event.category.name}
+            {event.genres[0] && ` · ${event.genres[0].name}`}
+          </span>
           <SponsorBadge type={event.promotionType} className="!px-1.5 !py-0 !text-[9px]" />
         </div>
         <h3 className="truncate text-[15px] leading-snug font-bold">{event.title}</h3>

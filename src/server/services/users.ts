@@ -6,6 +6,7 @@ import { nextOffset, parseOffset, photoSelect, toUserMini, userMiniSelect } from
 import { notify } from "./notifications";
 import { getCityBySlug } from "./cities";
 import { buildSearchText } from "@/lib/text";
+import { SYSTEM_USERNAMES } from "@/config/system";
 import type { Page, PhotoData, ProfileData, UserMini } from "@/lib/types";
 import type { z } from "zod";
 import type { profileUpdateSchema } from "@/lib/validators";
@@ -129,6 +130,7 @@ export async function suggestedUsers(viewerId: string | undefined, cityId: strin
         ...(viewerId ? { id: { not: viewerId }, followers: { none: { followerId: viewerId } } } : {}),
       },
       OR: [{ cityId }, { cityId: null }],
+      username: { notIn: [...SYSTEM_USERNAMES] },
     },
     orderBy: [{ followerCount: "desc" }, { postCount: "desc" }],
     select: { userId: true, username: true, displayName: true, avatarKey: true, bio: true, followerCount: true },

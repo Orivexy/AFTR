@@ -6,6 +6,7 @@ import { SessionProvider, type ClientUser } from "@/components/providers/session
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { LocationProvider } from "@/components/providers/location-provider";
 import { AuthGateProvider } from "@/components/providers/auth-gate";
+import { SavedEventsProvider } from "@/components/providers/saved-events-provider";
 import { env } from "@/server/env";
 
 export const metadata: Metadata = {
@@ -37,7 +38,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SessionProvider user={user}>
           <ToastProvider>
             <LocationProvider>
-              <AuthGateProvider>{children}</AuthGateProvider>
+              <AuthGateProvider>
+                <SavedEventsProvider>{children}</SavedEventsProvider>
+              </AuthGateProvider>
             </LocationProvider>
           </ToastProvider>
         </SessionProvider>

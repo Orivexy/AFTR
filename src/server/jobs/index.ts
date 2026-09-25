@@ -2,6 +2,7 @@ import "server-only";
 import { sendEventReminders } from "../services/events";
 import { cleanupOrphanUploads } from "../services/uploads";
 import { endExpiredPromotions } from "../monetization/promotions";
+import { purgeExpiredSourceData, runDueSources } from "../discovery/engine";
 
 /**
  * Periodic jobs. Run in-process (see src/instrumentation.ts) for a single
@@ -11,6 +12,9 @@ export const JOBS = {
   "event-reminders": { everyMs: 5 * 60_000, run: () => sendEventReminders() },
   "cleanup-uploads": { everyMs: 60 * 60_000, run: () => cleanupOrphanUploads() },
   "end-promotions": { everyMs: 60 * 60_000, run: () => endExpiredPromotions() },
+  // Checks every minute which sources are due (each has its own interval).
+  "event-discovery": { everyMs: 60_000, run: () => runDueSources() },
+  "discovery-maintenance": { everyMs: 24 * 60 * 60_000, run: () => purgeExpiredSourceData() },
 } as const;
 
 export type JobName = keyof typeof JOBS;

@@ -8,6 +8,7 @@ export const CATEGORIES = [
   { slug: "discoteca", name: "Discoteca", emoji: "🪩" },
   { slug: "concierto", name: "Concierto", emoji: "🎤" },
   { slug: "dj", name: "DJ", emoji: "🎧" },
+  { slug: "festival", name: "Festival", emoji: "🎡" },
   { slug: "otro", name: "Otro", emoji: "✨" },
 ] as const;
 

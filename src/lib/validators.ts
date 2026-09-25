@@ -239,3 +239,51 @@ export const refundRequestSchema = z.object({
   amount: cents.min(1).nullable(),
   reason: optionalText(300),
 });
+
+// ─── Event discovery (admin) ─────────────────────────────────────────────────
+
+export const discoverySourceSchema = z.object({
+  name: text(80).pipe(z.string().min(2)),
+  key: z.string().trim().toLowerCase().regex(/^[a-z0-9-]{3,40}$/, "Solo minúsculas, números y guiones"),
+  type: z.enum(["ICS_FEED", "JSON_LD_PAGE", "PARTNER_FEED", "TICKETMASTER", "GOOGLE_PLACES"]),
+  url: z.url({ protocol: /^https?$/ }).max(500).nullable().optional().or(z.literal("").transform(() => null)),
+  citySlug: z.string().max(40),
+  venueSlug: z.string().max(80).nullable().optional().or(z.literal("").transform(() => null)),
+  trust: z.enum(["IMPORTED", "OFFICIAL"]).default("IMPORTED"),
+  autoPublish: z.boolean().default(false),
+  allowImages: z.boolean().default(false),
+  deactivateMissing: z.boolean().default(true),
+  enabled: z.boolean().default(false),
+  syncIntervalMin: z.number().int().min(5).max(7 * 24 * 60).nullable().optional(),
+  config: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
+export const discoverySourceUpdateSchema = discoverySourceSchema.omit({ key: true, type: true, citySlug: true }).partial();
+
+export const discoveryRecordActionSchema = z.object({
+  action: z.enum(["approve", "reject", "merge", "delete"]),
+  /** Target event for "merge": id or slug. */
+  eventId: z.string().trim().min(3).max(120).optional(),
+  edits: z
+    .object({
+      title: text(120).pipe(z.string().min(3)).optional(),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+      endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable().optional(),
+      venueId: cuid.nullable().optional(),
+      locationName: text(80).optional(),
+      address: text(160).optional(),
+      lat: z.number().min(-90).max(90).optional(),
+      lng: z.number().min(-180).max(180).optional(),
+      priceMin: z.number().int().min(0).max(1_000_000).nullable().optional(),
+    })
+    .optional(),
+});
+
+export const venueRecordActionSchema = z.object({
+  action: z.enum(["approve", "reject", "merge", "delete"]),
+  venueId: cuid.optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  address: text(160).optional(),
+});

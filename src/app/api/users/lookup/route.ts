@@ -2,6 +2,7 @@ import { z } from "zod";
 import { route, parseQuery } from "@/server/http";
 import { db } from "@/server/db";
 import { normalizeSearch } from "@/lib/text";
+import { SYSTEM_USERNAMES } from "@/config/system";
 
 /** Username autocomplete for tagging people in posts. */
 export const GET = route({ auth: true, rateLimit: "read" }, async ({ req }) => {
@@ -9,7 +10,7 @@ export const GET = route({ auth: true, rateLimit: "read" }, async ({ req }) => {
   const term = normalizeSearch(q).replace(/^@/, "");
   if (term.length < 1) return { items: [] };
   const items = await db.profile.findMany({
-    where: { user: { status: "ACTIVE" }, OR: [{ username: { startsWith: term } }, { searchText: { contains: term } }] },
+    where: { user: { status: "ACTIVE" }, username: { notIn: [...SYSTEM_USERNAMES] }, OR: [{ username: { startsWith: term } }, { searchText: { contains: term } }] },
     orderBy: { followerCount: "desc" },
     select: { userId: true, username: true, displayName: true, avatarKey: true },
     take: 8,

@@ -21,8 +21,8 @@ test("register → going → save → social → comment → follow → post →
   const going = page.getByRole("button", { name: /^Voy$/ });
   await going.click();
   await expect(page.getByRole("button", { name: /Vas/ })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByRole("button", { name: "Guardado" })).toBeVisible();
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Guardado", exact: true })).toBeVisible();
 
   // Like + comment in the feed
   await page.goto("/social");

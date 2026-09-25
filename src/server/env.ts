@@ -21,6 +21,12 @@ const schema = z.object({
   MAPBOX_TOKEN: z.string().optional().default(""),
   MAPTILER_KEY: z.string().optional().default(""),
   CRON_SECRET: z.string().optional().default(""),
+  // Event discovery (see docs/event-discovery.md)
+  DISCOVERY_ENABLED: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
+  EVENT_SYNC_INTERVAL: z.string().default("30m"),
+  DISCOVERY_ALLOW_PRIVATE_HOSTS: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
+  GOOGLE_PLACES_API_KEY: z.string().optional().default(""),
+  TICKETMASTER_API_KEY: z.string().optional().default(""),
   ENABLE_INPROCESS_JOBS: z
     .enum(["true", "false"])
     .default("true")

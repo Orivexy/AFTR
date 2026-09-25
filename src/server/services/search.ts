@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "../db";
 import { eventCardSelect, toEventCard, toVenueCard, venueCardSelect } from "./mappers";
 import { normalizeSearch } from "@/lib/text";
+import { SYSTEM_USERNAMES } from "@/config/system";
 import type { EventCardData, VenueCardData } from "@/lib/types";
 
 export interface SearchResults {
@@ -42,7 +43,7 @@ export async function globalSearch(rawQuery: string, cityId: string, limit = 8):
       take: limit,
     }),
     db.profile.findMany({
-      where: { user: { status: "ACTIVE" }, AND: terms.map((t) => ({ searchText: { contains: t } })) },
+      where: { user: { status: "ACTIVE" }, username: { notIn: [...SYSTEM_USERNAMES] }, AND: terms.map((t) => ({ searchText: { contains: t } })) },
       orderBy: { followerCount: "desc" },
       select: { userId: true, username: true, displayName: true, avatarKey: true, followerCount: true },
       take: limit,

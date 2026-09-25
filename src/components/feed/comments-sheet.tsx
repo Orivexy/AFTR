@@ -35,7 +35,12 @@ function CommentsBody({ postId, onCountChange }: { postId: string; onCountChange
     let cancelled = false;
     api
       .get<Page<CommentData>>(`/api/posts/${postId}/comments`)
-      .then((p) => !cancelled && setPage(reviveDates(p)))
+      .then((p) => {
+        if (cancelled) return;
+        const loaded = reviveDates(p);
+        // Keep comments posted while the list was loading.
+        setPage((prev) => ({ ...loaded, items: [...loaded.items, ...(prev?.items ?? []).filter((c) => !loaded.items.some((x) => x.id === c.id))] }));
+      })
       .catch(() => !cancelled && setPage({ items: [], nextCursor: null }));
     return () => {
       cancelled = true;
@@ -54,7 +59,8 @@ function CommentsBody({ postId, onCountChange }: { postId: string; onCountChange
     setSending(true);
     try {
       const { comment } = reviveDates(await api.post<{ comment: CommentData }>(`/api/posts/${postId}/comments`, { body }));
-      setPage((p) => ({ items: [...(p?.items ?? []), comment], nextCursor: p?.nextCursor ?? null }));
+      // The initial load may already include it (race): de-duplicate by id.
+      setPage((p) => ({ items: [...(p?.items ?? []).filter((c) => c.id !== comment.id), comment], nextCursor: p?.nextCursor ?? null }));
       setBody("");
       onCountChange(1);
     } catch (err) {

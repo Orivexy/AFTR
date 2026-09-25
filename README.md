@@ -1,8 +1,13 @@
-# NIGHTLY
+# NIVEX
 
 Plataforma social para descubrir qué pasa cada noche: fiestas, FM (fiestas mayores), discotecas, sesiones de DJ y planes, con un feed vertical de fotos y vídeos de la comunidad.
 
-> **NIGHTLY** es un nombre provisional. Todo el branding sale de [`src/config/site.ts`](src/config/site.ts).
+> El nombre de la marca sale de [`src/config/site.ts`](src/config/site.ts).
+
+**Documentación adicional**
+
+- [Monetización (preparada y desactivada)](docs/monetization.md)
+- [Event Discovery (importación automática de eventos y locales)](docs/event-discovery.md)
 
 Ciclo principal: **descubrir → ir → publicar → interactuar → seguir → descubrir**.
 
@@ -19,6 +24,7 @@ Ciclo principal: **descubrir → ir → publicar → interactuar → seguir → 
 | Media | `sharp` (imágenes → WebP en 2 tamaños, sin EXIF/GPS, placeholder blur) · `ffmpeg` (vídeo → H.264 720p, `faststart`, póster) |
 | Mapas | Leaflet con proveedor intercambiable (CARTO sin clave; Mapbox/MapTiler vía proxy de teselas en servidor) |
 | Tests | Vitest (unit) · Playwright (e2e) |
+| Discovery | iCal, schema.org, feeds de partners, Ticketmaster y Google Places (locales) — ver docs |
 
 ## Puesta en marcha
 

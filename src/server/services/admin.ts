@@ -43,23 +43,24 @@ export async function adminUsers(q?: string, cursor?: string, limit = 30) {
   return { items: rows.slice(0, limit), nextCursor: nextOffset(offset, limit, rows.length) };
 }
 
-export async function adminEvents(opts: { q?: string; status?: EventStatus; cursor?: string; limit?: number }) {
+export async function adminEvents(opts: { q?: string; status?: EventStatus; imported?: boolean; cursor?: string; limit?: number }) {
   const limit = opts.limit ?? 30;
   const offset = parseOffset(opts.cursor);
   const term = search(opts.q);
   const where: Prisma.EventWhereInput = {
     ...(opts.status ? { status: opts.status } : {}),
     ...(term ? { searchText: { contains: term } } : {}),
+    ...(opts.imported ? { source: "IMPORT" as const } : {}),
   };
   const rows = await db.event.findMany({
     where,
     orderBy: opts.status === "PENDING" ? { createdAt: "asc" } : { startsAt: "desc" },
-    select: { ...eventCardSelect, organizer: { select: userMiniSelect }, createdAt: true, city: { select: { name: true, timezone: true, country: { select: { currency: true } } } } },
+    select: { ...eventCardSelect, organizer: { select: userMiniSelect }, createdAt: true, source: true, organizerName: true, _count: { select: { sourceRecords: true } }, city: { select: { name: true, timezone: true, country: { select: { currency: true } } } } },
     skip: offset,
     take: limit + 1,
   });
   return {
-    items: rows.slice(0, limit).map((e) => ({ ...toEventCard(e), organizer: toUserMini(e.organizer), cityName: e.city.name, createdAt: e.createdAt })),
+    items: rows.slice(0, limit).map((e) => ({ ...toEventCard(e), organizer: toUserMini(e.organizer), cityName: e.city.name, createdAt: e.createdAt, source: e.source, organizerName: e.organizerName, sourceCount: e._count.sourceRecords })),
     nextCursor: nextOffset(offset, limit, rows.length),
   };
 }
