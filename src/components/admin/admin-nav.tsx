@@ -1,0 +1,33 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { CalendarDays, Flag, Image as ImageIcon, LayoutDashboard, Store, Users } from "lucide-react";
+import { cn } from "@/lib/cn";
+
+const ITEMS = [
+  { href: "/admin", label: "Resumen", icon: LayoutDashboard },
+  { href: "/admin/reports", label: "Reportes", icon: Flag },
+  { href: "/admin/events", label: "Eventos", icon: CalendarDays },
+  { href: "/admin/users", label: "Usuarios", icon: Users },
+  { href: "/admin/venues", label: "Locales", icon: Store },
+  { href: "/admin/posts", label: "Publicaciones", icon: ImageIcon },
+];
+
+export function AdminNav({ openReports }: { openReports: number }) {
+  const pathname = usePathname();
+  return (
+    <nav className="scrollbar-none flex gap-1 overflow-x-auto md:flex-col">
+      {ITEMS.map((i) => {
+        const active = i.href === "/admin" ? pathname === "/admin" : pathname.startsWith(i.href);
+        return (
+          <Link key={i.href} href={i.href} className={cn("flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold", active ? "bg-surface-2 text-fg" : "text-muted hover:text-fg")}>
+            <i.icon className="size-4" />
+            {i.label}
+            {i.href === "/admin/reports" && openReports > 0 && <span className="ml-auto rounded-full bg-danger px-1.5 text-[11px] text-white">{openReports}</span>}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
