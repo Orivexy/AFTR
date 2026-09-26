@@ -1,0 +1,78 @@
+name: Desktop installer
+
+# Builds NIVEX-Setup-x.y.z.exe (Electron + embedded PostgreSQL + DEMO data)
+# and publishes it as a GitHub Release so it can be downloaded.
+on:
+  push:
+    branches: [main, claude/charming-lovelace-al31eg]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-installer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nightly
+          POSTGRES_PASSWORD: nightly
+          POSTGRES_DB: nightly
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nightly" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://nightly:nightly@localhost:5432/nightly?schema=public
+      BUILD_DATABASE_URL: postgresql://nightly:nightly@localhost:5432/nivex_desktop_build
+      NSIS_DOCKER: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install PostgreSQL 16 client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+          pg_dump --version
+      - run: npm ci
+      - name: Build installer
+        run: bash scripts/build-desktop.sh
+      - name: Fix ownership of files written by Docker
+        run: sudo chown -R "$(id -u):$(id -g)" dist-desktop desktop
+      - name: Version
+        id: v
+        run: echo "version=$(node -p "require('./desktop/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NIVEX-Setup-${{ steps.v.outputs.version }}
+          path: dist-desktop/NIVEX-Setup-*.exe
+          retention-days: 30
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('desktop-v{0}-{1}', steps.v.outputs.version, github.run_number) }}
+          name: NIVEX ${{ steps.v.outputs.version }} para Windows (build ${{ github.run_number }})
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          target_commitish: ${{ github.sha }}
+          files: dist-desktop/NIVEX-Setup-*.exe
+          body: |
+            **Instalador de NIVEX para Windows 10/11 (64 bits)** — incluye todo lo necesario:
+            servidor, base de datos PostgreSQL, runtime de Visual C++, ffmpeg y datos DEMO de Barcelona.
+            No hace falta instalar nada más ni tener conexión.
+
+            1. Descarga `NIVEX-Setup-*.exe` y ábrelo.
+            2. SmartScreen (app sin firmar): *Más información* → *Ejecutar de todas formas*.
+            3. Cuenta demo: `eric@nightly.demo` / `nightly123`.
+
+            **Móvil:** con el PC y el móvil en la misma Wi‑Fi, menú *NIVEX → Abrir en el móvil…* (Ctrl+M),
+            escanea el QR y añádela a la pantalla de inicio. Acepta el aviso del Firewall (redes privadas).

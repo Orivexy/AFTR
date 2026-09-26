@@ -5,7 +5,8 @@
 #   scripts/build-desktop.sh --resources-only [--keep-host-natives]
 #
 # Requires: Node 20+, a local PostgreSQL (for generating the demo data) with
-# pg_dump 16, and network access to the npm registry and GitHub releases.
+# pg_dump 16, python3 + pip (Visual C++ runtime), wine (NSIS on Linux) and
+# network access to the npm registry, PyPI and GitHub releases.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -22,6 +23,7 @@ for arg in "$@"; do
   esac
 done
 
+MSVC_RUNTIME_VERSION="14.44.35112"
 BUILD_DB_URL="${BUILD_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/nivex_desktop_build}"
 BUILD_DB_NAME="${BUILD_DB_URL##*/}"; BUILD_DB_NAME="${BUILD_DB_NAME%%\?*}"
 ADMIN_DB_URL="${BUILD_DB_URL%/*}/postgres"
@@ -88,5 +90,22 @@ echo "▸ 5/5 Windows installer"
 cd "$DESK"
 npm install --no-audit --no-fund >/dev/null
 npm install --no-save --force --no-audit --no-fund "@embedded-postgres/windows-x64@$(pkg_version node_modules/embedded-postgres)" >/dev/null
-npx electron-builder --win nsis --x64 --publish never
+
+# PostgreSQL for Windows links against the Visual C++ runtime, which is not
+# part of a clean Windows install: ship the redistributable DLLs app-locally.
+MSVC="$WORK/msvc" && rm -rf "$MSVC" && mkdir -p "$MSVC"
+python3 -m pip download --quiet --no-deps --only-binary=:all: --platform win_amd64 --python-version 3.12 \
+  -d "$MSVC" "msvc-runtime==$MSVC_RUNTIME_VERSION"
+(cd "$MSVC" && python3 -m zipfile -e ./*.whl .)
+PG_BIN="$DESK/node_modules/@embedded-postgres/windows-x64/native/bin"
+for dll in vcruntime140.dll vcruntime140_1.dll msvcp140.dll msvcp140_1.dll msvcp140_2.dll; do
+  cp "$(find "$MSVC" -path "*/Scripts/$dll" | head -1)" "$PG_BIN/"
+done
+if [ "${NSIS_DOCKER:-0}" = 1 ]; then
+  # CI: electron-builder's official image ships the wine needed for NSIS.
+  docker run --rm -v "$ROOT:/project" -w /project/desktop -e ELECTRON_CACHE=/project/desktop/.build/electron-cache \
+    electronuserland/builder:wine npx electron-builder --win nsis --x64 --publish never
+else
+  npx electron-builder --win nsis --x64 --publish never
+fi
 echo "✔ Installer in dist-desktop/"

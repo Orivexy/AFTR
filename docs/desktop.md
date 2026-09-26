@@ -2,7 +2,9 @@
 
 ## Windows — `NIVEX-Setup-x.y.z.exe`
 
-Instalador NSIS autocontenido (Electron + PostgreSQL embebido + servidor Next.js + datos DEMO). Funciona sin conexión y sin instalar nada más.
+Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visual C++ + ffmpeg + servidor Next.js + datos DEMO). Funciona sin conexión y sin instalar nada más.
+
+**Descarga:** pestaña *Releases* del repositorio. El workflow [`desktop.yml`](../.github/workflows/desktop.yml) genera y publica el `.exe` en cada push a `main` (prerelease) o al crear un tag `v*` (release).
 
 - Primera ejecución: crea la base de datos en `%APPDATA%\NIVEX\data` y carga los datos DEMO (~30 s).
 - Las fechas DEMO se desplazan por semanas completas en cada arranque para que siempre haya planes "hoy".
@@ -25,7 +27,7 @@ Un APK/IPA nativo requiere el SDK de Android o un Mac con cuenta de Apple; la AP
 
 ## Generar el instalador
 
-Requisitos (Linux): Node 22, PostgreSQL local para generar los datos demo, `wine64` + `wine32` (NSIS).
+Requisitos (Linux): Node 22, PostgreSQL local para generar los datos demo, `python3` + `pip` (runtime de Visual C++ desde PyPI) y `wine64` + `wine32` (NSIS). Con `NSIS_DOCKER=1` se usa la imagen `electronuserland/builder:wine` en lugar de wine local.
 
 ```bash
 bash scripts/build-desktop.sh                 # completo → dist-desktop/NIVEX-Setup-*.exe
