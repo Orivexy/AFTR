@@ -4,7 +4,7 @@
  *   node backend.mjs <resourcesDir> <dataDir>
  */
 import { execFile, spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { networkInterfaces } from "node:os";
 import path from "node:path";
@@ -126,9 +126,16 @@ export async function startBackend(opts) {
   const state = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, "utf8")) : {};
   state.dbPassword ??= randomBytes(18).toString("hex");
   state.cronSecret ??= randomBytes(24).toString("hex");
+  const saveState = () => writeFileSync(stateFile, JSON.stringify(state, null, 2));
+  saveState(); // before initdb: the cluster's password must never get lost
 
   // ── PostgreSQL ────────────────────────────────────────────────────────────
   const pgDir = path.join(dataDir, "pgdata");
+  if (existsSync(pgDir) && !state.pgInitialized) {
+    // Left over by an interrupted first run (unknown password): start over.
+    log("Base de datos incompleta de un arranque anterior: recreándola");
+    rmSync(pgDir, { recursive: true, force: true });
+  }
   const firstRun = !existsSync(path.join(pgDir, "PG_VERSION"));
   const pgPort = await freePort(54330);
   const pgServer = new EmbeddedPostgres({
@@ -144,6 +151,8 @@ export async function startBackend(opts) {
   if (firstRun) {
     log("Primera ejecución: creando base de datos…");
     await pgServer.initialise();
+    state.pgInitialized = true;
+    saveState();
   }
   // pg_ctl (not postgres.exe directly): on Windows it drops administrator
   // rights, which PostgreSQL refuses to run with, and waits until it is ready.
@@ -166,15 +175,19 @@ export async function startBackend(opts) {
   const admin = new pg.Client({ connectionString: `postgresql://${DB_USER}:${state.dbPassword}@localhost:${pgPort}/postgres` });
   await admin.connect();
   const exists = (await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [DB_NAME])).rowCount > 0;
-  if (!exists) await admin.query(`CREATE DATABASE ${DB_NAME}`);
+  const loadDemo = !exists || !state.demoLoaded;
+  if (exists && loadDemo) await admin.query(`DROP DATABASE ${DB_NAME}`); // half-restored earlier
+  if (loadDemo) await admin.query(`CREATE DATABASE ${DB_NAME}`);
   await admin.end();
 
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
-  if (!exists) {
+  if (loadDemo) {
     log("Cargando datos de demostración…");
     await restoreDemo(client, path.join(resourcesDir, "demo.sql"));
     state.shiftedWeeks = 0;
+    state.demoLoaded = true;
+    saveState();
   }
   const shifted = await refreshDemoDates(client, meta, state);
   if (shifted) log(`Fechas demo actualizadas (+${shifted} días)`);
@@ -182,11 +195,12 @@ export async function startBackend(opts) {
 
   // ── Media files ───────────────────────────────────────────────────────────
   const storageDir = path.join(dataDir, "storage");
-  if (!existsSync(storageDir)) {
+  if (!state.storageCopied) {
     log("Copiando imágenes y vídeos de demostración…");
-    cpSync(path.join(resourcesDir, "storage"), storageDir, { recursive: true });
+    cpSync(path.join(resourcesDir, "storage"), storageDir, { recursive: true, force: true });
+    state.storageCopied = true;
   }
-  writeFileSync(stateFile, JSON.stringify(state, null, 2));
+  saveState();
 
   // ── Next.js server ────────────────────────────────────────────────────────
   const port = await freePort(3000);
