@@ -4,9 +4,11 @@ import { db } from "../db";
 import { badRequest, notFound } from "../errors";
 import { localToUtc, utcToLocalParts } from "@/lib/time";
 import { applySourceUpdate, createEventFromNormalized, toComparable } from "./store";
-import { createVenueFromNormalized } from "./engine";
+import { createVenueFromPlace } from "../places/sync";
+import { CONNECTORS } from "./connectors";
+import type { ProviderPlace } from "../places/types";
 import { DUPLICATE_THRESHOLD, scoreMatch } from "./dedupe";
-import type { NormalizedEvent, NormalizedVenue } from "./types";
+import type { NormalizedEvent } from "./types";
 
 /** Staff actions on the discovery review queue: approve, reject, merge, edit, delete, verify. */
 
@@ -119,8 +121,17 @@ export async function approveVenueRecord(id: string, edits: { lat?: number; lng?
   const r = await db.sourceVenueRecord.findUnique({ where: { id }, include: { source: true } });
   if (!r) throw notFound("Registro no encontrado");
   if (r.venueId) throw badRequest("Ya está vinculado a un local");
-  const n = { ...(r.data as unknown as NormalizedVenue), ...edits };
-  const venue = await createVenueFromNormalized(n, r.source.cityId, r.source.trust === "OFFICIAL" ? "OFFICIAL" : "IMPORTED");
+  // Google's terms don't allow creating venues from its content: link to an existing venue instead.
+  if (!CONNECTORS[r.source.type].placeProvider?.policy.storeContent && CONNECTORS[r.source.type].placeProvider) {
+    throw badRequest("Esta fuente no permite guardar sus datos: vincúlalo a un local existente o créalo con datos de una fuente con permiso");
+  }
+  const place = { ...(r.data as unknown as ProviderPlace), ...edits };
+  const city = await db.city.findUniqueOrThrow({ where: { id: r.source.cityId }, select: { name: true } });
+  const venue = await createVenueFromPlace(
+    { ...place, categories: place.categories?.length ? place.categories : ["nightclub"], hours: place.hours ?? (r.data as { openingHours?: ProviderPlace["hours"] }).openingHours ?? null },
+    r.source,
+    city.name,
+  );
   await db.sourceVenueRecord.update({ where: { id }, data: { venueId: venue.id, reviewStatus: "APPROVED" } });
   return venue;
 }

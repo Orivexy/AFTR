@@ -210,41 +210,58 @@ enum VenueType {
 }
 
 model Venue {
-  id            String      @id @default(cuid())
-  slug          String      @unique
-  name          String
-  type          VenueType   @default(CLUB)
-  description   String?
-  cityId        String
-  city          City        @relation(fields: [cityId], references: [id])
-  address       String
-  neighborhood  String?
-  lat           Float
-  lng           Float
-  coverKey      String?
+  id              String           @id @default(cuid())
+  slug            String           @unique
+  name            String
+  type            VenueType        @default(CLUB)
+  description     String?
+  cityId          String
+  city            City             @relation(fields: [cityId], references: [id])
+  address         String
+  neighborhood    String?
+  lat             Float
+  lng             Float
+  coverKey        String?
   /// Weekly schedule: { mon: [{ open: "23:59", close: "06:00" }], ... }
-  openingHours  Json?
-  priceMin      Int? // cents
-  priceMax      Int? // cents
-  minAge        Int?
-  website       String?
-  instagram     String?
-  phone         String?
+  openingHours    Json?
+  priceMin        Int? // cents
+  priceMax        Int? // cents
+  minAge          Int?
+  website         String?
+  instagram       String?
+  phone           String?
   /// Google Place id (the only Places field that may be stored indefinitely).
-  googlePlaceId String?     @unique
-  trust         TrustLevel  @default(COMMUNITY)
-  importedAt    DateTime?
-  lastSyncedAt  DateTime?
-  promotionType SponsorType @default(NONE)
-  ratingAvg     Float       @default(0)
-  ratingCount   Int         @default(0)
-  followerCount Int         @default(0)
-  isFeatured    Boolean     @default(false)
-  isDemo        Boolean     @default(false)
-  isActive      Boolean     @default(true)
-  searchText    String      @default("")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  googlePlaceId   String?          @unique
+  trust           TrustLevel       @default(COMMUNITY)
+  importedAt      DateTime?
+  lastSyncedAt    DateTime?
+  /// Last time a source confirmed the place still exists.
+  lastVerifiedAt  DateTime?
+  nextSyncAt      DateTime?
+  /// Source whose data wins on sync updates (see src/server/places).
+  primarySourceId String?
+  primarySource   DiscoverySource? @relation("VenuePrimarySource", fields: [primarySourceId], references: [id], onDelete: SetNull)
+  sourceUrl       String?
+  /// Provider categories as given by the source (e.g. nightclub, music_venue).
+  categories      String[]         @default([])
+  /// Where the opening hours come from ("osm", "official", "staff"…) and when they last changed.
+  hoursSource     String?
+  hoursUpdatedAt  DateTime?
+  /// Per-field update times: { phone: ISO, website: ISO, … }
+  fieldUpdatedAt  Json?
+  /// Set when a source reports the place as permanently closed.
+  closedAt        DateTime?
+  inactiveReason  String?
+  promotionType   SponsorType      @default(NONE)
+  ratingAvg       Float            @default(0)
+  ratingCount     Int              @default(0)
+  followerCount   Int              @default(0)
+  isFeatured      Boolean          @default(false)
+  isDemo          Boolean          @default(false)
+  isActive        Boolean          @default(true)
+  searchText      String           @default("")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   genres    VenueGenre[]
   events    Event[]
@@ -259,8 +276,10 @@ model Venue {
   promotions       Promotion[]
   sourceRecords    SourceVenueRecord[]
   discoverySources DiscoverySource[]
+  changes          VenueChange[]
 
   @@index([cityId, ratingAvg])
+  @@index([primarySourceId])
   @@index([cityId, followerCount])
   @@index([lat, lng])
 }
@@ -389,6 +408,10 @@ model Event {
   primarySource   DiscoverySource? @relation("EventPrimarySource", fields: [primarySourceId], references: [id], onDelete: SetNull)
   importedAt      DateTime?
   lastSyncedAt    DateTime?
+  /// Last time a source still listed the event.
+  lastVerifiedAt  DateTime?
+  /// Page of the event at its primary source (never shown as a ticket link).
+  sourceUrl       String?
   /// Editorial pick by staff (free). Paid placement lives in `promotionType`.
   isFeatured      Boolean          @default(false)
   promotionType   SponsorType      @default(NONE)
@@ -1216,6 +1239,7 @@ enum DiscoverySourceType {
   PARTNER_FEED
   TICKETMASTER
   GOOGLE_PLACES
+  OSM_OVERPASS
 }
 
 enum DiscoverySyncStatus {
@@ -1226,51 +1250,60 @@ enum DiscoverySyncStatus {
 }
 
 model DiscoverySource {
-  id                String              @id @default(cuid())
-  key               String              @unique
-  name              String
-  type              DiscoverySourceType
-  enabled           Boolean             @default(false)
-  url               String?
-  cityId            String
-  city              City                @relation(fields: [cityId], references: [id])
+  id                  String              @id @default(cuid())
+  key                 String              @unique
+  name                String
+  type                DiscoverySourceType
+  enabled             Boolean             @default(false)
+  url                 String?
+  cityId              String
+  city                City                @relation(fields: [cityId], references: [id])
   /// Club/promoter the source belongs to (official website or partner feed).
-  venueId           String?
-  venue             Venue?              @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  venueId             String?
+  venue               Venue?              @relation(fields: [venueId], references: [id], onDelete: SetNull)
   /// Trust assigned to items from this source (IMPORTED or OFFICIAL).
-  trust             TrustLevel          @default(IMPORTED)
+  trust               TrustLevel          @default(IMPORTED)
   /// Publish automatically when an item passes every quality check.
-  autoPublish       Boolean             @default(false)
+  autoPublish         Boolean             @default(false)
   /// Allowed to store images from this source (licence/permission confirmed).
-  allowImages       Boolean             @default(false)
+  allowImages         Boolean             @default(false)
   /// Hide events that disappear from the source.
-  deactivateMissing Boolean             @default(true)
+  deactivateMissing   Boolean             @default(true)
   /// Minutes between syncs; null = EVENT_SYNC_INTERVAL.
-  syncIntervalMin   Int?
+  syncIntervalMin     Int?
   /// Connector options (never secrets: API keys come from env).
-  config            Json?
-  status            DiscoverySyncStatus @default(IDLE)
-  lockedUntil       DateTime?
-  lastSyncAt        DateTime?
-  nextSyncAt        DateTime?
-  lastError         String?
-  eventsFound       Int                 @default(0)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  config              Json?
+  status              DiscoverySyncStatus @default(IDLE)
+  lockedUntil         DateTime?
+  lastSyncAt          DateTime?
+  nextSyncAt          DateTime?
+  lastError           String?
+  lastSuccessAt       DateTime?
+  lastFailureAt       DateTime?
+  /// Consecutive failed syncs (exponential backoff).
+  consecutiveFailures Int                 @default(0)
+  eventsFound         Int                 @default(0)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   runs          SyncRun[]
   eventRecords  SourceEventRecord[]
   venueRecords  SourceVenueRecord[]
   primaryEvents Event[]             @relation("EventPrimarySource")
+  primaryVenues Venue[]             @relation("VenuePrimarySource")
   changes       EventChange[]
+  venueChanges  VenueChange[]
 
   @@index([enabled, nextSyncAt])
 }
 
 model SyncRun {
   id          String              @id @default(cuid())
-  sourceId    String
-  source      DiscoverySource     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  /// Null for job-level runs (see SyncJob).
+  sourceId    String?
+  source      DiscoverySource?    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  /// Job that triggered the run (VENUE_SYNC, EVENT_SYNC, VENUE_HOURS_SYNC).
+  job         String?
   status      DiscoverySyncStatus
   startedAt   DateTime            @default(now())
   finishedAt  DateTime?
@@ -1286,6 +1319,7 @@ model SyncRun {
   log         String?
 
   @@index([sourceId, startedAt])
+  @@index([job, startedAt])
 }
 
 enum ImportReviewStatus {
@@ -1342,11 +1376,14 @@ model SourceVenueRecord {
   duplicateOfId String?
   /// Data from sources with caching limits (e.g. Google Places) is purged after this date.
   expiresAt     DateTime?
+  /// Consecutive healthy syncs in which the source no longer listed the place.
+  missedSyncs   Int                @default(0)
   importedAt    DateTime           @default(now())
   lastSeenAt    DateTime           @default(now())
 
   @@unique([sourceId, externalId])
   @@index([reviewStatus, importedAt])
+  @@index([venueId])
 }
 
 /// Field-level history of changes applied by sync or staff.
@@ -1362,4 +1399,49 @@ model EventChange {
   createdAt DateTime         @default(now())
 
   @@index([eventId, createdAt])
+}
+
+/// Field-level history of venue changes applied by sync or staff.
+model VenueChange {
+  id        String           @id @default(cuid())
+  venueId   String
+  venue     Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  sourceId  String?
+  source    DiscoverySource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  field     String
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime         @default(now())
+
+  @@index([venueId, createdAt])
+  @@index([createdAt])
+}
+
+/// Background sync jobs (VENUE_SYNC, EVENT_SYNC, VENUE_HOURS_SYNC): schedule,
+/// lease and health. Each run is logged in SyncRun (job = name).
+model SyncJob {
+  name                String              @id
+  enabled             Boolean             @default(true)
+  /// Minutes between runs; null = the job's env default.
+  intervalMin         Int?
+  status              DiscoverySyncStatus @default(IDLE)
+  lockedUntil         DateTime?
+  lastRunAt           DateTime?
+  lastSuccessAt       DateTime?
+  lastFailureAt       DateTime?
+  lastError           String?
+  consecutiveFailures Int                 @default(0)
+  nextRunAt           DateTime?
+  lastResult          Json?
+  updatedAt           DateTime            @updatedAt
+}
+
+/// Requests made to paid/limited external APIs, per provider and day (quota + cost control).
+model ApiUsage {
+  provider String
+  day      DateTime @db.Date
+  requests Int      @default(0)
+  errors   Int      @default(0)
+
+  @@id([provider, day])
 }

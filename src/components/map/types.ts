@@ -1,0 +1,47 @@
+import type { MapConfig } from "@/server/services/map";
+
+/**
+ * MapProvider contract. Every renderer (Leaflet today; Mapbox GL, Google
+ * Maps… tomorrow) implements `MapProviderProps` and is registered in
+ * map-view.tsx. The rest of NIVEX never imports a map library directly.
+ */
+
+/** Marker style: NIVEX's own markers, not the provider's default pins. */
+export type MarkerVariant = "club" | "venue" | "fiesta" | "fm" | "festival" | "concierto" | "dj" | "evento" | "otro" | string;
+
+export interface MapMarker {
+  id: string;
+  lat: number;
+  lng: number;
+  variant: MarkerVariant;
+  label?: string;
+  /** Something is happening right now (pulsing). */
+  live?: boolean;
+  /** Open right now (venues). */
+  open?: boolean;
+}
+
+export interface MapViewport {
+  center: { lat: number; lng: number };
+  zoom: number;
+}
+
+export interface MapProviderProps {
+  config: MapConfig;
+  center: { lat: number; lng: number };
+  zoom?: number;
+  markers: MapMarker[];
+  selectedId?: string | null;
+  onSelect?: (id: string | null) => void;
+  /** Tap on empty map (used by the location picker). */
+  onMapClick?: (latlng: { lat: number; lng: number }) => void;
+  interactive?: boolean;
+  /** Group nearby markers into count bubbles. */
+  cluster?: boolean;
+  /** Show +/- buttons (desktop). */
+  zoomControls?: boolean;
+  user?: { lat: number; lng: number } | null;
+  /** Bumping this number recenters the map on `center` even if it did not change. */
+  recenterKey?: number;
+  className?: string;
+}

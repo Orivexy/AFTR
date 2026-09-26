@@ -8,6 +8,7 @@ Plataforma social para descubrir qué pasa cada noche: fiestas, FM (fiestas mayo
 
 - [Monetización (preparada y desactivada)](docs/monetization.md)
 - [Event Discovery (importación automática de eventos y locales)](docs/event-discovery.md)
+- [Locales, horarios, eventos y mapa (APIs, jobs, API keys)](docs/places-and-map.md)
 - [App de Windows (.exe) y móvil (PWA)](docs/desktop.md)
 
 Ciclo principal: **descubrir → ir → publicar → interactuar → seguir → descubrir**.
@@ -23,9 +24,9 @@ Ciclo principal: **descubrir → ir → publicar → interactuar → seguir → 
 | Base de datos | PostgreSQL + Prisma 6 |
 | Auth | Sesiones propias en BD (cookie httpOnly, token con hash SHA-256) · email + contraseña (bcrypt) · Google OAuth (PKCE, `arctic`) |
 | Media | `sharp` (imágenes → WebP en 2 tamaños, sin EXIF/GPS, placeholder blur) · `ffmpeg` (vídeo → H.264 720p, `faststart`, póster) |
-| Mapas | Leaflet con proveedor intercambiable (CARTO sin clave; Mapbox/MapTiler vía proxy de teselas en servidor) |
+| Mapas | Abstracción `MapProvider` (renderer Leaflet) + clustering `supercluster`; teselas CARTO sin clave o Mapbox/MapTiler vía proxy en servidor |
 | Tests | Vitest (unit) · Playwright (e2e) |
-| Discovery | iCal, schema.org, feeds de partners, Ticketmaster y Google Places (locales) — ver docs |
+| Discovery | Locales y horarios de OpenStreetMap (Overpass), eventos de iCal, schema.org, feeds de partners y Ticketmaster; Google Places solo vincula IDs — ver docs |
 
 ## Puesta en marcha
 
@@ -119,12 +120,12 @@ Una noche va de 06:00 a 06:00 hora local de la ciudad: una fiesta a la 01:00 del
 
 ### Mapas
 
-`MapCanvas` define la interfaz del mapa; la implementación actual usa Leaflet. `MAP_PROVIDER` elige proveedor:
+`MapProvider` (`src/components/map/types.ts`) define la interfaz del mapa; hoy el renderer es Leaflet, con clustering, marcadores propios, filtros, búsqueda y tarjeta inferior. `MAP_PROVIDER` elige las teselas:
 
 - `carto` (por defecto): teselas oscuras sin clave.
 - `mapbox` / `maptiler`: las teselas pasan por `/api/map/tiles/{z}/{x}/{y}` para que la clave **nunca llegue al navegador**.
 
-Para Google Maps o Mapbox GL basta con otra implementación de `MapCanvasProps`.
+Para Mapbox GL o Google Maps basta con otro renderer que implemente `MapProviderProps`. Ver [docs/places-and-map.md](docs/places-and-map.md).
 
 ### Moderación
 

@@ -175,8 +175,10 @@ export async function createEventFromNormalized(n: NormalizedEvent, source: Sour
       source: "IMPORT",
       trust: source.trust === "OFFICIAL" ? "OFFICIAL" : "IMPORTED",
       primarySourceId: source.id,
+      sourceUrl: n.sourceUrl,
       importedAt: now,
       lastSyncedAt: now,
+      lastVerifiedAt: now,
       searchText: buildSearchText(n.title, location, n.address, city.name, n.organizerName, n.genres.join(" ")),
       genres: { create: genres.map((g) => ({ genreId: g.id })) },
     },
@@ -189,7 +191,7 @@ export async function createEventFromNormalized(n: NormalizedEvent, source: Sour
 
 const TRACKED = [
   "title", "description", "startsAt", "endsAt", "doorsAt", "priceMin", "priceMax", "ticketUrl", "officialUrl",
-  "venueId", "locationName", "address", "lat", "lng", "organizerName",
+  "venueId", "locationName", "address", "lat", "lng", "organizerName", "sourceUrl",
 ] as const;
 type Tracked = (typeof TRACKED)[number];
 
@@ -219,7 +221,7 @@ export async function applySourceUpdate(eventId: string, n: NormalizedEvent, sou
     select: {
       id: true, source: true, trust: true, status: true, primarySourceId: true, startsAt: true, title: true, locationName: true, address: true,
       description: true, endsAt: true, doorsAt: true, priceMin: true, priceMax: true, ticketUrl: true, officialUrl: true, venueId: true,
-      lat: true, lng: true, organizerName: true, genres: { select: { genre: { select: { slug: true } } } },
+      lat: true, lng: true, organizerName: true, sourceUrl: true, genres: { select: { genre: { select: { slug: true } } } },
     },
   });
   const imported = event.source === "IMPORT";

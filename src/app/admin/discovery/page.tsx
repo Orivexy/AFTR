@@ -15,7 +15,8 @@ const TYPE_OPTIONS = [
   { value: "JSON_LD_PAGE", label: "Web oficial (schema.org)" },
   { value: "PARTNER_FEED", label: "Feed de partner NIVEX (JSON)" },
   { value: "TICKETMASTER", label: "Ticketmaster Discovery API" },
-  { value: "GOOGLE_PLACES", label: "Google Places (locales)" },
+  { value: "OSM_OVERPASS", label: "OpenStreetMap · Overpass (locales y horarios)" },
+  { value: "GOOGLE_PLACES", label: "Google Places (solo vincula IDs)" },
 ];
 
 export default async function DiscoveryPage() {
@@ -121,7 +122,7 @@ export default async function DiscoveryPage() {
             <details key={r.id} className="group p-3">
               <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1">
                 <span className={cn("font-bold", r.status === "ERROR" ? "text-danger" : r.status === "OK" ? "text-volt" : "text-muted")}>{r.status}</span>
-                <span className="font-semibold">{r.source.name}</span>
+                <span className="font-semibold">{r.source?.name ?? r.job}</span>{r.job && r.source && <span className="text-[12px] text-faint">{r.job}</span>}
                 <span className="text-muted">
                   {r.found} encontrados · {r.created} nuevos · {r.updated} actualizados · {r.duplicates} duplicados · {r.queued} en revisión · {r.skipped} omitidos · {r.deactivated} desactivados · {r.errors} errores
                 </span>

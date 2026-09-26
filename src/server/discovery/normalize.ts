@@ -96,7 +96,8 @@ const GENRE_KEYWORDS: Array<[string, RegExp]> = [
   ["reggaeton", /\b(reggaeton|regueton|perreo|dembow)\b/],
   ["hip-hop", /\b(hip ?hop|rap|trap|r&b|rnb)\b/],
   ["comercial", /\b(comercial|commercial|hits|remember|mainstream)\b/],
-  ["electronica", /\b(electronica|electronic|electro|edm|drum ?(and|&|n) ?bass|dnb)\b/],
+  ["electronica", /\b(electronica|electronic|electro|drum ?(and|&|n) ?bass|dnb)\b/],
+  ["edm", /\b(edm|big ?room|electro house)\b/],
   ["latin", /\b(latin|latino|latina|salsa|bachata|cumbia|merengue)\b/],
   ["indie", /\b(indie|rock|britpop|punk)\b/],
 ];

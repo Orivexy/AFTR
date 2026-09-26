@@ -27,10 +27,29 @@ test.describe("guest browsing", () => {
 
   test("map renders places and opens a place card", async ({ page }) => {
     await page.goto("/map");
-    const dots = page.locator(".nm-venue .nm-dot");
-    await expect(dots.first()).toBeAttached();
-    await dots.first().dispatchEvent("click");
-    await expect(page.getByRole("link", { name: /Ver lugar/ })).toBeVisible();
+    const pins = page.locator(".nx-pin-place");
+    await expect(pins.first()).toBeAttached();
+    await pins.first().dispatchEvent("click");
+    await expect(page.getByRole("link", { name: /Ver perfil/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Cómo llegar/ })).toBeVisible();
+  });
+
+  test("map filters and search update list and map together", async ({ page }) => {
+    await page.goto("/map?when=today");
+    // Desktop and mobile layouts each have a search box: use the visible one.
+    const search = page.getByLabel("Buscar en el mapa").filter({ visible: true });
+    const count = async () => Number((await page.getByText(/\d+ (resultados?|en )/).filter({ visible: true }).first().innerText()).match(/\d+/)![0]);
+    const before = await count();
+    await search.fill("techno");
+    await expect.poll(count).toBeLessThanOrEqual(before);
+    await search.fill("zzzz-nada");
+    await expect.poll(count).toBe(0);
+  });
+
+  test("search understands intents", async ({ page }) => {
+    await page.goto(`/search?q=${encodeURIComponent("fiesta hoy")}`);
+    await expect(page.getByText("Buscando:")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Ver en el mapa/ })).toBeVisible();
   });
 
   test("accent-insensitive search", async ({ page }) => {

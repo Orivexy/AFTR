@@ -4,7 +4,8 @@ import { RecordReview } from "@/components/admin/record-review";
 import { AdminAction } from "@/components/admin/admin-action";
 import { formatPrice } from "@/lib/money";
 import { formatLongDate, formatTime, timeAgo, utcToLocalParts } from "@/lib/time";
-import type { NormalizedEvent, NormalizedVenue } from "@/server/discovery/types";
+import type { NormalizedEvent } from "@/server/discovery/types";
+import type { ProviderPlace } from "@/server/places/types";
 
 export const metadata = { title: "Revisión · Event Discovery" };
 
@@ -72,16 +73,28 @@ export default async function ReviewPage() {
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold">Locales ({venues.length})</h2>
         {venues.map((r) => {
-          const n = r.data as unknown as NormalizedVenue;
+          const n = r.data as unknown as Partial<ProviderPlace>;
+          const googleOnly = r.source.type === "GOOGLE_PLACES";
           return (
             <article key={r.id} className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 md:flex-row md:items-center">
               <div className="min-w-0 flex-1">
-                <p className="font-semibold">{n.name}</p>
-                <p className="text-sm text-muted">{n.address ?? "Sin dirección"} {n.phone && `· ${n.phone}`} {n.website && <>· <a href={n.website} target="_blank" rel="noopener noreferrer" className="underline">web</a></>}</p>
+                {googleOnly ? (
+                  <p className="font-semibold">
+                    Lugar de Google ·{" "}
+                    <a href={`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(r.externalId)}`} target="_blank" rel="noopener noreferrer" className="underline">
+                      ver en Google Maps
+                    </a>
+                  </p>
+                ) : (
+                  <p className="font-semibold">{n.name ?? "Sin nombre"}</p>
+                )}
+                {!googleOnly && (
+                  <p className="text-sm text-muted">{n.address || "Dirección no disponible"} {n.phone && `· ${n.phone}`} {n.website && <>· <a href={n.website} target="_blank" rel="noopener noreferrer" className="underline">web</a></>} {n.sourceUrl && <>· <a href={n.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">fuente</a></>}</p>
+                )}
                 <p className="text-[12px] text-faint">{r.source.name} · {r.reviewReasons.join(" · ")}{r.expiresAt && " · datos con caducidad (proveedor)"}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <AdminAction url={`/api/admin/discovery/venue-records/${r.id}`} method="POST" body={{ action: "approve" }} tone="primary" success="Local creado">Approve</AdminAction>
+                {!googleOnly && <AdminAction url={`/api/admin/discovery/venue-records/${r.id}`} method="POST" body={{ action: "approve" }} tone="primary" success="Local creado">Approve</AdminAction>}
                 <AdminAction url={`/api/admin/discovery/venue-records/${r.id}`} method="POST" body={{ action: "reject" }} tone="danger" success="Rechazado">Reject</AdminAction>
                 <AdminAction url={`/api/admin/discovery/venue-records/${r.id}`} method="POST" body={{ action: "delete" }} success="Eliminado">Delete</AdminAction>
               </div>

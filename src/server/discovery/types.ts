@@ -4,6 +4,7 @@
  * Normalized* items in NIVEX's format. Nothing here is invented: missing
  * data stays null.
  */
+import type { PlaceProvider } from "../places/types";
 
 /** A date-time as given by the source. */
 export type SourceDateTime =
@@ -118,7 +119,8 @@ export interface Connector {
   /** Human description for the admin panel. */
   label: string;
   fetchEvents?(ctx: SourceContext): Promise<ExternalEvent[]>;
+  /** Venues described by an official page / partner feed. */
   fetchVenues?(ctx: SourceContext): Promise<ExternalVenue[]>;
-  /** Days that fetched data may be kept (provider caching terms). */
-  retentionDays?: number;
+  /** Places API (see src/server/places): discovery + hours refresh, with its usage policy. */
+  placeProvider?: PlaceProvider;
 }

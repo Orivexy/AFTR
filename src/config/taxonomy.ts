@@ -19,6 +19,7 @@ export const GENRES = [
   { slug: "hip-hop", name: "Hip Hop" },
   { slug: "comercial", name: "Comercial" },
   { slug: "electronica", name: "Electrónica" },
+  { slug: "edm", name: "EDM" },
   { slug: "latin", name: "Latin" },
   { slug: "indie", name: "Indie" },
   { slug: "otro", name: "Otro" },

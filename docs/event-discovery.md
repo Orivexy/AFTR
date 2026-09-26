@@ -23,16 +23,17 @@ Código: `src/server/discovery/` · Panel: `/admin/discovery`.
 | `JSON_LD_PAGE` | Agenda de la web oficial con datos schema.org (Event, MusicEvent, NightClub…) | `url`, `config.pages` |
 | `PARTNER_FEED` | Feed JSON que nos da un club o promotor (formato abajo) | `url` |
 | `TICKETMASTER` | Ticketmaster Discovery API | `TICKETMASTER_API_KEY`, `config.classificationName`, `config.keyword` |
-| `GOOGLE_PLACES` | Catálogo de locales (Places API New, Text Search) | `GOOGLE_PLACES_API_KEY`, `config.query` |
+| `OSM_OVERPASS` | Locales, direcciones y horarios de OpenStreetMap (ODbL) | sin clave; `config.categories`, `config.radiusKm` |
+| `GOOGLE_PLACES` | Vincula place IDs de Google y detecta cierres (Places API New) | `GOOGLE_PLACES_API_KEY`, `config.categories` |
 
 Cada fuente tiene: nombre, tipo, activada, ciudad, local propietario, confianza (`IMPORTED`/`OFFICIAL`), publicación automática, permiso de imágenes, intervalo, estado, último error, última sincronización y eventos encontrados. Cada sincronización queda en `SyncRun` con sus contadores y un registro.
 
-**Google**: no existe una API pública de eventos de Google y no se hace scraping de sus resultados. Places solo se usa para locales; según los términos de Google Maps Platform, solo el `place_id` se guarda indefinidamente y el resto de datos de Places caduca a los 30 días (`purgeExpiredSourceData`). El staff confirma los datos del local con fuentes oficiales al aprobarlo.
+**Google**: no existe una API pública de eventos de Google y no se hace scraping de sus resultados. Places solo se usa para vincular locales (place ID) y detectar cierres, porque sus condiciones no permiten guardar ni mostrar su contenido en un mapa que no sea de Google. Los locales, sus datos y sus horarios vienen de OpenStreetMap. Detalles en [places-and-map.md](places-and-map.md).
 
 ## Sincronización
 
-- Job `event-discovery` (cada minuto, en proceso) o `POST /api/cron/event-discovery` con `CRON_SECRET`. Sincroniza las fuentes cuyo `nextSyncAt` ha llegado.
-- Intervalo: `syncIntervalMin` de la fuente o `EVENT_SYNC_INTERVAL` (`30m`, `2h`, `1d`). Si hay errores se espera más (x4, máx. 6 h).
+- Jobs `EVENT_SYNC` (eventos) y `VENUE_SYNC` / `VENUE_HOURS_SYNC` (locales). Se ejecutan en proceso o con `POST /api/cron/event-sync`, `/venue-sync` o `/venue-hours-sync` y `CRON_SECRET`. Ver [places-and-map.md](places-and-map.md#jobs-srcserversyncjobsts).
+- Intervalo: `syncIntervalMin` de la fuente, o `EVENT_SYNC_INTERVAL` / `VENUE_SYNC_INTERVAL` (`30m`, `2h`, `1d`). Tras un error, el reintento es exponencial (30 min, 1 h, 2 h…), con un tope.
 - Un bloqueo en base de datos evita sincronizar la misma fuente dos veces a la vez.
 - `DISCOVERY_ENABLED=false` detiene el motor.
 

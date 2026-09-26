@@ -1,16 +1,20 @@
 import "server-only";
 import { db } from "../db";
 import { env } from "../env";
-import type { MapPlace, OpeningHours } from "@/lib/types";
+import type { MapEvent, MapPlace } from "@/lib/types";
+import { sanitizeHours } from "@/lib/hours";
 import type { CityData } from "./cities";
 
 /**
- * Map provider configuration. Keyless providers load tiles directly; keyed
- * providers go through /api/map/tiles so tokens never reach the browser.
- * To add Google Maps / Mapbox GL later, implement another MapCanvas and
- * switch on `provider` in the client.
+ * Map configuration. `renderer` picks the MapProvider component (Leaflet
+ * today; a Mapbox GL / Google Maps renderer can be added in
+ * src/components/map/providers). `provider` picks the tiles: keyless
+ * providers load directly; keyed ones go through /api/map/tiles so tokens
+ * never reach the browser.
  */
 export interface MapConfig {
+  /** Rendering engine (MapProvider implementation) — see src/components/map/providers. */
+  renderer: "leaflet";
   provider: "carto" | "mapbox" | "maptiler";
   tileUrl: string;
   attribution: string;
@@ -21,6 +25,7 @@ export function getMapConfig(): MapConfig {
   switch (env.MAP_PROVIDER) {
     case "mapbox":
       return {
+        renderer: "leaflet",
         provider: "mapbox",
         tileUrl: "/api/map/tiles/{z}/{x}/{y}",
         attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © OpenStreetMap',
@@ -28,6 +33,7 @@ export function getMapConfig(): MapConfig {
       };
     case "maptiler":
       return {
+        renderer: "leaflet",
         provider: "maptiler",
         tileUrl: "/api/map/tiles/{z}/{x}/{y}",
         attribution: '© <a href="https://www.maptiler.com/copyright/">MapTiler</a> © OpenStreetMap',
@@ -35,6 +41,7 @@ export function getMapConfig(): MapConfig {
       };
     default:
       return {
+        renderer: "leaflet",
         provider: "carto",
         tileUrl: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         attribution:
@@ -55,15 +62,34 @@ export function upstreamTileUrl(z: number, x: number, y: number): string | null 
   return null;
 }
 
-const eventMiniSelect = { slug: true, title: true, startsAt: true, endsAt: true, priceMin: true, priceMax: true } as const;
+const MAP_HORIZON_DAYS = 60;
+
+const mapEventSelect = {
+  id: true, slug: true, title: true, startsAt: true, endsAt: true, priceMin: true, priceMax: true, coverKey: true,
+  category: { select: { slug: true } },
+  genres: { select: { genre: { select: { slug: true } } } },
+} as const;
+
+type MapEventRow = { id: string; slug: string; title: string; startsAt: Date; endsAt: Date | null; priceMin: number | null; priceMax: number | null; coverKey: string | null; category: { slug: string }; genres: Array<{ genre: { slug: string } }> };
+
+const toMapEvent = (e: MapEventRow): MapEvent => ({
+  id: e.id, slug: e.slug, title: e.title, startsAt: e.startsAt, endsAt: e.endsAt, priceMin: e.priceMin, priceMax: e.priceMax,
+  coverKey: e.coverKey, category: e.category.slug, genres: e.genres.map((g) => g.genre.slug),
+});
+
+/** Attribution required by a source's licence (OpenStreetMap: ODbL). */
+function attributionFor(type: string | undefined): string | null {
+  return type === "OSM_OVERPASS" ? "© OpenStreetMap contributors" : null;
+}
 
 /**
- * Everything to plot for a city: venues (with their current / next event)
- * and standalone events of the next 7 days that are not in a venue.
+ * Everything the map shows for a city, from NIVEX's database only (no
+ * external API calls on page views): active venues with their upcoming
+ * events, plus standalone events, from now to the next 60 days. Filtering
+ * by date/price/type/genre happens on the client so list and map agree.
  */
-export async function getMapPlaces(city: CityData): Promise<MapPlace[]> {
-  const now = new Date();
-  const horizon = new Date(now.getTime() + 7 * 24 * 3600_000);
+export async function getMapPlaces(city: CityData, now = new Date()): Promise<MapPlace[]> {
+  const horizon = new Date(now.getTime() + MAP_HORIZON_DAYS * 24 * 3600_000);
   const upcoming = {
     status: "PUBLISHED" as const,
     startsAt: { lt: horizon },
@@ -74,41 +100,34 @@ export async function getMapPlaces(city: CityData): Promise<MapPlace[]> {
     db.venue.findMany({
       where: { cityId: city.id, isActive: true },
       select: {
-        id: true, slug: true, name: true, lat: true, lng: true, coverKey: true, address: true, type: true,
+        id: true, slug: true, name: true, lat: true, lng: true, coverKey: true, address: true, neighborhood: true, type: true,
         ratingAvg: true, ratingCount: true, priceMin: true, priceMax: true, openingHours: true,
-        events: { where: upcoming, orderBy: { startsAt: "asc" }, take: 2, select: eventMiniSelect },
+        genres: { select: { genre: { select: { slug: true } } } },
+        primarySource: { select: { type: true } },
+        events: { where: upcoming, orderBy: { startsAt: "asc" }, take: 8, select: mapEventSelect },
       },
     }),
     db.event.findMany({
       where: { cityId: city.id, venueId: null, ...upcoming },
       orderBy: { startsAt: "asc" },
-      take: 200,
-      select: {
-        id: true, ...eventMiniSelect, lat: true, lng: true, coverKey: true, locationName: true, address: true,
-        category: { select: { slug: true } },
-      },
+      take: 400,
+      select: { ...mapEventSelect, lat: true, lng: true, locationName: true, address: true },
     }),
   ]);
 
-  const isNow = (e: { startsAt: Date; endsAt: Date | null }) => e.startsAt <= now && (!e.endsAt || e.endsAt > now);
-
   return [
-    ...venues.map<MapPlace>((v) => {
-      const current = v.events.find(isNow) ?? null;
-      const next = v.events.find((e) => e !== current) ?? null;
-      return {
-        kind: "venue", id: v.id, slug: v.slug, name: v.name, lat: v.lat, lng: v.lng, coverKey: v.coverKey,
-        address: v.address, category: v.type === "CLUB" ? "club" : v.type.toLowerCase(),
-        ratingAvg: v.ratingAvg, ratingCount: v.ratingCount, priceMin: v.priceMin, priceMax: v.priceMax,
-        currency: city.currency, timezone: city.timezone, currentEvent: current, nextEvent: next,
-        openingHours: (v.openingHours as OpeningHours | null) ?? null,
-      };
-    }),
+    ...venues.map<MapPlace>((v) => ({
+      kind: "venue", id: v.id, slug: v.slug, name: v.name, lat: v.lat, lng: v.lng, coverKey: v.coverKey, address: v.address,
+      neighborhood: v.neighborhood, venueType: v.type, genres: v.genres.map((g) => g.genre.slug),
+      ratingAvg: v.ratingCount > 0 ? v.ratingAvg : null, ratingCount: v.ratingCount > 0 ? v.ratingCount : null,
+      priceMin: v.priceMin, priceMax: v.priceMax, currency: city.currency, timezone: city.timezone,
+      openingHours: sanitizeHours(v.openingHours), events: v.events.map(toMapEvent), attribution: attributionFor(v.primarySource?.type),
+    })),
     ...events.map<MapPlace>((e) => ({
       kind: "event", id: e.id, slug: e.slug, name: e.title, lat: e.lat, lng: e.lng, coverKey: e.coverKey,
-      address: e.address ?? e.locationName, category: e.category.slug, ratingAvg: null, ratingCount: null,
-      priceMin: e.priceMin, priceMax: e.priceMax, currency: city.currency, timezone: city.timezone,
-      currentEvent: isNow(e) ? e : null, nextEvent: isNow(e) ? null : e, openingHours: null,
+      address: e.address ?? e.locationName, neighborhood: null, venueType: null, genres: e.genres.map((g) => g.genre.slug),
+      ratingAvg: null, ratingCount: null, priceMin: e.priceMin, priceMax: e.priceMax, currency: city.currency, timezone: city.timezone,
+      openingHours: null, events: [toMapEvent(e)], attribution: null,
     })),
   ];
 }

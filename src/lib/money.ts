@@ -3,7 +3,7 @@ export function formatPrice(
   priceMax?: number | null,
   currency = "EUR",
 ): string {
-  if (priceMin == null) return "Precio por confirmar";
+  if (priceMin == null) return "Precio no disponible"; // never guessed
   if (priceMin === 0 && !priceMax) return "Gratis";
   const fmt = (cents: number) =>
     new Intl.NumberFormat("es-ES", {

@@ -1,0 +1,13 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API (test fixture, fictional data)",
+  "elements": [
+    { "type": "node", "id": 1001, "lat": 41.3979, "lon": 2.1911, "tags": { "amenity": "nightclub", "name": "Sala Prueba Uno", "addr:street": "Carrer de Pamplona", "addr:housenumber": "88", "addr:postcode": "08018", "addr:city": "Barcelona", "opening_hours": "Fr,Sa 00:00-06:00", "website": "salaprueba.example", "contact:instagram": "https://www.instagram.com/salaprueba/" } },
+    { "type": "way", "id": 2002, "center": { "lat": 41.3851, "lon": 2.1734 }, "tags": { "amenity": "music_venue", "name": "Auditori Test", "phone": "+34 930 000 000;+34 930 000 001", "opening_hours": "Jun-Sep Fr 22:00-04:00" } },
+    { "type": "node", "id": 3003, "lat": 41.38, "lon": 2.17, "tags": { "amenity": "nightclub" } },
+    { "type": "node", "id": 4004, "lat": 41.39, "lon": 2.18, "tags": { "amenity": "nightclub", "name": "Club Privado", "access": "private" } },
+    { "type": "node", "id": 1001, "lat": 41.3979, "lon": 2.1911, "tags": { "amenity": "nightclub", "name": "Sala Prueba Uno" } },
+    { "type": "node", "id": 5005, "lat": 41.40, "lon": 2.19, "tags": { "disused:amenity": "nightclub", "name": "Antigua Sala" } },
+    { "type": "node", "id": 6006, "lat": 41.41, "lon": 2.16, "tags": { "amenity": "bar", "live_music": "yes", "name": "Bar Directo", "addr:suburb": "Gràcia" } }
+  ]
+}

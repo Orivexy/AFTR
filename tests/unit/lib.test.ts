@@ -20,7 +20,7 @@ describe("text", () => {
 describe("money", () => {
   it("formats prices", () => {
     expect(formatPrice(0)).toBe("Gratis");
-    expect(formatPrice(null)).toBe("Precio por confirmar");
+    expect(formatPrice(null)).toBe("Precio no disponible");
     expect(formatPrice(1500).replace(/\s/g, " ")).toBe("15 €");
     expect(formatPrice(1250).replace(/\s/g, " ")).toBe("12,50 €");
     expect(formatPrice(1000, 2000).replace(/\s/g, " ")).toBe("10 € – 20 €");

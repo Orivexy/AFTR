@@ -15,13 +15,17 @@ import { EventRow } from "@/components/events/event-card";
 import { VenueActions } from "@/components/venues/venue-actions";
 import { ReviewsSection } from "@/components/venues/reviews-section";
 import { CommunityGallery } from "@/components/venues/community-gallery";
-import { OpeningHours, isOpenNow } from "@/components/venues/opening-hours";
+import { OpenStatus, OpeningHours } from "@/components/venues/opening-hours";
+import { DirectionsLink } from "@/components/map/directions-link";
+import { openingStatus } from "@/lib/hours";
+import { timeAgo } from "@/lib/time";
 import { PostGrid } from "@/components/feed/post-grid";
 import { StaticMap } from "@/components/map/static-map";
 import { Distance } from "@/components/ui/distance";
 import { formatPrice } from "@/lib/money";
 import { formatNumber } from "@/lib/text";
 import { imageUrl } from "@/lib/media";
+import { cn } from "@/lib/cn";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -47,7 +51,8 @@ export default async function VenuePage({ params }: Props) {
     venueGallery(venue.id, user?.id),
     listPosts({ venueId: venue.id, viewerId: user?.id, limit: 9 }),
   ]);
-  const open = isOpenNow(venue.openingHours, venue.timezone);
+  const status = openingStatus(venue.openingHours, venue.timezone);
+  const TRUST_LABEL: Record<string, string> = { COMMUNITY: "Comunidad", IMPORTED: "Importado", OFFICIAL: "Oficial", VERIFIED: "Verificado por NIVEX" };
   const official = events.items.filter((e) => e.venue?.id === venue.id);
 
   return (
@@ -61,11 +66,12 @@ export default async function VenuePage({ params }: Props) {
         <div className="absolute inset-x-0 bottom-0 p-5 md:p-8">
           <div className="mb-2 flex flex-wrap gap-1.5">
             <Badge tone="glass">{TYPE_LABEL[venue.type] ?? "Local"}</Badge>
-            {open && (
+            {status?.open && (
               <Badge tone="volt">
                 <LiveDot className="!bg-on-volt" /> Abierto ahora
               </Badge>
             )}
+            {venue.provenance.trust === "VERIFIED" && <Badge tone="glass">Verificado</Badge>}
             {venue.isDemo && <DemoBadge />}
           </div>
           <h1 className="font-display text-[34px] leading-none font-bold tracking-tight uppercase md:text-6xl">{venue.name}</h1>
@@ -83,6 +89,7 @@ export default async function VenuePage({ params }: Props) {
               <Distance lat={venue.lat} lng={venue.lng} />
             </span>
           </div>
+          <OpenStatus hours={venue.openingHours} tz={venue.timezone} className="mt-2 text-[15px]" />
         </div>
       </div>
 
@@ -91,14 +98,14 @@ export default async function VenuePage({ params }: Props) {
           <VenueActions venueId={venue.id} slug={venue.slug} name={venue.name} following={venue.viewer.following} followerCount={venue.followerCount} />
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <Info icon={<Music2 className="size-4" />} label="Música" value={venue.genres.map((g) => g.name).join(" · ") || "Variada"} />
+            <Info icon={<Music2 className="size-4" />} label="Música" value={venue.genres.map((g) => g.name).join(" · ") || "No disponible"} />
             <Info icon={<Wallet className="size-4" />} label="Precio habitual" value={formatPrice(venue.priceMin, venue.priceMax, venue.currency)} />
-            <Info icon={<Users className="size-4" />} label="Edad mínima" value={venue.minAge ? `+${venue.minAge}` : "Sin restricción"} />
+            <Info icon={<Users className="size-4" />} label="Edad mínima" value={venue.minAge ? `+${venue.minAge}` : "No disponible"} />
           </div>
 
           {venue.description && <p className="text-[15px] leading-relaxed text-fg/90">{venue.description}</p>}
 
-          <section>
+          <section id="eventos" className="scroll-mt-24">
             <SectionHeader
               eyebrow="Agenda"
               title="Próximos eventos"
@@ -141,17 +148,24 @@ export default async function VenuePage({ params }: Props) {
           <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface">
             <StaticMap config={getMapConfig()} lat={venue.lat} lng={venue.lng} variant="venue" className="h-40 w-full" />
             <div className="space-y-3 p-4">
-              <p className="text-sm">{venue.address}</p>
-              <a href={`https://www.google.com/maps/dir/?api=1&destination=${venue.lat},${venue.lng}`} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary", "sm", "w-full")}>
+              <p className="text-sm">{venue.address || <span className="text-muted">Dirección no disponible</span>}</p>
+              {venue.phone && (
+                <a href={`tel:${venue.phone.replace(/\s+/g, "")}`} className="block text-sm text-muted hover:text-fg">
+                  {venue.phone}
+                </a>
+              )}
+              <DirectionsLink lat={venue.lat} lng={venue.lng} name={venue.name} className={buttonClass("secondary", "sm", "w-full")}>
                 Cómo llegar <ExternalLink className="size-3.5" />
-              </a>
+              </DirectionsLink>
             </div>
           </div>
           <div className="rounded-[var(--radius-card)] border border-line bg-surface p-4">
             <h3 className="mb-3 flex items-center gap-2 text-[13px] font-bold tracking-wider text-muted uppercase">
               <Clock className="size-4" /> Horario
             </h3>
+            {status && <p className={cn("mb-3 text-sm font-semibold", status.open ? "text-emerald-300" : "text-fg")}>{status.todayLabel}</p>}
             <OpeningHours hours={venue.openingHours} tz={venue.timezone} />
+            {venue.provenance.hoursUpdatedAt && <p className="mt-3 text-[11px] text-faint">Horario actualizado {timeAgo(venue.provenance.hoursUpdatedAt)}</p>}
           </div>
           {(venue.instagram || venue.website) && (
             <div className="flex gap-2">
@@ -167,6 +181,23 @@ export default async function VenuePage({ params }: Props) {
               )}
             </div>
           )}
+          <p className="px-1 text-[11px] leading-relaxed text-faint">
+            Información: {TRUST_LABEL[venue.provenance.trust] ?? venue.provenance.trust}
+            {venue.provenance.sourceName && (
+              <>
+                {" · "}Fuente:{" "}
+                {venue.provenance.sourceUrl ? (
+                  <a href={venue.provenance.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="underline">
+                    {venue.provenance.sourceName}
+                  </a>
+                ) : (
+                  venue.provenance.sourceName
+                )}
+              </>
+            )}
+            {venue.provenance.lastVerifiedAt && ` · comprobado ${timeAgo(venue.provenance.lastVerifiedAt)}`}
+            {venue.provenance.attribution && <> · {venue.provenance.attribution}</>}
+          </p>
         </aside>
       </div>
     </article>

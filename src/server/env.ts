@@ -27,6 +27,16 @@ const schema = z.object({
   DISCOVERY_ALLOW_PRIVATE_HOSTS: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   GOOGLE_PLACES_API_KEY: z.string().optional().default(""),
   TICKETMASTER_API_KEY: z.string().optional().default(""),
+  // Places & sync jobs (see docs/places-and-map.md)
+  VENUE_SYNC_INTERVAL: z.string().default("24h"),
+  VENUE_HOURS_SYNC_INTERVAL: z.string().default("12h"),
+  OVERPASS_API_URL: z.url().default("https://overpass-api.de/api/interpreter"),
+  // Daily request caps per provider (cost / fair-use protection).
+  OVERPASS_DAILY_LIMIT: z.coerce.number().int().min(0).default(200),
+  GOOGLE_PLACES_DAILY_LIMIT: z.coerce.number().int().min(0).default(150),
+  TICKETMASTER_DAILY_LIMIT: z.coerce.number().int().min(0).default(1000),
+  // Optional: your contracted price per 1000 Google Places requests, to estimate cost in /admin.
+  GOOGLE_PLACES_COST_PER_1000: z.preprocess((v) => (v === "" ? undefined : v), z.coerce.number().min(0).optional()),
   ENABLE_INPROCESS_JOBS: z
     .enum(["true", "false"])
     .default("true")

@@ -151,12 +151,24 @@
 .leaflet-control-attribution a { color: #999 !important; }
 .leaflet-control-zoom a { background: #17171f !important; color: #f4f4f7 !important; border-color: rgb(255 255 255 / 0.08) !important; }
 
-/* Map markers */
-.nm-marker { position: relative; width: 100%; height: 100%; display: grid; place-items: center; }
-.nm-dot { flex-shrink: 0; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; font-size: 14px; line-height: 1; background: #17171f; border: 2px solid rgb(255 255 255 / 0.85); box-shadow: 0 4px 14px rgb(0 0 0 / 0.5); transition: transform .2s var(--ease-spring); }
-.nm-venue .nm-dot { width: 18px; height: 18px; background: var(--color-volt); border: 3px solid #07070b; box-shadow: 0 0 0 2px rgb(215 255 58 / 0.35), 0 4px 12px rgb(0 0 0 / 0.5); }
-.nm-live .nm-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
-.nm-selected .nm-dot { transform: scale(1.35); }
-.nm-label { position: absolute; left: calc(100% + 2px); top: 50%; transform: translateY(-50%); white-space: nowrap; font: 700 12px/1 var(--font-sans); color: #07070b; background: var(--color-volt); padding: 6px 9px; border-radius: 999px; box-shadow: 0 6px 18px rgb(0 0 0 / 0.5); }
-.nm-user { width: 16px; height: 16px; margin: 7px; border-radius: 999px; background: #3d8bff; border: 3px solid #fff; box-shadow: 0 0 0 8px rgb(61 139 255 / 0.25); }
+/* Map markers — NIVEX's own (see components/map/providers) */
+.leaflet-control-zoom.leaflet-bar { border: 1px solid rgb(255 255 255 / 0.1) !important; border-radius: 14px !important; overflow: hidden; box-shadow: 0 10px 30px rgb(0 0 0 / 0.45) !important; margin: 0 12px 16px 0 !important; }
+.leaflet-control-zoom a { width: 38px !important; height: 38px !important; line-height: 36px !important; backdrop-filter: blur(12px); background: rgb(23 23 31 / 0.82) !important; }
+.nx-pin { position: relative; width: 100%; height: 100%; display: grid; place-items: center; cursor: pointer; }
+.nx-pin-core { display: grid; place-items: center; transition: transform .25s var(--ease-spring), box-shadow .25s ease; }
+.nx-pin-place .nx-pin-core { width: 26px; height: 26px; border-radius: 999px; background: #1b1b24; color: var(--color-faint); border: 2px solid rgb(255 255 255 / 0.16); box-shadow: 0 6px 16px rgb(0 0 0 / 0.55); }
+.nx-pin-place .nx-pin-core svg { width: 13px; height: 13px; fill: currentColor; }
+.nx-pin-place.is-open .nx-pin-core { background: var(--color-volt); color: var(--color-on-volt); border-color: #07070b; box-shadow: 0 0 0 3px rgb(215 255 58 / 0.22), 0 6px 16px rgb(0 0 0 / 0.55); }
+.nx-pin-event .nx-pin-core { width: 30px; height: 30px; border-radius: 10px; font-size: 15px; line-height: 1; background: linear-gradient(145deg, #2a1830, #17171f); border: 1.5px solid rgb(255 110 199 / 0.6); box-shadow: 0 6px 16px rgb(0 0 0 / 0.55); transform: rotate(-4deg); }
+.nx-pin.is-live .nx-pin-core { animation: pulse-dot 1.8s ease-in-out infinite; }
+.nx-pin:hover .nx-pin-core { transform: scale(1.12); }
+.nx-pin.is-selected .nx-pin-core { transform: scale(1.3); border-color: #fff; }
+.nx-pin-label { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; font: 700 12px/1 var(--font-sans); color: #07070b; background: var(--color-volt); padding: 7px 10px; border-radius: 999px; box-shadow: 0 8px 20px rgb(0 0 0 / 0.5); pointer-events: none; }
+.nx-cluster { display: grid; place-items: center; border-radius: 999px; cursor: pointer; font: 800 13px/1 var(--font-sans); color: var(--color-fg); background: radial-gradient(circle at 30% 25%, rgb(215 255 58 / 0.32), rgb(23 23 31 / 0.92) 62%); border: 1.5px solid rgb(215 255 58 / 0.55); box-shadow: 0 0 0 5px rgb(215 255 58 / 0.08), 0 10px 26px rgb(0 0 0 / 0.55); backdrop-filter: blur(6px); transition: transform .2s var(--ease-spring); }
+.nx-cluster:hover { transform: scale(1.08); }
+.nx-cluster.is-live { animation: pulse-dot 2.2s ease-in-out infinite; }
+.nx-user { position: relative; width: 44px; height: 44px; display: grid; place-items: center; }
+.nx-user::before { content: ""; position: absolute; inset: 0; border-radius: 999px; background: rgb(61 139 255 / 0.18); animation: nx-halo 2.4s ease-out infinite; }
+.nx-user span { position: relative; width: 16px; height: 16px; border-radius: 999px; background: #3d8bff; border: 3px solid #fff; box-shadow: 0 2px 8px rgb(0 0 0 / 0.5); }
+@keyframes nx-halo { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
 @media (max-width: 767px) { .leaflet-control-zoom { display: none; } }

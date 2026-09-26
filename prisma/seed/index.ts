@@ -43,6 +43,9 @@ async function wipe() {
   await db.$transaction([
     db.auditLog.deleteMany(),
     db.eventChange.deleteMany(),
+    db.venueChange.deleteMany(),
+    db.syncJob.deleteMany(),
+    db.apiUsage.deleteMany(),
     db.sourceEventRecord.deleteMany(),
     db.sourceVenueRecord.deleteMany(),
     db.syncRun.deleteMany(),
@@ -468,11 +471,20 @@ async function main() {
   }
   await db.notification.createMany({ data: notifs.filter((n) => n.actorId !== demoUser.id) });
 
-  // ─── Event discovery: example sources (disabled; need API keys) ───────────
+  // ─── Discovery sources ────────────────────────────────────────────────────
+  // OpenStreetMap needs no key: enabled, so real Barcelona venues (with hours)
+  // are imported by the VENUE_SYNC job. The others need API keys (disabled).
   await db.discoverySource.createMany({
     data: [
+      {
+        key: "osm-bcn-nightlife", name: "OpenStreetMap · ocio nocturno de Barcelona", type: "OSM_OVERPASS", cityId: bcn.id, trust: "IMPORTED",
+        enabled: true, autoPublish: true, config: { categories: ["nightclub", "dance_club", "music_venue", "live_music_venue", "event_venue"], radiusKm: 12 },
+      },
       { key: "ticketmaster-bcn-music", name: "Ticketmaster · música en Barcelona", type: "TICKETMASTER", cityId: bcn.id, trust: "IMPORTED", config: { classificationName: "music", maxPages: 3 } },
-      { key: "google-places-bcn-clubs", name: "Google Places · discotecas de Barcelona", type: "GOOGLE_PLACES", cityId: bcn.id, trust: "IMPORTED", syncIntervalMin: 7 * 24 * 60, config: { query: "discoteca Barcelona", includedType: "night_club" } },
+      {
+        key: "google-places-bcn-clubs", name: "Google Places · vincular locales de Barcelona", type: "GOOGLE_PLACES", cityId: bcn.id, trust: "IMPORTED",
+        syncIntervalMin: 7 * 24 * 60, config: { categories: ["nightclub", "music_venue"], maxPages: 1 },
+      },
     ],
   });
 

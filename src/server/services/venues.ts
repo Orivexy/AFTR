@@ -9,6 +9,7 @@ import type { GalleryPhoto, OpeningHours, Page, ReviewData, VenueCardData, Venue
 import type { z } from "zod";
 import type { reviewSchema } from "@/lib/validators";
 import { isStaff } from "@/lib/roles";
+import { sanitizeHours } from "@/lib/hours";
 
 export type VenueSort = "popular" | "rating" | "name";
 
@@ -76,6 +77,12 @@ export async function getVenueDetail(slug: string, viewer: SessionUser | null): 
       minAge: true,
       website: true,
       instagram: true,
+      phone: true,
+      trust: true,
+      sourceUrl: true,
+      lastVerifiedAt: true,
+      hoursUpdatedAt: true,
+      primarySource: { select: { name: true, type: true } },
       isActive: true,
       city: { select: { slug: true, name: true, timezone: true, country: { select: { currency: true } } } },
     },
@@ -101,7 +108,16 @@ export async function getVenueDetail(slug: string, viewer: SessionUser | null): 
     ...toVenueCard(v),
     description: v.description,
     timezone: v.city.timezone,
-    openingHours: (v.openingHours as OpeningHours | null) ?? null,
+    openingHours: sanitizeHours(v.openingHours as OpeningHours | null),
+    phone: v.phone,
+    provenance: {
+      trust: v.trust,
+      sourceName: v.primarySource?.type === "OSM_OVERPASS" ? "OpenStreetMap" : (v.primarySource?.name ?? null),
+      sourceUrl: v.sourceUrl,
+      attribution: v.primarySource?.type === "OSM_OVERPASS" ? "© OpenStreetMap contributors" : null,
+      lastVerifiedAt: v.lastVerifiedAt,
+      hoursUpdatedAt: v.hoursUpdatedAt,
+    },
     minAge: v.minAge,
     website: v.website,
     instagram: v.instagram,

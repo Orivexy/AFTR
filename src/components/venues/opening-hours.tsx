@@ -1,52 +1,34 @@
 import type { OpeningHours as Hours } from "@/lib/types";
-import { TZDate } from "@date-fns/tz";
+import { DAY_LABELS, WEEK_ORDER, openingStatus, sanitizeHours, todayKey } from "@/lib/hours";
 import { cn } from "@/lib/cn";
 
-const DAYS = [
-  ["mon", "Lunes"],
-  ["tue", "Martes"],
-  ["wed", "Miércoles"],
-  ["thu", "Jueves"],
-  ["fri", "Viernes"],
-  ["sat", "Sábado"],
-  ["sun", "Domingo"],
-] as const;
-const KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+export { isOpenNow } from "@/lib/hours";
 
-/** Is the venue open right now? Handles schedules that close after midnight. */
-export function isOpenNow(hours: Hours | null, tz: string, now = new Date()): boolean {
-  if (!hours) return false;
-  const d = new TZDate(now.getTime(), tz);
-  const minutes = d.getHours() * 60 + d.getMinutes();
-  const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-  const today = hours[KEYS[d.getDay()]!] ?? [];
-  const yesterday = hours[KEYS[(d.getDay() + 6) % 7]!] ?? [];
-  for (const s of today) {
-    const o = toMin(s.open), c = toMin(s.close);
-    if (c > o ? minutes >= o && minutes < c : minutes >= o) return true;
-  }
-  for (const s of yesterday) {
-    const o = toMin(s.open), c = toMin(s.close);
-    if (c <= o && minutes < c) return true;
-  }
-  return false;
-}
-
-function weekdayKey(tz: string, now = new Date()) {
-  return KEYS[new TZDate(now.getTime(), tz).getDay()];
+/** "🟢 Abierto ahora · Cierra a las 06:00" / "⚪ Cerrado · Abre hoy a las 23:30". */
+export function OpenStatus({ hours, tz, className }: { hours: Hours | null; tz: string; className?: string }) {
+  const s = openingStatus(hours, tz);
+  if (!s) return null;
+  return (
+    <p className={cn("flex items-center gap-2 text-sm", className)}>
+      <span className={cn("size-2.5 shrink-0 rounded-full", s.open ? "bg-emerald-400 shadow-[0_0_10px] shadow-emerald-400/70" : "bg-faint")} aria-hidden />
+      <b className={s.open ? "text-emerald-300" : "text-fg"}>{s.open ? "Abierto ahora" : "Cerrado"}</b>
+      <span className="text-muted">· {s.label}</span>
+    </p>
+  );
 }
 
 export function OpeningHours({ hours, tz }: { hours: Hours | null; tz: string }) {
-  if (!hours) return <p className="text-sm text-muted">Horario no disponible</p>;
-  const todayKey = weekdayKey(tz);
+  const clean = sanitizeHours(hours);
+  if (!clean) return <p className="text-sm text-muted">Horario no disponible</p>;
+  const today = todayKey(tz);
   return (
     <dl className="space-y-1.5 text-sm">
-      {DAYS.map(([key, label]) => {
-        const slots = hours[key];
+      {WEEK_ORDER.map((key) => {
+        const slots = clean[key];
         return (
-          <div key={key} className={cn("flex justify-between", key === todayKey ? "font-bold text-fg" : "text-muted")}>
-            <dt>{label}</dt>
-            <dd>{slots?.length ? slots.map((s) => `${s.open} – ${s.close}`).join(", ") : "Cerrado"}</dd>
+          <div key={key} className={cn("flex justify-between", key === today ? "font-bold text-fg" : "text-muted")}>
+            <dt>{DAY_LABELS[key]}</dt>
+            <dd>{slots?.length ? slots.map((s) => (s.open === s.close ? "24 horas" : `${s.open} – ${s.close}`)).join(", ") : "Cerrado"}</dd>
           </div>
         );
       })}

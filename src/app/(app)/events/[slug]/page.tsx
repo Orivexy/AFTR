@@ -20,6 +20,7 @@ import { PostGrid } from "@/components/feed/post-grid";
 import { StaticMap } from "@/components/map/static-map";
 import { Distance } from "@/components/ui/distance";
 import { formatPrice } from "@/lib/money";
+import { DirectionsLink } from "@/components/map/directions-link";
 import { formatLongDate, formatTime, isHappeningNow, timeAgo } from "@/lib/time";
 import { imageUrl } from "@/lib/media";
 
@@ -58,7 +59,6 @@ export default async function EventPage({ params }: Props) {
   const live = isHappeningNow(event.startsAt, event.endsAt);
   const ended = (event.endsAt ?? new Date(event.startsAt.getTime() + 6 * 3600_000)) < new Date();
   const tz = event.timezone;
-  const directions = `https://www.google.com/maps/dir/?api=1&destination=${event.lat},${event.lng}`;
   const banner = STATUS_BANNER[event.status];
 
   return (
@@ -200,9 +200,9 @@ export default async function EventPage({ params }: Props) {
                   <Distance lat={event.lat} lng={event.lng} />
                 </p>
               </div>
-              <a href={directions} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary", "sm")}>
+              <DirectionsLink lat={event.lat} lng={event.lng} name={event.locationName} className={buttonClass("secondary", "sm")}>
                 Cómo llegar <ExternalLink className="size-3.5" />
-              </a>
+              </DirectionsLink>
             </div>
             {event.venue && (
               <Link href={`/venues/${event.venue.slug}`} className="flex items-center justify-between border-t border-line px-4 py-3 text-sm hover:bg-surface-2">

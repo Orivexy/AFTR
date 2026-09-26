@@ -43,7 +43,7 @@ export async function reviewQueue() {
       take: 50,
       include: { source: { select: { name: true, city: { select: { id: true } } } } },
     }),
-    db.sourceVenueRecord.findMany({ where: { reviewStatus: "PENDING" }, orderBy: { importedAt: "asc" }, take: 50, include: { source: { select: { name: true } } } }),
+    db.sourceVenueRecord.findMany({ where: { reviewStatus: "PENDING" }, orderBy: { importedAt: "asc" }, take: 50, include: { source: { select: { name: true, type: true } } } }),
     db.venue.findMany({ where: { isActive: true }, select: { id: true, name: true, cityId: true }, orderBy: { name: "asc" } }),
   ]);
   const dupIds = events.map((e) => e.duplicateOfId).filter((x): x is string => Boolean(x));

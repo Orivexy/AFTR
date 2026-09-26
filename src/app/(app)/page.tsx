@@ -11,7 +11,7 @@ import { listEvents } from "@/server/services/events";
 import { listVenues } from "@/server/services/venues";
 import { getFeed } from "@/server/services/posts";
 import { getSessionUser } from "@/server/auth/session";
-import { formatLongDate } from "@/lib/time";
+import { formatLongDate, nightWindow } from "@/lib/time";
 import { TZDate } from "@date-fns/tz";
 
 export const dynamic = "force-dynamic";
@@ -39,17 +39,19 @@ export default async function HomePage() {
   const [city, user] = await Promise.all([getCurrentCity(), getSessionUser()]);
   const base = { cityId: city.id, timezone: city.timezone };
 
-  const [featured, today, weekend, fm, upcoming, venues, feed] = await Promise.all([
+  // Priority: today → tomorrow → next 7 days → following weeks (nights run 06:00 → 06:00).
+  const night = (offset: number) => nightWindow(city.timezone, offset).from;
+  const [featured, today, tomorrow, week, fm, upcoming, venues, feed] = await Promise.all([
     listEvents({ ...base, when: "upcoming", featured: true, limit: 6 }),
     listEvents({ ...base, when: "today", limit: 8 }),
-    listEvents({ ...base, when: "weekend", sort: "popular", limit: 10 }),
+    listEvents({ ...base, when: "tomorrow", sort: "soonest", limit: 10 }),
+    listEvents({ ...base, window: { from: night(2), to: night(7) }, limit: 10 }),
     listEvents({ ...base, when: "upcoming", categories: ["fm"], limit: 8 }),
-    listEvents({ ...base, when: "upcoming", sort: "popular", limit: 10 }),
+    listEvents({ ...base, window: { from: night(7), to: night(120) }, limit: 10 }),
     listVenues({ cityId: city.id, sort: "popular", limit: 10 }),
     getFeed({ mode: "foryou", viewerId: user?.id, cityId: city.id, limit: 9 }),
   ]);
-  const hero = featured.items[0] ?? upcoming.items[0];
-  const todayIds = new Set(today.items.map((e) => e.id));
+  const hero = featured.items[0] ?? week.items[0] ?? upcoming.items[0];
 
   return (
     <div className="mx-auto max-w-7xl px-4 md:px-6">
@@ -108,11 +110,20 @@ export default async function HomePage() {
             )}
           </section>
 
-          {weekend.items.filter((e) => !todayIds.has(e.id)).length > 0 && (
+          {tomorrow.items.length > 0 && (
             <section>
-              <SectionHeader title="Este fin de semana" action={<Link href="/discover?when=weekend" className="text-sm font-semibold text-muted hover:text-fg">Ver todo</Link>} />
+              <SectionHeader title="Mañana" action={<Link href="/discover?when=tomorrow" className="text-sm font-semibold text-muted hover:text-fg">Ver todo</Link>} />
               <Rail itemClassName="w-[72vw] sm:w-[280px]">
-                {weekend.items.filter((e) => !todayIds.has(e.id)).map((e) => <EventCard key={e.id} event={e} />)}
+                {tomorrow.items.map((e) => <EventCard key={e.id} event={e} />)}
+              </Rail>
+            </section>
+          )}
+
+          {week.items.length > 0 && (
+            <section>
+              <SectionHeader title="Próximos 7 días" action={<Link href="/discover?when=week" className="text-sm font-semibold text-muted hover:text-fg">Ver todo</Link>} />
+              <Rail itemClassName="w-[72vw] sm:w-[280px]">
+                {week.items.map((e) => <EventCard key={e.id} event={e} />)}
               </Rail>
             </section>
           )}
@@ -134,10 +145,14 @@ export default async function HomePage() {
           </section>
 
           <section>
-            <SectionHeader title="Próximamente" action={<Link href="/events" className="text-sm font-semibold text-muted hover:text-fg">Agenda</Link>} />
-            <Rail itemClassName="w-[72vw] sm:w-[280px]">
-              {upcoming.items.map((e) => <EventCard key={e.id} event={e} />)}
-            </Rail>
+            <SectionHeader title="Próximas semanas" action={<Link href="/events" className="text-sm font-semibold text-muted hover:text-fg">Agenda</Link>} />
+            {upcoming.items.length ? (
+              <Rail itemClassName="w-[72vw] sm:w-[280px]">
+                {upcoming.items.map((e) => <EventCard key={e.id} event={e} />)}
+              </Rail>
+            ) : (
+              <p className="text-sm text-muted">Aún no hay eventos anunciados más adelante.</p>
+            )}
           </section>
         </div>
 

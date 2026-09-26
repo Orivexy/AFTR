@@ -1,173 +1,424 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Clock, LocateFixed, MapPin, X } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronUp, Clock, List, LocateFixed, MapPin, Navigation, Search, SlidersHorizontal, Star, X } from "lucide-react";
 import { MapView } from "./map-view";
-import type { MapMarker } from "./map-canvas";
+import type { MapMarker } from "./types";
 import { Cover } from "@/components/ui/cover";
 import { Chip, LiveDot } from "@/components/ui/misc";
-import { RatingPill } from "@/components/venues/venue-card";
 import { buttonClass } from "@/components/ui/button";
 import { useLocation } from "@/components/providers/location-provider";
-import { isOpenNow } from "@/components/venues/opening-hours";
-import { distanceKm, formatDistance } from "@/lib/geo";
+import { GENRES } from "@/config/taxonomy";
+import { formatDistance } from "@/lib/geo";
 import { formatPrice } from "@/lib/money";
 import { formatRelativeDay, formatTime } from "@/lib/time";
+import { openingStatus } from "@/lib/hours";
+import {
+  DEFAULT_FILTERS, PRICE_OPTIONS, TYPE_OPTIONS, WHEN_OPTIONS, activeFilterCount, directionsUrl, filterPlaces, isLive,
+  type FilteredPlace, type MapFilters, type TypeFilter, type WhenFilter,
+} from "@/lib/map-filters";
+import { parseSearchIntent } from "@/lib/search-intent";
 import { cn } from "@/lib/cn";
 import type { MapConfig } from "@/server/services/map";
-import type { MapPlace } from "@/lib/types";
+import type { MapEvent, MapPlace } from "@/lib/types";
 
-const FILTERS = [
-  { value: "all", label: "Todo" },
-  { value: "venue", label: "Discotecas" },
-  { value: "fm", label: "FM" },
-  { value: "fiesta", label: "Fiestas" },
-  { value: "live", label: "Ahora" },
-] as const;
+const TYPE_LABEL: Record<string, string> = { CLUB: "Discoteca", BAR: "Bar musical", CONCERT_HALL: "Sala de conciertos", OPEN_AIR: "Open air", OTHER: "Local" };
+const CATEGORY_LABEL: Record<string, string> = { fm: "FM", fiesta: "Fiesta", discoteca: "Discoteca", concierto: "Concierto", dj: "DJ", festival: "Festival", otro: "Evento" };
+const genreName = (slug: string) => GENRES.find((g) => g.slug === slug)?.name ?? slug;
 
-type Filter = (typeof FILTERS)[number]["value"];
-
-function matches(p: MapPlace, f: Filter) {
-  if (f === "all") return true;
-  if (f === "venue") return p.kind === "venue";
-  if (f === "live") return Boolean(p.currentEvent);
-  if (f === "fiesta") return p.kind === "event" && p.category !== "fm";
-  return p.category === f;
+interface Props {
+  config: MapConfig;
+  places: MapPlace[];
+  center: { lat: number; lng: number };
+  cityName: string;
+  initialWhen?: WhenFilter;
+  initialQuery?: string;
 }
 
-export function NightMap({ config, places, center }: { config: MapConfig; places: MapPlace[]; center: { lat: number; lng: number } }) {
-  const [filter, setFilter] = useState<Filter>("all");
+export function NightMap({ config, places, center, cityName, initialWhen = "all", initialQuery = "" }: Props) {
+  const [filters, setFilters] = useState<MapFilters>({ ...DEFAULT_FILTERS, when: initialWhen });
+  const [query, setQuery] = useState(initialQuery);
+  const [sortByDistance, setSortByDistance] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focus, setFocus] = useState(center);
+  const [recenterKey, setRecenterKey] = useState(0);
+  const [panel, setPanel] = useState<"none" | "list" | "filters">("none");
   const { coords, status, request } = useLocation();
+  const wantsCenterOnUser = useRef(false);
 
-  const visible = useMemo(() => places.filter((p) => matches(p, filter)), [places, filter]);
-  const markers = useMemo<MapMarker[]>(
-    () => visible.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng, variant: p.kind === "venue" ? "venue" : p.category, label: p.name, live: Boolean(p.currentEvent) })),
-    [visible],
+  // Words in the search box become filters ("techno hoy", "gratis", "clubs cerca de mí").
+  const intent = useMemo(() => parseSearchIntent(query, [{ slug: "city", name: cityName }]), [query, cityName]);
+  const effective = useMemo<MapFilters>(
+    () => ({
+      ...filters,
+      when: intent.when ?? filters.when,
+      price: intent.free ? "free" : filters.price,
+      types: [...new Set([...filters.types, ...intent.types])],
+      genres: [...new Set([...filters.genres, ...intent.genres])],
+      query: intent.text,
+    }),
+    [filters, intent],
   );
-  const selected = places.find((p) => p.id === selectedId) ?? null;
+  const byDistance = (sortByDistance || intent.near) && Boolean(coords);
+  useEffect(() => {
+    if (intent.near && !coords && status === "idle") request();
+  }, [intent.near, coords, status, request]);
+
+  const results = useMemo(() => filterPlaces(places, effective, { coords, sortByDistance: byDistance }), [places, effective, coords, byDistance]);
+  const markers = useMemo<MapMarker[]>(
+    () =>
+      results.map(({ place: p, events, live, open }) => ({
+        id: p.id,
+        lat: p.lat,
+        lng: p.lng,
+        variant: p.kind === "venue" ? "club" : (events[0]?.category ?? "fiesta"),
+        label: p.name,
+        live,
+        open: open === true,
+      })),
+    [results],
+  );
+  const selected = results.find((r) => r.place.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (coords && wantsCenterOnUser.current) {
+      wantsCenterOnUser.current = false;
+      setFocus({ ...coords });
+      setRecenterKey((k) => k + 1);
+    }
+  }, [coords]);
 
   const select = (id: string | null) => {
     setSelectedId(id);
-    const p = places.find((x) => x.id === id);
-    if (p) setFocus({ lat: p.lat, lng: p.lng });
+    const r = results.find((x) => x.place.id === id);
+    if (r) {
+      setFocus({ lat: r.place.lat, lng: r.place.lng });
+      setPanel("none");
+    }
   };
-
   const locate = () => {
-    if (coords) setFocus({ ...coords });
-    else request();
+    if (coords) {
+      setFocus({ ...coords });
+      setRecenterKey((k) => k + 1);
+    } else {
+      wantsCenterOnUser.current = true;
+      request();
+    }
   };
+  const setWhen = (when: WhenFilter) => setFilters((f) => ({ ...f, when }));
+  const count = activeFilterCount(filters);
+
+  const searchBox = (
+    <label className="glass flex h-12 items-center gap-2 rounded-2xl border border-line-strong px-3.5 shadow-lg shadow-black/30 md:bg-surface md:shadow-none">
+      <Search className="size-[18px] shrink-0 text-muted" />
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Discotecas, fiestas, techno, «hoy»…"
+        className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint"
+        aria-label="Buscar en el mapa"
+        enterKeyHint="search"
+      />
+      {query && (
+        <button onClick={() => setQuery("")} aria-label="Borrar búsqueda" className="grid size-7 place-items-center rounded-full text-muted hover:bg-surface-2">
+          <X className="size-4" />
+        </button>
+      )}
+    </label>
+  );
+
+  const whenChips = (glass: boolean) => (
+    <div className="scrollbar-none flex gap-2 overflow-x-auto">
+      <Chip active={count > 0} onClick={() => setPanel(panel === "filters" ? "none" : "filters")} className={glass && !count ? "glass" : ""} aria-expanded={panel === "filters"} aria-label="Filtros">
+        <SlidersHorizontal className="size-3.5" />
+        {count > 0 ? count : <span className="md:hidden">Filtros</span>}
+      </Chip>
+      {WHEN_OPTIONS.map((w) => (
+        <Chip key={w.value} active={effective.when === w.value} onClick={() => setWhen(w.value)} className={glass && effective.when !== w.value ? "glass" : ""}>
+          {w.label}
+        </Chip>
+      ))}
+    </div>
+  );
+
+  const list = (
+    <ul className="divide-y divide-line">
+      {results.map((r) => (
+        <li key={r.place.id}>
+          <ResultRow r={r} active={r.place.id === selectedId} onClick={() => select(r.place.id)} />
+        </li>
+      ))}
+      {!results.length && <li className="px-4 py-10 text-center text-sm text-muted">Nada con estos filtros. Prueba otra fecha o quita filtros.</li>}
+    </ul>
+  );
 
   return (
-    <div className="relative h-[calc(100dvh-3.5rem-4rem)] md:grid md:h-[calc(100dvh-4rem)] md:grid-cols-[380px_1fr]">
-      {/* Desktop list */}
-      <aside className="hidden overflow-y-auto border-r border-line md:block">
-        <div className="sticky top-0 z-10 space-y-3 bg-ink/95 p-4 backdrop-blur">
-          <h1 className="font-display text-2xl font-bold">Mapa</h1>
-          <div className="flex flex-wrap gap-2">
-            {FILTERS.map((f) => (
-              <Chip key={f.value} active={filter === f.value} onClick={() => setFilter(f.value)}>
-                {f.label}
-              </Chip>
-            ))}
+    <div className="relative h-[calc(100dvh-3.5rem-4rem)] overflow-hidden md:grid md:h-[calc(100dvh-4rem)] md:grid-cols-[400px_1fr]">
+      {/* Desktop panel */}
+      <aside className="hidden min-h-0 flex-col border-r border-line md:flex">
+        <div className="space-y-3 border-b border-line p-4">
+          <div className="flex items-baseline justify-between">
+            <h1 className="font-display text-2xl font-bold">Mapa</h1>
+            <span className="text-sm text-muted">{results.length} en {cityName}</span>
           </div>
+          {searchBox}
+          {whenChips(false)}
+          {panel === "filters" && <FiltersPanel filters={filters} setFilters={setFilters} sortByDistance={sortByDistance} setSortByDistance={setSortByDistance} hasCoords={Boolean(coords)} requestLocation={request} total={results.length} onClose={() => setPanel("none")} />}
         </div>
-        <ul className="divide-y divide-line px-2">
-          {visible.map((p) => (
-            <li key={p.id}>
-              <button onClick={() => select(p.id)} className={cn("flex w-full items-center gap-3 rounded-2xl p-2 text-left hover:bg-surface", selectedId === p.id && "bg-surface")}>
-                <Cover imageKey={p.coverKey} alt="" sizes="56px" className="size-14 shrink-0 rounded-xl" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{p.name}</p>
-                  <p className="truncate text-[13px] text-muted">{p.currentEvent ? `Ahora: ${p.currentEvent.title}` : p.nextEvent ? `${formatRelativeDay(p.nextEvent.startsAt, p.timezone)} · ${p.nextEvent.title}` : p.address}</p>
-                </div>
-                {p.currentEvent && <LiveDot />}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="min-h-0 flex-1 overflow-y-auto px-2">{list}</div>
       </aside>
 
       <div className="relative size-full">
-        <MapView config={config} center={focus} zoom={13} markers={markers} selectedId={selectedId} onSelect={select} user={coords} className="size-full" />
+        <MapView config={config} center={focus} zoom={13} markers={markers} selectedId={selectedId} onSelect={select} user={coords} cluster zoomControls recenterKey={recenterKey} className="size-full" />
 
-        {/* Mobile filters */}
-        <div className="scrollbar-none absolute inset-x-0 top-3 z-[500] flex gap-2 overflow-x-auto px-3 md:hidden">
-          {FILTERS.map((f) => (
-            <Chip key={f.value} active={filter === f.value} onClick={() => setFilter(f.value)} className={filter === f.value ? "" : "glass"}>
-              {f.label}
-            </Chip>
-          ))}
+        {/* Mobile: search + chips */}
+        <div className="absolute inset-x-0 top-0 z-[500] space-y-2 p-3 md:hidden">
+          {searchBox}
+          {whenChips(true)}
         </div>
 
-        <button onClick={locate} aria-label="Centrar en mi ubicación" className={cn("glass pressable absolute right-3 z-[500] grid size-11 place-items-center rounded-full border border-line-strong", selected ? "bottom-[15.5rem] md:bottom-6" : "bottom-4 md:bottom-6")}>
-          <LocateFixed className={cn("size-5", coords ? "text-volt" : "", status === "locating" && "animate-spin")} />
-        </button>
+        <div className={cn("absolute right-3 z-[500] flex flex-col gap-2 transition-[bottom] duration-300", selected ? "bottom-[calc(20rem+1rem)] md:bottom-[7.5rem]" : "bottom-20 md:bottom-[7.5rem]")}>
+          <button onClick={locate} aria-label="Mi ubicación" className="glass pressable grid size-11 place-items-center rounded-2xl border border-line-strong shadow-lg shadow-black/30">
+            <LocateFixed className={cn("size-5", coords ? "text-[#3d8bff]" : "", status === "locating" && "animate-spin")} />
+          </button>
+        </div>
+        {status === "denied" && <p className="glass absolute top-32 left-1/2 z-[500] -translate-x-1/2 rounded-full px-3 py-1.5 text-[12px] text-muted md:top-4">Ubicación no permitida en el navegador</p>}
 
-        {selected && <PlaceCard place={selected} onClose={() => setSelectedId(null)} coords={coords} />}
+        {/* Mobile bottom: list peek / list / filters */}
+        {!selected && (
+          <div className={cn("absolute inset-x-0 bottom-0 z-[550] md:hidden", panel !== "none" && "top-24")}>
+            {panel === "none" ? (
+              <button onClick={() => setPanel("list")} className="glass mx-3 mb-3 flex h-12 w-[calc(100%-1.5rem)] items-center justify-between rounded-2xl border border-line-strong px-4 text-sm font-semibold shadow-lg shadow-black/40">
+                <span className="flex items-center gap-2">
+                  <List className="size-4" /> {results.length} {results.length === 1 ? "resultado" : "resultados"}
+                </span>
+                <ChevronUp className="size-4 text-muted" />
+              </button>
+            ) : (
+              <div className="animate-sheet-up flex h-full flex-col rounded-t-[1.75rem] border-t border-line-strong bg-ink/95 backdrop-blur-xl">
+                <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                  <span className="font-display text-lg font-semibold">{panel === "filters" ? "Filtros" : `${results.length} resultados`}</span>
+                  <button onClick={() => setPanel("none")} aria-label="Cerrar" className="grid size-9 place-items-center rounded-full bg-surface-2">
+                    <X className="size-4" />
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-6">
+                  {panel === "filters" ? (
+                    <div className="px-2">
+                      <FiltersPanel filters={filters} setFilters={setFilters} sortByDistance={sortByDistance} setSortByDistance={setSortByDistance} hasCoords={Boolean(coords)} requestLocation={request} total={results.length} onClose={() => setPanel("list")} />
+                    </div>
+                  ) : (
+                    list
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {selected && <PlaceSheet r={selected} onClose={() => setSelectedId(null)} />}
       </div>
     </div>
   );
 }
 
-function PlaceCard({ place, onClose, coords }: { place: MapPlace; onClose: () => void; coords: { lat: number; lng: number } | null }) {
-  const ev = place.currentEvent ?? place.nextEvent;
-  const href = place.kind === "venue" ? `/venues/${place.slug}` : `/events/${place.slug}`;
-  const open = place.kind === "venue" && isOpenNow(place.openingHours, place.timezone);
-  const price = ev ? formatPrice(ev.priceMin, ev.priceMax, place.currency) : formatPrice(place.priceMin, place.priceMax, place.currency);
+function statusLine(r: FilteredPlace): { text: string; tone: "live" | "open" | "closed" | "muted" } {
+  const p = r.place;
+  const liveEvent = r.events.find((e) => isLive(e));
+  if (liveEvent) return { text: p.kind === "venue" ? `Ahora: ${liveEvent.title}` : "Ahora", tone: "live" };
+  if (p.kind === "venue") {
+    const s = openingStatus(p.openingHours, p.timezone);
+    if (s) return { text: s.open ? `Abierto · ${s.label}` : s.label, tone: s.open ? "open" : "closed" };
+  }
+  const next = r.events[0];
+  if (next) return { text: `${formatRelativeDay(next.startsAt, p.timezone)} ${formatTime(next.startsAt, p.timezone)}${p.kind === "venue" ? ` · ${next.title}` : ""}`, tone: "muted" };
+  return { text: p.address || p.neighborhood || "Horario no disponible", tone: "muted" };
+}
+
+function ResultRow({ r, active, onClick }: { r: FilteredPlace; active: boolean; onClick: () => void }) {
+  const p = r.place;
+  const st = statusLine(r);
+  return (
+    <button onClick={onClick} className={cn("flex w-full items-center gap-3 rounded-2xl p-2 text-left transition-colors hover:bg-surface", active && "bg-surface")}>
+      <Cover imageKey={p.coverKey ?? r.events[0]?.coverKey ?? null} alt="" sizes="56px" className="size-14 shrink-0 rounded-xl" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold">{p.name}</p>
+        <p className={cn("truncate text-[13px]", st.tone === "live" ? "font-semibold text-volt" : st.tone === "open" ? "text-emerald-300" : "text-muted")}>{st.text}</p>
+        <p className="truncate text-[12px] text-faint">{p.kind === "venue" ? (TYPE_LABEL[p.venueType ?? ""] ?? "Local") : (CATEGORY_LABEL[r.events[0]?.category ?? ""] ?? "Evento")}{p.genres.length > 0 && ` · ${p.genres.slice(0, 2).map(genreName).join(", ")}`}</p>
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        {r.live && <LiveDot />}
+        {r.distanceKm != null && <span className="text-[12px] font-semibold text-muted">{formatDistance(r.distanceKm)}</span>}
+      </div>
+    </button>
+  );
+}
+
+function FiltersPanel({
+  filters, setFilters, sortByDistance, setSortByDistance, hasCoords, requestLocation, total, onClose,
+}: {
+  filters: MapFilters;
+  setFilters: React.Dispatch<React.SetStateAction<MapFilters>>;
+  sortByDistance: boolean;
+  setSortByDistance: (v: boolean) => void;
+  hasCoords: boolean;
+  requestLocation: () => void;
+  total: number;
+  onClose: () => void;
+}) {
+  const toggle = <K extends "types" | "genres">(key: K, value: MapFilters[K][number]) =>
+    setFilters((f) => ({ ...f, [key]: (f[key] as string[]).includes(value) ? (f[key] as string[]).filter((x) => x !== value) : [...f[key], value] }));
+  return (
+    <div className="animate-fade-in space-y-4 py-1">
+      <FilterGroup label="Precio">
+        {PRICE_OPTIONS.map((o) => (
+          <Chip key={o.value} active={filters.price === o.value} onClick={() => setFilters((f) => ({ ...f, price: o.value }))}>
+            {o.label}
+          </Chip>
+        ))}
+      </FilterGroup>
+      <FilterGroup label="Tipo">
+        {TYPE_OPTIONS.map((o) => (
+          <Chip key={o.value} active={filters.types.includes(o.value)} onClick={() => toggle("types", o.value as TypeFilter)}>
+            {o.label}
+          </Chip>
+        ))}
+      </FilterGroup>
+      <FilterGroup label="Género">
+        {GENRES.filter((g) => g.slug !== "otro").map((g) => (
+          <Chip key={g.slug} active={filters.genres.includes(g.slug)} onClick={() => toggle("genres", g.slug)}>
+            {g.name}
+          </Chip>
+        ))}
+      </FilterGroup>
+      <FilterGroup label="Más">
+        <Chip active={filters.openNow} onClick={() => setFilters((f) => ({ ...f, openNow: !f.openNow }))}>
+          Abierto ahora
+        </Chip>
+        <Chip
+          active={sortByDistance}
+          onClick={() => {
+            if (!hasCoords) requestLocation();
+            setSortByDistance(!sortByDistance);
+          }}
+        >
+          <Navigation className="size-3.5" /> Más cerca primero
+        </Chip>
+      </FilterGroup>
+      <div className="flex gap-2 pt-1">
+        <button onClick={() => setFilters((f) => ({ ...DEFAULT_FILTERS, when: f.when }))} className={buttonClass("ghost", "md")}>
+          Limpiar
+        </button>
+        <button onClick={onClose} className={buttonClass("primary", "md", "flex-1")}>
+          Ver {total} {total === 1 ? "resultado" : "resultados"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-[12px] font-bold tracking-wider text-faint uppercase">{label}</legend>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </fieldset>
+  );
+}
+
+function PlaceSheet({ r, onClose }: { r: FilteredPlace; onClose: () => void }) {
+  const p = r.place;
+  const [ua, setUa] = useState("");
+  useEffect(() => setUa(navigator.userAgent), []); // eslint-disable-line react-hooks/set-state-in-effect -- device-specific directions link after mount
+  const status = p.kind === "venue" ? openingStatus(p.openingHours, p.timezone) : null;
+  const next: MapEvent | undefined = r.events[0];
+  const liveNow = next && isLive(next);
+  const href = p.kind === "venue" ? `/venues/${p.slug}` : `/events/${p.slug}`;
 
   return (
-    <div className="animate-fade-up absolute inset-x-3 bottom-3 z-[600] overflow-hidden rounded-[1.5rem] border border-line-strong bg-surface shadow-2xl md:right-auto md:bottom-6 md:left-6 md:w-[380px]">
-      <div className="flex gap-3 p-3">
-        <Cover imageKey={place.coverKey} alt={place.name} sizes="96px" className="size-24 shrink-0 rounded-2xl" />
-        <div className="min-w-0 flex-1 py-0.5">
-          <div className="flex items-start justify-between gap-2">
-            <h2 className="truncate font-display text-[17px] font-semibold">{place.name}</h2>
-            <button onClick={onClose} aria-label="Cerrar" className="-mt-1 -mr-1 grid size-8 shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2">
-              <X className="size-4" />
-            </button>
-          </div>
-          <p className="flex items-center gap-1 truncate text-[13px] text-muted">
-            <MapPin className="size-3 shrink-0" /> <span className="truncate">{place.address}</span>
-            {coords && <span className="shrink-0">· {formatDistance(distanceKm(coords, place))}</span>}
+    <div className="animate-sheet-up absolute inset-x-0 bottom-0 z-[600] max-h-[80%] overflow-y-auto rounded-t-[1.75rem] border-t border-line-strong bg-ink/95 shadow-2xl backdrop-blur-xl md:inset-x-auto md:bottom-6 md:left-6 md:w-[400px] md:rounded-[1.75rem] md:border">
+      <div className="relative">
+        <Cover imageKey={p.coverKey ?? next?.coverKey ?? null} alt={p.name} sizes="400px" className="h-36 w-full" />
+        <div className="image-fade absolute inset-0" />
+        <button onClick={onClose} aria-label="Cerrar" className="glass absolute top-3 right-3 grid size-9 place-items-center rounded-full">
+          <X className="size-4" />
+        </button>
+        <div className="absolute inset-x-4 bottom-3">
+          <p className="text-[12px] font-bold tracking-wider text-volt uppercase">
+            {p.kind === "venue" ? (TYPE_LABEL[p.venueType ?? ""] ?? "Local") : (CATEGORY_LABEL[next?.category ?? ""] ?? "Evento")}
+            {p.neighborhood && <span className="text-muted"> · {p.neighborhood}</span>}
           </p>
-          <div className="mt-1 flex items-center gap-2">
-            {place.ratingCount != null && <RatingPill avg={place.ratingAvg ?? 0} count={place.ratingCount} />}
-            {place.kind === "venue" && <span className={cn("text-[12px] font-semibold", open ? "text-volt" : "text-faint")}>{open ? "Abierto" : "Cerrado ahora"}</span>}
-          </div>
-          <p className="mt-1 text-[13px] font-bold">{price}</p>
+          <h2 className="truncate font-display text-[22px] leading-tight font-bold">{p.name}</h2>
         </div>
       </div>
-      {ev && (
-        <Link href={`/events/${ev.slug}`} className="flex items-center gap-2 border-t border-line px-4 py-2.5 text-[13px] hover:bg-surface-2">
-          {place.currentEvent ? (
-            <span className="flex items-center gap-1.5 font-bold text-volt">
-              <LiveDot /> Ahora
+
+      <div className="space-y-3 p-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
+          {p.ratingCount != null && p.ratingAvg != null && (
+            <span className="flex items-center gap-1 font-bold">
+              <Star className="size-3.5 text-volt" fill="currentColor" strokeWidth={0} /> {p.ratingAvg.toFixed(1).replace(".", ",")}
+              <span className="font-medium text-faint">({p.ratingCount})</span>
+            </span>
+          )}
+          {r.distanceKm != null && (
+            <span className="flex items-center gap-1 text-muted">
+              <MapPin className="size-3.5" /> {formatDistance(r.distanceKm)}
+            </span>
+          )}
+          {status ? (
+            <span className="flex items-center gap-1.5">
+              <span className={cn("size-2 rounded-full", status.open ? "bg-emerald-400" : "bg-faint")} />
+              <b className={status.open ? "text-emerald-300" : ""}>{status.open ? "Abierto ahora" : "Cerrado"}</b>
+              <span className="text-muted">· {status.label}</span>
             </span>
           ) : (
-            <span className="font-bold text-volt">Próximo</span>
+            p.kind === "venue" && (
+              <span className="flex items-center gap-1 text-muted">
+                <Clock className="size-3.5" /> Horario no disponible
+              </span>
+            )
           )}
-          <span className="truncate font-semibold">{ev.title}</span>
-          <span className="ml-auto flex shrink-0 items-center gap-1 text-muted">
-            <Clock className="size-3.5" />
-            {formatRelativeDay(ev.startsAt, place.timezone)} {formatTime(ev.startsAt, place.timezone)}
-            {ev.endsAt && `–${formatTime(ev.endsAt, place.timezone)}`}
-          </span>
-        </Link>
-      )}
-      {place.kind === "venue" && place.currentEvent && place.nextEvent && (
-        <Link href={`/events/${place.nextEvent.slug}`} className="flex items-center gap-2 border-t border-line px-4 py-2.5 text-[13px] hover:bg-surface-2">
-          <span className="font-bold text-muted">Después</span>
-          <span className="truncate">{place.nextEvent.title}</span>
-          <span className="ml-auto shrink-0 text-muted">{formatRelativeDay(place.nextEvent.startsAt, place.timezone)}</span>
-        </Link>
-      )}
-      <div className="border-t border-line p-3">
-        <Link href={href} className={buttonClass("primary", "md", "w-full")}>
-          {place.kind === "venue" ? "Ver lugar" : "Ver evento"} <ArrowRight className="size-4" />
-        </Link>
+        </div>
+
+        {p.genres.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {p.genres.slice(0, 4).map((g) => (
+              <span key={g} className="rounded-full border border-line-strong px-2.5 py-1 text-[12px] font-semibold text-muted">
+                {genreName(g)}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {next ? (
+          <Link href={`/events/${next.slug}`} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 hover:bg-surface-2">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-2">{liveNow ? <LiveDot /> : <CalendarDays className="size-4 text-volt" />}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11px] font-bold tracking-wider text-faint uppercase">{liveNow ? "Ahora" : p.kind === "venue" ? "Próximo evento" : "Cuándo"}</span>
+              <span className="block truncate text-[14px] font-semibold">{p.kind === "venue" ? next.title : `${formatRelativeDay(next.startsAt, p.timezone)} · ${formatTime(next.startsAt, p.timezone)}`}</span>
+              <span className="block truncate text-[12px] text-muted">
+                {p.kind === "venue" && `${formatRelativeDay(next.startsAt, p.timezone)} ${formatTime(next.startsAt, p.timezone)} · `}
+                {formatPrice(next.priceMin, next.priceMax, p.currency)}
+              </span>
+            </span>
+          </Link>
+        ) : (
+          p.kind === "venue" && <p className="text-[13px] text-muted">Sin eventos anunciados{p.address ? ` · ${p.address}` : ""}</p>
+        )}
+
+        <div className="grid grid-cols-3 gap-2">
+          <Link href={href} className={buttonClass("primary", "md", "col-span-3 sm:col-span-1")}>
+            {p.kind === "venue" ? "Ver perfil" : "Ver evento"} <ArrowRight className="size-4" />
+          </Link>
+          <a href={directionsUrl({ lat: p.lat, lng: p.lng, name: p.name }, ua)} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary", "md", "col-span-3 min-[380px]:col-span-2 sm:col-span-1 sm:px-3")}>
+            <Navigation className="size-4" /> Cómo llegar
+          </a>
+          <Link href={p.kind === "venue" ? `/venues/${p.slug}#eventos` : `/discover`} className={buttonClass("secondary", "md", "col-span-3 min-[380px]:col-span-1 sm:px-3")}>
+            {p.kind === "venue" ? "Eventos" : "Más planes"}
+          </Link>
+        </div>
+        {p.attribution && <p className="text-[11px] text-faint">Datos del local: {p.attribution}</p>}
       </div>
     </div>
   );

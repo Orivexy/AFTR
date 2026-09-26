@@ -11,15 +11,18 @@ import { getCurrentCity } from "@/server/services/cities";
 import { globalSearch } from "@/server/services/search";
 import { getSessionUser } from "@/server/auth/session";
 import { db } from "@/server/db";
+import { GENRES } from "@/config/taxonomy";
 
 export const metadata: Metadata = { title: "Buscar" };
 
 const SUGGESTIONS = ["Gràcia", "Poblenou", "Techno", "Reggaeton", "FM", "Gratis", "House", "Sala"];
 
-export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { q = "" } = await searchParams;
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; lat?: string; lng?: string }> }) {
+  const { q = "", lat, lng } = await searchParams;
   const [city, user] = await Promise.all([getCurrentCity(), getSessionUser()]);
-  const results = q.trim() ? await globalSearch(q, city.id, 8) : null;
+  const coords = lat && lng && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) ? { lat: Number(lat), lng: Number(lng) } : null;
+  const results = q.trim() ? await globalSearch(q, city, { limit: 8, coords }) : null;
+  const chips = results ? intentChips(results) : [];
   const followed = user && results?.users.length
     ? new Set((await db.follow.findMany({ where: { followerId: user.id, followingId: { in: results.users.map((u) => u.id) } }, select: { followingId: true } })).map((f) => f.followingId))
     : new Set<string>();
@@ -41,6 +44,21 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </div>
         </section>
       )}
+
+      {chips.length > 0 && (
+        <div className="-mt-4 flex flex-wrap items-center gap-2 text-[13px]">
+          <span className="text-muted">Buscando:</span>
+          {chips.map((c) => (
+            <span key={c} className="rounded-full bg-surface-2 px-3 py-1 font-semibold">
+              {c}
+            </span>
+          ))}
+          <Link href={`/map?q=${encodeURIComponent(q)}`} className="ml-auto flex items-center gap-1 font-semibold text-volt">
+            <MapPin className="size-3.5" /> Ver en el mapa
+          </Link>
+        </div>
+      )}
+      {results?.needsLocation && <p className="-mt-4 text-[13px] text-muted">Para «cerca de mí», permite la ubicación con el botón de ubicación del buscador.</p>}
 
       {empty && (
         <EmptyState icon={<SearchX className="size-5" />} title={`Nada para “${q}”`}>
@@ -93,4 +111,20 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       ) : null}
     </div>
   );
+}
+
+const WHEN_LABEL: Record<string, string> = { today: "Hoy", tomorrow: "Mañana", weekend: "Este finde", week: "7 días" };
+const TYPE_LABEL: Record<string, string> = { club: "Discotecas", fiesta: "Fiestas", festival: "Festivales", concierto: "Conciertos", evento: "Eventos" };
+
+function intentChips(r: Awaited<ReturnType<typeof globalSearch>>): string[] {
+  const i = r.intent;
+  return [
+    ...(i.when ? [WHEN_LABEL[i.when]!] : []),
+    ...i.types.map((t) => TYPE_LABEL[t] ?? t),
+    ...i.genres.map((g) => GENRES.find((x) => x.slug === g)?.name ?? g),
+    ...(i.free ? ["Gratis"] : []),
+    ...(i.near ? ["Cerca de ti"] : []),
+    ...(i.city ? [r.city.name] : []),
+    ...(i.text ? [`“${i.text}”`] : []),
+  ];
 }

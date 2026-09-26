@@ -147,6 +147,16 @@ export interface VenueDetail extends VenueCardData {
   subScores: { ambience: number | null; music: number | null; staff: number | null; price: number | null; space: number | null };
   ratingDistribution: number[]; // index 0 → 1 star … index 4 → 5 stars
   viewer: { following: boolean; review: ReviewData | null; canManage: boolean };
+  phone: string | null;
+  /** Provenance (COMMUNITY / IMPORTED / OFFICIAL / VERIFIED) and freshness of the data. */
+  provenance: {
+    trust: string;
+    sourceName: string | null;
+    sourceUrl: string | null;
+    attribution: string | null;
+    lastVerifiedAt: Date | null;
+    hoursUpdatedAt: Date | null;
+  };
 }
 
 export interface FeedPost {
@@ -205,6 +215,19 @@ export interface Page<T> {
   nextCursor: string | null;
 }
 
+export interface MapEvent {
+  id: string;
+  slug: string;
+  title: string;
+  startsAt: Date;
+  endsAt: Date | null;
+  priceMin: number | null; // cents; null = not available
+  priceMax: number | null;
+  category: string; // fm | fiesta | discoteca | concierto | dj | festival | otro
+  genres: string[];
+  coverKey: string | null;
+}
+
 export interface MapPlace {
   kind: "venue" | "event";
   id: string;
@@ -213,16 +236,22 @@ export interface MapPlace {
   lat: number;
   lng: number;
   coverKey: string | null;
+  /** "" when the source gave no postal address. */
   address: string;
-  category: string; // "club" | "fm" | "fiesta" | …
+  neighborhood: string | null;
+  /** Venue type (CLUB, BAR, CONCERT_HALL…) or null for standalone events. */
+  venueType: string | null;
+  genres: string[];
+  /** NIVEX community rating (never a third-party rating we may not store). */
   ratingAvg: number | null;
   ratingCount: number | null;
   priceMin: number | null;
   priceMax: number | null;
   currency: string;
   timezone: string;
-  /** For venues: the event happening now / next; for events: itself. */
-  currentEvent: { slug: string; title: string; startsAt: Date; endsAt: Date | null; priceMin: number | null; priceMax: number | null } | null;
-  nextEvent: { slug: string; title: string; startsAt: Date; endsAt: Date | null; priceMin: number | null; priceMax: number | null } | null;
   openingHours: OpeningHours | null;
+  /** Upcoming events (for a standalone event: itself), soonest first. */
+  events: MapEvent[];
+  /** Data attribution required by the source licence (e.g. OpenStreetMap). */
+  attribution: string | null;
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeEuro, Briefcase, CalendarDays, Flag, Image as ImageIcon, LayoutDashboard, Megaphone, Radar, ReceiptText, ScrollText, Store, Users } from "lucide-react";
+import { BadgeEuro, Briefcase, CalendarClock, CalendarDays, Flag, Image as ImageIcon, LayoutDashboard, Map as MapIcon, Megaphone, Radar, ReceiptText, ScrollText, Store, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const ITEMS = [
@@ -10,6 +10,8 @@ const ITEMS = [
   { href: "/admin/reports", label: "Reportes", icon: Flag },
   { href: "/admin/events", label: "Eventos", icon: CalendarDays },
   { href: "/admin/discovery", label: "Event Discovery", icon: Radar },
+  { href: "/admin/map-data", label: "Map Data", icon: MapIcon },
+  { href: "/admin/event-data", label: "Event Data", icon: CalendarClock },
   { href: "/admin/users", label: "Usuarios", icon: Users },
   { href: "/admin/venues", label: "Locales", icon: Store },
   { href: "/admin/posts", label: "Publicaciones", icon: ImageIcon },

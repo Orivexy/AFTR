@@ -1,6 +1,7 @@
 import "server-only";
 import { env } from "../../env";
 import { fetchJson } from "../fetcher";
+import { withQuota } from "../../places/usage";
 import type { Connector, ExternalEvent } from "../types";
 
 /**
@@ -40,7 +41,7 @@ export const ticketmasterConnector: Connector = {
         classificationName: cfg.classificationName ?? "music",
         ...(cfg.keyword ? { keyword: cfg.keyword } : {}),
       });
-      const data = await fetchJson<{ _embedded?: { events?: TmEvent[] }; page?: { totalPages?: number } }>(`https://app.ticketmaster.com/discovery/v2/events.json?${qs}`);
+      const data = await withQuota("ticketmaster", () => fetchJson<{ _embedded?: { events?: TmEvent[] }; page?: { totalPages?: number } }>(`https://app.ticketmaster.com/discovery/v2/events.json?${qs}`));
       for (const e of data._embedded?.events ?? []) {
         const v = e._embedded?.venues?.[0];
         const price = e.priceRanges?.[0];

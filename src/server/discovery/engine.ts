@@ -1,19 +1,20 @@
 import "server-only";
-import type { DiscoverySource, Prisma, VenueType } from "@prisma/client";
+import type { DiscoverySource, Prisma } from "@prisma/client";
 import { db } from "../db";
 import { env } from "../env";
 import { parseDurationMinutes } from "@/lib/duration";
-import { buildSearchText, slugify } from "@/lib/text";
-import { randomBytes } from "node:crypto";
 import { CONNECTORS } from "./connectors";
 import { detectGenres, normalizeEvent, safeUrl, stripHtml } from "./normalize";
 import { isExpired, qualityIssues } from "./validate";
 import { POSSIBLE_DUPLICATE_THRESHOLD } from "./dedupe";
 import {
-  applySourceUpdate, attachVenue, contentHash, createEventFromNormalized, ensureTaxonomy, findBestMatch, loadCityVenues, matchVenue,
+  applySourceUpdate, attachVenue, contentHash, createEventFromNormalized, ensureTaxonomy, findBestMatch, loadCityVenues,
   type VenueCandidate,
 } from "./store";
 import type { ExternalVenue, NormalizedVenue, SourceContext } from "./types";
+import { NIGHTLIFE_CATEGORIES, type NightlifeCategory, type ProviderPlace } from "../places/types";
+import { OWN_SOURCE_POLICY, linkEventsToVenues, refreshHours, syncPlaces } from "../places/sync";
+import { backoffMinutes } from "../places/rules";
 
 /**
  * FUENTES → DISCOVERY ENGINE → NORMALIZACIÓN → DEDUPLICACIÓN → VALIDACIÓN → BD → FRONTEND
@@ -24,10 +25,16 @@ import type { ExternalVenue, NormalizedVenue, SourceContext } from "./types";
  */
 
 const LOCK_MINUTES = 15;
-const DEFAULT_INTERVAL = () => parseDurationMinutes(env.EVENT_SYNC_INTERVAL, 30);
 
-export function intervalMinutes(source: Pick<DiscoverySource, "syncIntervalMin">) {
-  return Math.max(5, source.syncIntervalMin ?? DEFAULT_INTERVAL());
+/** Sources that provide places (venues) vs. events. */
+export function sourceKind(type: DiscoverySource["type"]): "venues" | "events" {
+  const c = CONNECTORS[type];
+  return c.placeProvider || (c.fetchVenues && !c.fetchEvents) ? "venues" : "events";
+}
+
+export function intervalMinutes(source: Pick<DiscoverySource, "syncIntervalMin" | "type">) {
+  const fallback = sourceKind(source.type) === "venues" ? parseDurationMinutes(env.VENUE_SYNC_INTERVAL, 24 * 60) : parseDurationMinutes(env.EVENT_SYNC_INTERVAL, 30);
+  return Math.max(5, source.syncIntervalMin ?? fallback);
 }
 
 interface Counters {
@@ -50,12 +57,15 @@ async function claim(sourceId: string, now: Date) {
   return count === 1;
 }
 
-export async function syncSource(sourceId: string): Promise<{ skipped: true } | { runId: string; counters: Counters; error?: string }> {
+export type SyncMode = "full" | "hours";
+
+export async function syncSource(sourceId: string, opts: { mode?: SyncMode; job?: string } = {}): Promise<{ skipped: true } | { runId: string; counters: Counters; error?: string }> {
+  const mode = opts.mode ?? "full";
   const startedAt = new Date();
   if (!(await claim(sourceId, startedAt))) return { skipped: true };
 
   const source = await db.discoverySource.findUniqueOrThrow({ where: { id: sourceId }, include: { city: { include: { country: true } } } });
-  const run = await db.syncRun.create({ data: { sourceId, status: "RUNNING" } });
+  const run = await db.syncRun.create({ data: { sourceId, status: "RUNNING", job: opts.job } });
   const lines: string[] = [];
   const log = (l: string) => lines.length < 200 && lines.push(l);
   const c: Counters = { found: 0, created: 0, updated: 0, unchanged: 0, duplicates: 0, queued: 0, skipped: 0, deactivated: 0, errors: 0 };
@@ -65,26 +75,42 @@ export async function syncSource(sourceId: string): Promise<{ skipped: true } | 
   };
   const ctx: SourceContext = { sourceId, url: source.url, config: (source.config as Record<string, unknown>) ?? {}, city, log };
   const connector = CONNECTORS[source.type];
+  const interval = intervalMinutes(source);
   let error: string | undefined;
 
   try {
     await ensureTaxonomy();
-    const venues = await loadCityVenues(city.id);
 
-    if (connector.fetchVenues) {
+    const provider = connector.placeProvider;
+    if (provider && mode === "hours") {
+      await refreshHours(source, provider, c, log);
+    } else if (provider) {
+      const cfg = ctx.config as { categories?: string[]; maxPages?: number; radiusKm?: number };
+      const categories = (cfg.categories ?? []).filter((x): x is NightlifeCategory => (NIGHTLIFE_CATEGORIES as readonly string[]).includes(x));
+      const places = await provider.discover(
+        { name: city.name, lat: city.lat, lng: city.lng, radiusKm: cfg.radiusKm ?? city.searchRadiusKm },
+        { categories: categories.length ? categories : NIGHTLIFE_CATEGORIES, maxPages: cfg.maxPages, log },
+      );
+      await syncPlaces(source, provider.policy, places, c, log, {
+        runStart: startedAt,
+        nextSyncAt: new Date(Date.now() + interval * 60_000),
+        detectMissing: provider.policy.storeContent,
+        providerLabel: provider.key === "osm" ? "OpenStreetMap" : provider.label,
+      });
+      const linked = await linkEventsToVenues(city.id);
+      if (linked) log(`${linked} eventos vinculados a sus locales`);
+    } else if (connector.fetchVenues && mode === "full") {
       const items = await connector.fetchVenues(ctx);
       log(`${items.length} locales recibidos`);
-      for (const item of items) {
-        try {
-          await processVenue(item, source, venues, connector.retentionDays);
-        } catch (err) {
-          c.errors++;
-          log(`Local ${item.name}: ${(err as Error).message}`);
-        }
-      }
+      await syncPlaces(source, OWN_SOURCE_POLICY, items.map((i) => toPlace(normalizeVenue(i), i.externalId)), c, log, {
+        runStart: startedAt,
+        nextSyncAt: new Date(Date.now() + interval * 60_000),
+        detectMissing: false,
+        providerLabel: source.name,
+      });
     }
 
-    if (connector.fetchEvents) {
+    if (connector.fetchEvents && mode === "full") {
       const items = await connector.fetchEvents(ctx);
       c.found = items.length;
       const cityVenues = await loadCityVenues(city.id); // may include venues linked above
@@ -107,7 +133,7 @@ export async function syncSource(sourceId: string): Promise<{ skipped: true } | 
   }
 
   const finishedAt = new Date();
-  const interval = intervalMinutes(source);
+  const failures = error ? source.consecutiveFailures + 1 : 0;
   await db.$transaction([
     db.syncRun.update({ where: { id: run.id }, data: { ...c, status: error ? "ERROR" : "OK", finishedAt, log: lines.join("\n") } }),
     db.discoverySource.update({
@@ -115,11 +141,18 @@ export async function syncSource(sourceId: string): Promise<{ skipped: true } | 
       data: {
         status: error ? "ERROR" : "OK",
         lastError: error ?? null,
-        lastSyncAt: finishedAt,
-        // Back off on errors so a broken source isn't hammered.
-        nextSyncAt: new Date(finishedAt.getTime() + (error ? Math.min(interval * 4, 360) : interval) * 60_000),
         lockedUntil: null,
-        ...(error ? {} : { eventsFound: c.found }),
+        consecutiveFailures: failures,
+        ...(error ? { lastFailureAt: finishedAt } : { lastSuccessAt: finishedAt }),
+        // Hours refreshes run on their own job schedule and leave the full-sync schedule alone.
+        ...(mode === "full"
+          ? {
+              lastSyncAt: finishedAt,
+              // Exponential backoff on errors so a broken source isn't hammered.
+              nextSyncAt: new Date(finishedAt.getTime() + backoffMinutes(interval, failures) * 60_000),
+              ...(error ? {} : { eventsFound: c.found }),
+            }
+          : {}),
       },
     }),
   ]);
@@ -136,7 +169,11 @@ async function processEvent(
 ) {
   const now = new Date();
   const existing = await db.sourceEventRecord.findUnique({ where: { sourceId_externalId: { sourceId: source.id, externalId: item.externalId.slice(0, 300) } } });
-  const touch = () => existing && db.sourceEventRecord.update({ where: { id: existing.id }, data: { lastSeenAt: now, missedSyncs: 0 } });
+  const touch = async () => {
+    if (!existing) return;
+    await db.sourceEventRecord.update({ where: { id: existing.id }, data: { lastSeenAt: now, missedSyncs: 0 } });
+    if (existing.eventId) await db.event.update({ where: { id: existing.eventId }, data: { lastVerifiedAt: now } });
+  };
 
   const res = normalizeEvent(item, city.timezone);
   if (!res.ok) {
@@ -163,6 +200,7 @@ async function processEvent(
     }
     const { changed } = await applySourceUpdate(existing.eventId, n, source, city.name);
     await db.sourceEventRecord.update({ where: { id: existing.id }, data: recordData });
+    await db.event.update({ where: { id: existing.eventId }, data: { lastVerifiedAt: now } });
     if (changed) c.updated++;
     else c.unchanged++;
     return;
@@ -235,15 +273,7 @@ async function deactivateMissing(sourceId: string, runStart: Date): Promise<numb
   return gone.length;
 }
 
-// ─── Venues ──────────────────────────────────────────────────────────────────
-
-function venueType(types: string[] = []): VenueType {
-  const t = types.map((x) => x.toLowerCase()).join(" ");
-  if (/night_?club|nightclub|discoteca/.test(t)) return "CLUB";
-  if (/bar|pub/.test(t)) return "BAR";
-  if (/concert|music_?venue|musicvenue|sala/.test(t)) return "CONCERT_HALL";
-  return "CLUB";
-}
+// ─── Venues from official pages / feeds ─────────────────────────────────────
 
 export function normalizeVenue(v: ExternalVenue): NormalizedVenue {
   const insta = v.instagram?.match(/instagram\.com\/([A-Za-z0-9_.]+)/)?.[1] ?? v.instagram?.replace(/^@/, "") ?? null;
@@ -257,114 +287,69 @@ export function normalizeVenue(v: ExternalVenue): NormalizedVenue {
     instagram: insta && /^[A-Za-z0-9_.]{1,30}$/.test(insta) ? `@${insta}` : null,
     description: stripHtml(v.description),
     genres: detectGenres(v.genres ?? [], ""),
-    type: venueType(v.types),
+    type: "CLUB",
     openingHours: v.openingHours ?? null,
-    googlePlaceId: v.googlePlaceId ?? null,
+    googlePlaceId: null, // Google IDs only come from the Google provider
     sourceUrl: safeUrl(v.sourceUrl),
     imageUrls: (v.imageUrls ?? []).map(safeUrl).filter((u): u is string => Boolean(u)).slice(0, 3),
   };
 }
 
-async function processVenue(item: ExternalVenue, source: DiscoverySource, venues: VenueCandidate[], retentionDays?: number) {
-  const n = normalizeVenue(item);
-  const now = new Date();
-  const expiresAt = retentionDays ? new Date(now.getTime() + retentionDays * 86400_000) : null;
-  const byPlaceId = n.googlePlaceId ? await db.venue.findUnique({ where: { googlePlaceId: n.googlePlaceId }, select: { id: true } }) : null;
-  const matched = byPlaceId ?? matchVenue(venues, n.name, n.lat, n.lng);
-  const base = { data: n as unknown as Prisma.InputJsonValue, contentHash: contentHash(n), lastSeenAt: now, expiresAt };
-  const key = { sourceId_externalId: { sourceId: source.id, externalId: item.externalId.slice(0, 300) } };
-
-  if (matched) {
-    const current = await db.venue.findUniqueOrThrow({ where: { id: matched.id }, select: { phone: true, website: true, instagram: true, googlePlaceId: true, openingHours: true, description: true } });
-    const official = source.trust === "OFFICIAL" && source.venueId === matched.id;
-    const pick = <T,>(incoming: T | null, cur: T | null) => (incoming != null && (official || cur == null) ? incoming : undefined);
-    await db.venue.update({
-      where: { id: matched.id },
-      data: {
-        phone: pick(n.phone, current.phone),
-        website: pick(n.website, current.website),
-        instagram: pick(n.instagram, current.instagram),
-        googlePlaceId: current.googlePlaceId ? undefined : (n.googlePlaceId ?? undefined),
-        openingHours: pick(n.openingHours, current.openingHours as never) ?? undefined,
-        description: pick(n.description, current.description),
-        lastSyncedAt: now,
-        ...(official ? { trust: "OFFICIAL" as const } : {}),
-      },
-    });
-    await db.sourceVenueRecord.upsert({ where: key, create: { sourceId: source.id, externalId: key.sourceId_externalId.externalId, ...base, venueId: matched.id, reviewStatus: "AUTO", reviewReasons: [] }, update: { ...base, venueId: matched.id } });
-    return;
-  }
-
-  const existing = await db.sourceVenueRecord.findUnique({ where: key });
-  if (existing?.reviewStatus === "REJECTED") {
-    await db.sourceVenueRecord.update({ where: key, data: base });
-    return;
-  }
-  const reasons = ["Local nuevo"];
-  if (n.lat == null || n.lng == null) reasons.push("Sin coordenadas");
-  if (source.trust === "OFFICIAL" && source.autoPublish && n.lat != null && n.address) {
-    const venue = await createVenueFromNormalized(n, source.cityId, "OFFICIAL");
-    await db.sourceVenueRecord.upsert({ where: key, create: { sourceId: source.id, externalId: key.sourceId_externalId.externalId, ...base, venueId: venue.id, reviewStatus: "AUTO", reviewReasons: [] }, update: { ...base, venueId: venue.id } });
-    return;
-  }
-  await db.sourceVenueRecord.upsert({ where: key, create: { sourceId: source.id, externalId: key.sourceId_externalId.externalId, ...base, reviewStatus: "PENDING", reviewReasons: reasons }, update: { ...base, reviewReasons: reasons } });
-}
-
-export async function createVenueFromNormalized(n: NormalizedVenue, cityId: string, trust: "IMPORTED" | "OFFICIAL") {
-  if (n.lat == null || n.lng == null || !n.address) throw new Error("El local necesita dirección y coordenadas");
-  const [city, genres] = await Promise.all([
-    db.city.findUniqueOrThrow({ where: { id: cityId }, select: { name: true } }),
-    db.musicGenre.findMany({ where: { slug: { in: n.genres } }, select: { id: true } }),
-  ]);
-  const now = new Date();
-  return db.venue.create({
-    data: {
-      slug: `${slugify(n.name) || "local"}-${randomBytes(2).toString("hex")}`,
-      name: n.name,
-      type: n.type,
-      description: n.description,
-      cityId,
-      address: n.address,
-      lat: n.lat,
-      lng: n.lng,
-      phone: n.phone,
-      website: n.website,
-      instagram: n.instagram,
-      googlePlaceId: n.googlePlaceId,
-      openingHours: n.openingHours ?? undefined,
-      trust,
-      importedAt: now,
-      lastSyncedAt: now,
-      searchText: buildSearchText(n.name, n.address, city.name),
-      genres: { create: genres.map((g) => ({ genreId: g.id })) },
-    },
-    select: { id: true, slug: true },
-  });
+/** Official-page venue → provider-neutral place (nightclub unless the page says otherwise). */
+function toPlace(n: NormalizedVenue, externalId: string): ProviderPlace {
+  return {
+    providerId: externalId.slice(0, 300), name: n.name, address: n.address, neighborhood: null, lat: n.lat, lng: n.lng, phone: n.phone,
+    website: n.website, instagram: n.instagram, categories: ["nightclub"], hours: n.openingHours, businessStatus: null, rating: null, ratingCount: null,
+    sourceUrl: n.sourceUrl,
+  };
 }
 
 // ─── Scheduling ──────────────────────────────────────────────────────────────
 
-let running = false;
+const running = new Set<string>();
 
-/** Syncs every enabled source whose next sync time has come (sequentially). */
-export async function runDueSources(now = new Date()) {
-  if (!env.DISCOVERY_ENABLED || running) return { ran: 0 };
-  running = true;
+export interface DueRunResult {
+  ran: number;
+  ok: number;
+  failed: number;
+  errors: string[];
+}
+
+/**
+ * Syncs the enabled sources of one kind whose next sync time has come
+ * (sequentially; `force` ignores the schedule). Used by the EVENT_SYNC,
+ * VENUE_SYNC and VENUE_HOURS_SYNC jobs.
+ */
+export async function runDueSources(kind: "events" | "venues", opts: { force?: boolean; mode?: SyncMode; job?: string; now?: Date } = {}): Promise<DueRunResult> {
+  const result: DueRunResult = { ran: 0, ok: 0, failed: 0, errors: [] };
+  const key = `${kind}:${opts.mode ?? "full"}`;
+  if (!env.DISCOVERY_ENABLED || running.has(key)) return result;
+  running.add(key);
   try {
-    const due = await db.discoverySource.findMany({
-      where: { enabled: true, OR: [{ nextSyncAt: null }, { nextSyncAt: { lte: now } }] },
-      select: { id: true },
+    const now = opts.now ?? new Date();
+    const candidates = await db.discoverySource.findMany({
+      where: { enabled: true, ...(opts.force || opts.mode === "hours" ? {} : { OR: [{ nextSyncAt: null }, { nextSyncAt: { lte: now } }] }) },
+      select: { id: true, type: true, name: true },
       orderBy: { nextSyncAt: "asc" },
-      take: 10,
+      take: 25,
     });
-    for (const s of due) await syncSource(s.id);
-    return { ran: due.length };
+    const due = candidates.filter((s) => sourceKind(s.type) === kind && (opts.mode !== "hours" || CONNECTORS[s.type].placeProvider?.refresh));
+    for (const s of due) {
+      const r = await syncSource(s.id, { mode: opts.mode, job: opts.job });
+      if ("skipped" in r) continue;
+      result.ran++;
+      if (r.error) {
+        result.failed++;
+        result.errors.push(`${s.name}: ${r.error}`);
+      } else result.ok++;
+    }
+    return result;
   } finally {
-    running = false;
+    running.delete(key);
   }
 }
 
-/** Purges data from sources with caching limits (e.g. Google Places after 30 days). */
+/** Purges data from sources with caching limits (e.g. Google Places coordinates after 30 days). */
 export async function purgeExpiredSourceData(now = new Date()) {
   const { count: removed } = await db.sourceVenueRecord.deleteMany({ where: { expiresAt: { lt: now }, venueId: null } });
   const { count: cleared } = await db.sourceVenueRecord.updateMany({ where: { expiresAt: { lt: now }, venueId: { not: null } }, data: { data: {}, expiresAt: null } });
