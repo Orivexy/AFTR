@@ -6,12 +6,13 @@ Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visua
 
 **Descarga:** pestaña *Releases* del repositorio. El workflow [`desktop.yml`](../.github/workflows/desktop.yml) genera y publica el `.exe` en cada push a `main` (prerelease) o al crear un tag `v*` (release).
 
-- Primera ejecución: crea la base de datos en `%APPDATA%\NIVEX\data` y carga los datos DEMO (~30 s).
+- Se instala en `C:\Program Files\NIVEX` (pide permiso de administrador): PostgreSQL para Windows no admite rutas con acentos.
+- Primera ejecución: crea la base de datos en `%APPDATA%\NIVEX\data` (o en `%ProgramData%\NIVEX\…` si el nombre de usuario tiene acentos) y carga los datos DEMO (~30 s).
 - Las fechas DEMO se desplazan por semanas completas en cada arranque para que siempre haya planes "hoy".
 - Menú **NIVEX → Reiniciar datos de demostración** borra y recrea los datos.
 - Cuentas demo: `eric@nightly.demo` / `admin@nightly.demo`, contraseña `nightly123`.
 - El `.exe` no está firmado: SmartScreen muestra "Windows protegió su PC" → *Más información* → *Ejecutar de todas formas*.
-- Log: `%APPDATA%\NIVEX\data\nivex.log`.
+- Log: `nivex.log` en la carpeta de datos (menú **NIVEX → Ver carpeta de datos**).
 
 ## Móvil (Android / iPhone)
 

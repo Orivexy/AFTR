@@ -7,12 +7,29 @@ import { app, BrowserWindow, Menu, dialog, shell } from "electron";
 import path from "node:path";
 import { rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import QRCode from "qrcode";
 import { startBackend } from "./backend.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const resourcesDir = app.isPackaged ? process.resourcesPath : path.join(here, "resources");
-const dataDir = path.join(app.getPath("userData"), "data");
+const dataDir = pickDataDir();
+
+/**
+ * PostgreSQL for Windows cannot handle non-ASCII paths (e.g. a user folder
+ * like C:\Users\José), so in that case the data lives in ProgramData.
+ */
+function pickDataDir() {
+  const preferred = path.join(app.getPath("userData"), "data");
+  if (isAscii(preferred)) return preferred;
+  const id = createHash("sha256").update(preferred).digest("hex").slice(0, 12);
+  const base = process.env.ProgramData;
+  return base && isAscii(base) ? path.join(base, "NIVEX", id) : path.join(path.parse(preferred).root, "NIVEX-data", id);
+}
+
+function isAscii(p) {
+  return /^[\x20-\x7e]*$/.test(p);
+}
 
 let backend = null;
 let mainWindow = null;
@@ -100,6 +117,9 @@ function buildMenu() {
 app.whenReady().then(async () => {
   const loading = splash();
   try {
+    if (!isAscii(resourcesDir)) {
+      throw new Error(`NIVEX está instalado en una carpeta con acentos o caracteres especiales:\n${resourcesDir}\n\nReinstálalo en una carpeta sin ellos, por ejemplo C:\\Program Files\\NIVEX.`);
+    }
     backend = await startBackend({
       resourcesDir,
       dataDir,
