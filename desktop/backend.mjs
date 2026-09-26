@@ -3,7 +3,7 @@
  * Plain Node (no Electron APIs) so it can be tested on any OS:
  *   node backend.mjs <resourcesDir> <dataDir>
  */
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { networkInterfaces } from "node:os";
@@ -13,6 +13,7 @@ import EmbeddedPostgres from "embedded-postgres";
 import pg from "pg";
 
 const DB_NAME = "nivex";
+const PG_PACKAGE = `@embedded-postgres/${process.platform === "win32" ? "windows" : process.platform}-${process.arch}`;
 const DB_USER = "nivex";
 
 function freePort(start) {
@@ -48,6 +49,25 @@ async function waitForHttp(url, timeoutMs, isAlive) {
     await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error("El servidor tardó demasiado en arrancar");
+}
+
+function run(file, args, logFile) {
+  return new Promise((resolve, reject) => {
+    execFile(file, args, { windowsHide: true, timeout: 120_000 }, (err, stdout, stderr) => {
+      const out = `${stdout}${stderr}`.trim();
+      if (out) appendFileSync(logFile, `[pg_ctl] ${out}\n`);
+      if (err) reject(new Error(out || err.message));
+      else resolve(out);
+    });
+  });
+}
+
+function tail(file, lines = 15) {
+  try {
+    return readFileSync(file, "utf8").trim().split(/\r?\n/).slice(-lines).join("\n");
+  } catch {
+    return "";
+  }
 }
 
 /** Loads the demo database dump (plain SQL) generated at build time. */
@@ -118,7 +138,6 @@ export async function startBackend(opts) {
     password: state.dbPassword,
     persistent: true,
     initdbFlags: ["--encoding=UTF8", "--locale=C"],
-    postgresFlags: ["-c", "listen_addresses=localhost"],
     onLog: (m) => appendFileSync(logFile, `[pg] ${m}\n`),
     onError: (m) => appendFileSync(logFile, `[pg:err] ${m instanceof Error ? m.stack : m}\n`),
   });
@@ -126,8 +145,21 @@ export async function startBackend(opts) {
     log("Primera ejecución: creando base de datos…");
     await pgServer.initialise();
   }
+  // pg_ctl (not postgres.exe directly): on Windows it drops administrator
+  // rights, which PostgreSQL refuses to run with, and waits until it is ready.
+  const { pg_ctl } = await import(PG_PACKAGE);
+  const pgLog = path.join(dataDir, "postgres.log");
+  if (existsSync(path.join(pgDir, "postmaster.pid"))) {
+    log("PostgreSQL no se cerró bien la última vez: deteniéndolo");
+    await run(pg_ctl, ["stop", "-D", pgDir, "-m", "fast", "-w"], logFile).catch(() => {});
+  }
   log(`Arrancando PostgreSQL en el puerto ${pgPort}`);
-  await pgServer.start();
+  try {
+    await run(pg_ctl, ["start", "-D", pgDir, "-w", "-t", "90", "-l", pgLog, "-o", `-p ${pgPort} -c listen_addresses=localhost`], logFile);
+  } catch (err) {
+    throw new Error(`PostgreSQL no pudo arrancar: ${err.message}\n${tail(pgLog)}`);
+  }
+  const stopPostgres = () => run(pg_ctl, ["stop", "-D", pgDir, "-m", "fast", "-w"], logFile).catch(() => {});
 
   const databaseUrl = `postgresql://${DB_USER}:${state.dbPassword}@localhost:${pgPort}/${DB_NAME}`;
   const meta = JSON.parse(readFileSync(path.join(resourcesDir, "demo-meta.json"), "utf8"));
@@ -205,7 +237,7 @@ export async function startBackend(opts) {
         server.kill();
         await new Promise((r) => setTimeout(r, 800));
       }
-      await pgServer.stop().catch(() => {});
+      await stopPostgres();
     },
   };
 }

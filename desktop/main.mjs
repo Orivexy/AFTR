@@ -5,7 +5,7 @@
  */
 import { app, BrowserWindow, Menu, dialog, shell } from "electron";
 import path from "node:path";
-import { rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import QRCode from "qrcode";
@@ -23,8 +23,20 @@ function pickDataDir() {
   const preferred = path.join(app.getPath("userData"), "data");
   if (isAscii(preferred)) return preferred;
   const id = createHash("sha256").update(preferred).digest("hex").slice(0, 12);
-  const base = process.env.ProgramData;
-  return base && isAscii(base) ? path.join(base, "NIVEX", id) : path.join(path.parse(preferred).root, "NIVEX-data", id);
+  const bases = [process.env.ProgramData, path.join(path.parse(preferred).root, "NIVEX-data")].filter((b) => b && isAscii(b));
+  // A folder created by an elevated run may be read-only for the user: skip it.
+  const candidates = bases.flatMap((b) => [path.join(b, "NIVEX", id), path.join(b, "NIVEX", `${id}-u`)]);
+  return candidates.find(writable) ?? candidates[0] ?? preferred;
+}
+
+function writable(dir) {
+  try {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, ".write-test"), "ok");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isAscii(p) {
@@ -129,7 +141,8 @@ app.whenReady().then(async () => {
     });
   } catch (err) {
     loading.destroy();
-    dialog.showErrorBox("NIVEX no pudo arrancar", `${err?.message ?? err}\n\nRegistro: ${path.join(dataDir, "nivex.log")}`);
+    const message = err instanceof Error ? err.message : String(err ?? "Error desconocido");
+    dialog.showErrorBox("NIVEX no pudo arrancar", `${message}\n\nRegistro: ${path.join(dataDir, "nivex.log")}`);
     app.exit(1);
     return;
   }
