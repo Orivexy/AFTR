@@ -23,8 +23,9 @@ export default async function NewEventPage({ searchParams }: { searchParams: Pro
   ]);
   const preset = venues.find((v) => v.id === venueParam);
   // Default: the next 23:00 that is still ahead (after midnight → the same calendar day).
-  const nowLocal = utcToLocalParts(new Date(), city.timezone);
-  const today = nowLocal.time < "23:00" ? nowLocal.date : utcToLocalParts(new Date(Date.now() + 24 * 3600_000), city.timezone).date;
+  const now = new Date();
+  const nowLocal = utcToLocalParts(now, city.timezone);
+  const today = nowLocal.time < "23:00" ? nowLocal.date : utcToLocalParts(new Date(now.getTime() + 24 * 3600_000), city.timezone).date;
 
   return (
     <div className="mx-auto max-w-2xl px-4 pt-4 md:pt-10">

@@ -1,0 +1,77 @@
+{
+  "name": "nivex-desktop",
+  "productName": "NIVEX",
+  "version": "0.1.0",
+  "description": "NIVEX para Windows: app completa con servidor y datos demo incluidos.",
+  "author": "NIVEX",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "build:win": "bash ../scripts/build-desktop.sh"
+  },
+  "dependencies": {
+    "embedded-postgres": "^16.14.0-beta.17",
+    "pg": "^8.23.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "electron": "^38.8.6",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "app.nivex.desktop",
+    "productName": "NIVEX",
+    "copyright": "NIVEX",
+    "directories": {
+      "output": "../dist-desktop",
+      "buildResources": "build"
+    },
+    "asar": false,
+    "npmRebuild": false,
+    "files": [
+      "main.mjs",
+      "backend.mjs",
+      "splash.html",
+      "package.json",
+      "build/icon.png",
+      "node_modules/**/*",
+      "!node_modules/@embedded-postgres/linux-*/**",
+      "!node_modules/@embedded-postgres/darwin-*/**",
+      "!node_modules/electron/**",
+      "!node_modules/electron-builder/**"
+    ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": ".",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NIVEX",
+      "artifactName": "NIVEX-Setup-${version}.exe",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": null
+  }
+}

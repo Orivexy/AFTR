@@ -8,6 +8,7 @@ Plataforma social para descubrir qué pasa cada noche: fiestas, FM (fiestas mayo
 
 - [Monetización (preparada y desactivada)](docs/monetization.md)
 - [Event Discovery (importación automática de eventos y locales)](docs/event-discovery.md)
+- [App de Windows (.exe) y móvil (PWA)](docs/desktop.md)
 
 Ciclo principal: **descubrir → ir → publicar → interactuar → seguir → descubrir**.
 

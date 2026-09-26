@@ -20,3 +20,8 @@ npm-debug.log*
 # tests
 /playwright/.cache/
 .disc-test.mjs
+# desktop build
+desktop/node_modules/
+desktop/resources/
+desktop/.build/
+dist-desktop/

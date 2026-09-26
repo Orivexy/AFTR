@@ -37,6 +37,12 @@ export const env = schema.parse(process.env);
 
 export const isProd = env.NODE_ENV === "production";
 
+/**
+ * Secure cookies only when served over HTTPS. The desktop build serves the
+ * app over plain HTTP on the local network (for testing from phones).
+ */
+export const useSecureCookies = env.APP_URL.startsWith("https://");
+
 export const features = {
   googleAuth: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
 };

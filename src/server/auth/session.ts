@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { createHash, randomBytes } from "node:crypto";
 import type { Role, UserStatus } from "@prisma/client";
 import { db } from "../db";
-import { isProd } from "../env";
+import { useSecureCookies } from "../env";
 import { site } from "@/config/site";
 
 /**
@@ -47,7 +47,7 @@ export async function createSession(userId: string) {
 async function setSessionCookie(token: string, expiresAt: Date) {
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: isProd,
+    secure: useSecureCookies,
     sameSite: "lax",
     path: "/",
     expires: expiresAt,

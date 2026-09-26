@@ -10,7 +10,9 @@
 //   service layer so search works for "gracia" → "Gràcia".
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  /// "windows" is used by the desktop build (desktop/).
+  binaryTargets = ["native", "windows"]
 }
 
 datasource db {
