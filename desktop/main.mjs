@@ -71,7 +71,7 @@ code{background:#17171f;padding:4px 8px;border-radius:8px;color:#d7ff3a;font-siz
 async function showMobile() {
   if (!backend) return;
   const urls = backend.lanUrls;
-  const win = new BrowserWindow({ width: 460, height: 720, title: "NIVEX en tu móvil", backgroundColor: "#07070b", autoHideMenuBar: true });
+  const win = new BrowserWindow({ width: 460, height: 720, title: "NIVEX en tu móvil", backgroundColor: "#07070b", autoHideMenuBar: true, icon: path.join(here, "build", "icon.png") });
   if (!urls.length) {
     win.loadURL(html(`<h1>Sin red local</h1><p>Conecta este ordenador a una red Wi-Fi para abrir NIVEX desde el móvil.</p>`));
     return;

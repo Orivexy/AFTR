@@ -36,4 +36,6 @@ REUSE_DEMO=1 bash scripts/build-desktop.sh    # reutiliza el volcado demo anteri
 bash scripts/build-desktop.sh --resources-only --keep-host-natives   # solo recursos (pruebas en Linux)
 ```
 
+Logo e iconos: `node scripts/generate-icons.mjs` genera, desde `scripts/logo.mjs`, los iconos web/PWA, el `.ico` de Windows (incrustado en `NIVEX.exe`, accesos directos e instalador) y las imágenes del asistente de instalación.
+
 Estructura: `desktop/main.mjs` (Electron), `desktop/backend.mjs` (arranca PostgreSQL y `server.js`, ejecutable en Node puro: `node desktop/backend.mjs <resources> <data>`), `desktop/resources/server` (build *standalone* de Next).
