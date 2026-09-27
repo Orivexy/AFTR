@@ -9,6 +9,14 @@ Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visua
 - Se instala en `C:\Program Files\NIVEX` (pide permiso de administrador): PostgreSQL para Windows no admite rutas con acentos.
 - Primera ejecución: crea la base de datos en `%APPDATA%\NIVEX\data` (o en `%ProgramData%\NIVEX\…` si el nombre de usuario tiene acentos) y carga los datos DEMO (~30 s).
 - Las fechas DEMO se desplazan por semanas completas en cada arranque para que siempre haya planes "hoy".
+- Arranque rápido:
+  - PostgreSQL y el servidor arrancan en paralelo.
+  - `initdb --no-sync` y `synchronous_commit=off`.
+  - Caché de compilación de Node (`NODE_COMPILE_CACHE`).
+  - Precalentado de Inicio, Mapa y Descubrir.
+  - Medido en Linux: primer arranque ~1,4 s, siguientes ~0,6 s hasta el servidor listo.
+- Cerrar la ventana deja NIVEX en la **bandeja del sistema**: volver a abrirlo es instantáneo. Para cerrarlo del todo: clic derecho en el icono de la bandeja → **Salir**.
+- Menú **NIVEX → Iniciar con Windows** arranca NIVEX oculto al encender el PC, para que esté listo al abrirlo.
 - Menú **NIVEX → Reiniciar datos de demostración** borra y recrea los datos.
 - Cuentas demo: `eric@nightly.demo` / `admin@nightly.demo`, contraseña `nightly123`.
 - El `.exe` no está firmado: SmartScreen muestra "Windows protegió su PC" → *Más información* → *Ejecutar de todas formas*.

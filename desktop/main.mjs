@@ -3,7 +3,7 @@
  * (backend.mjs), opens the app in a window and offers a QR code so phones on
  * the same Wi-Fi can use this computer as their server.
  */
-import { app, BrowserWindow, Menu, dialog, shell } from "electron";
+import { app, BrowserWindow, Menu, Tray, dialog, nativeImage, shell } from "electron";
 import path from "node:path";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -45,15 +45,46 @@ function isAscii(p) {
 
 let backend = null;
 let mainWindow = null;
+let tray = null;
 let quitting = false;
+/** Started by Windows at login: stay in the tray, ready for an instant open. */
+const startHidden = process.argv.includes("--hidden");
 
 if (!app.requestSingleInstanceLock()) app.quit();
-app.on("second-instance", () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  }
-});
+// Opening NIVEX again (shortcut, taskbar) just shows the running window: instant.
+app.on("second-instance", () => showMain());
+
+function showMain() {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+const loginItem = () => app.getLoginItemSettings({ args: ["--hidden"] }).openAtLogin;
+function setOpenAtLogin(enabled) {
+  app.setLoginItemSettings({ openAtLogin: enabled, args: ["--hidden"] });
+  buildMenu();
+}
+
+/**
+ * Closing the window keeps NIVEX (and its database) running in the tray, so
+ * reopening it is instant. "Salir" in the tray or the menu really quits.
+ */
+function createTray() {
+  tray = new Tray(nativeImage.createFromPath(path.join(here, "build", process.platform === "win32" ? "icon.ico" : "icon.png")).resize({ width: 16, height: 16 }));
+  tray.setToolTip("NIVEX");
+  tray.on("click", showMain);
+  tray.on("double-click", showMain);
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "Abrir NIVEX", click: showMain },
+      { label: "Abrir en el móvil…", click: showMobile },
+      { type: "separator" },
+      { label: "Salir", click: () => app.quit() },
+    ]),
+  );
+}
 
 function splash() {
   const win = new BrowserWindow({ width: 420, height: 300, frame: false, resizable: false, backgroundColor: "#07070b", show: true });
@@ -115,6 +146,7 @@ function buildMenu() {
           { label: "Abrir en el móvil…", accelerator: "CmdOrCtrl+M", click: showMobile },
           { label: "Abrir en el navegador", click: () => backend && shell.openExternal(backend.url) },
           { type: "separator" },
+          { label: "Iniciar con Windows (abre al instante)", type: "checkbox", checked: loginItem(), click: (item) => setOpenAtLogin(item.checked) },
           { label: "Ver carpeta de datos", click: () => shell.openPath(dataDir) },
           { label: "Reiniciar datos de demostración…", click: resetDemo },
           { type: "separator" },
@@ -127,7 +159,7 @@ function buildMenu() {
 }
 
 app.whenReady().then(async () => {
-  const loading = splash();
+  const loading = startHidden ? null : splash();
   try {
     if (!isAscii(resourcesDir)) {
       throw new Error(`NIVEX está instalado en una carpeta con acentos o caracteres especiales:\n${resourcesDir}\n\nReinstálalo en una carpeta sin ellos, por ejemplo C:\\Program Files\\NIVEX.`);
@@ -140,7 +172,7 @@ app.whenReady().then(async () => {
       nodeEnv: { ELECTRON_RUN_AS_NODE: "1" },
     });
   } catch (err) {
-    loading.destroy();
+    loading?.destroy();
     const message = err instanceof Error ? err.message : String(err ?? "Error desconocido");
     dialog.showErrorBox("NIVEX no pudo arrancar", `${message}\n\nRegistro: ${path.join(dataDir, "nivex.log")}`);
     app.exit(1);
@@ -171,9 +203,19 @@ app.whenReady().then(async () => {
     }
   });
   mainWindow.once("ready-to-show", () => {
-    loading.destroy();
-    mainWindow.show();
+    loading?.destroy();
+    if (!startHidden) mainWindow.show();
   });
+  mainWindow.on("close", (e) => {
+    if (quitting) return;
+    e.preventDefault();
+    mainWindow.hide();
+    if (!trayHintShown && process.platform === "win32") {
+      trayHintShown = true;
+      tray?.displayBalloon({ title: "NIVEX sigue abierto", content: "Está en la bandeja del sistema para abrirse al instante. Clic derecho → Salir para cerrarlo del todo.", iconType: "info" });
+    }
+  });
+  createTray();
   await mainWindow.loadURL(backend.url);
 });
 
@@ -185,4 +227,9 @@ app.on("before-quit", async (e) => {
   app.exit(0);
 });
 
-app.on("window-all-closed", () => app.quit());
+let trayHintShown = false;
+
+// Windows are only hidden (tray); quitting happens from the tray/menu.
+app.on("window-all-closed", () => {
+  if (quitting) app.quit();
+});
