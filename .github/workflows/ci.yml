@@ -36,7 +36,7 @@ jobs:
           --health-cmd "pg_isready -U nightly" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       DATABASE_URL: postgresql://nightly:nightly@localhost:5432/nightly?schema=public
-      E2E_DATABASE_URL: postgresql://nightly:nightly@localhost:5432/nivex_e2e
+      E2E_DATABASE_URL: postgresql://nightly:nightly@localhost:5432/orivexy_e2e
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

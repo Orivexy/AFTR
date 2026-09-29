@@ -1,5 +1,5 @@
-# NIVEX production image.
-#   docker build -t nivex .
+# ORIVEXY NIGHTS production image.
+#   docker build -t orivexy .
 # The `builder` stage also runs database migrations + the base seed
 # (see docker-compose.yml → service "migrate").
 
@@ -22,14 +22,14 @@ RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" npm run build
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates ffmpeg tini && rm -rf /var/lib/apt/lists/* \
-  && groupadd --system nivex && useradd --system --gid nivex --home /app nivex \
-  && mkdir -p /app/storage && chown nivex:nivex /app/storage
+  && groupadd --system orivexy && useradd --system --gid orivexy --home /app orivexy \
+  && mkdir -p /app/storage && chown orivexy:orivexy /app/storage
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 \
     STORAGE_LOCAL_DIR=/app/storage FFMPEG_PATH=/usr/bin/ffmpeg FFPROBE_PATH=/usr/bin/ffprobe
-COPY --from=builder --chown=nivex:nivex /app/.next/standalone ./
-COPY --from=builder --chown=nivex:nivex /app/.next/static ./.next/static
-COPY --from=builder --chown=nivex:nivex /app/public ./public
-USER nivex
+COPY --from=builder --chown=orivexy:orivexy /app/.next/standalone ./
+COPY --from=builder --chown=orivexy:orivexy /app/.next/static ./.next/static
+COPY --from=builder --chown=orivexy:orivexy /app/public ./public
+USER orivexy
 EXPOSE 3000
 VOLUME ["/app/storage"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

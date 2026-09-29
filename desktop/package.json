@@ -1,9 +1,9 @@
 {
-  "name": "nivex-desktop",
-  "productName": "NIVEX",
+  "name": "orivexy-nights-desktop",
+  "productName": "ORIVEXY NIGHTS",
   "version": "0.1.0",
-  "description": "NIVEX para Windows: app completa con servidor y datos demo incluidos.",
-  "author": "NIVEX",
+  "description": "ORIVEXY NIGHTS para Windows: app completa con servidor y base de datos incluidos.",
+  "author": "ORIVEXY NIGHTS",
   "private": true,
   "type": "module",
   "main": "main.mjs",
@@ -21,8 +21,8 @@
   },
   "build": {
     "appId": "app.nivex.desktop",
-    "productName": "NIVEX",
-    "copyright": "NIVEX",
+    "productName": "ORIVEXY NIGHTS",
+    "copyright": "ORIVEXY NIGHTS",
     "directories": {
       "output": "../dist-desktop",
       "buildResources": "build"
@@ -70,8 +70,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "NIVEX",
-      "artifactName": "NIVEX-Setup-${version}.exe",
+      "shortcutName": "ORIVEXY NIGHTS",
+      "artifactName": "ORIVEXY-NIGHTS-Setup-${version}.exe",
       "deleteAppDataOnUninstall": false,
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",

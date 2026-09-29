@@ -100,10 +100,10 @@ export const eventInputSchema = z
     ticketUrl: z.url({ protocol: /^https$/ }).max(300).optional().nullable().or(z.literal("")),
     /**
      * NONE / EXTERNAL: informative price + optional external ticket link.
-     * NIVEX: native ticket sales — rejected while TICKETS_ENABLED is off.
-     * Prices of NIVEX tickets always come from TicketType rows, never from here.
+     * PLATFORM: native ticket sales — rejected while TICKETS_ENABLED is off.
+     * Prices of ORIVEXY NIGHTS tickets always come from TicketType rows, never from here.
      */
-    ticketing: z.enum(["NONE", "EXTERNAL", "NIVEX"]).optional(),
+    ticketing: z.enum(["NONE", "EXTERNAL", "PLATFORM"]).optional(),
     capacity: z.number().int().min(1).max(100_000).optional().nullable(),
     refundPolicy: optionalText(1000).nullable(),
     coverPhotoId: cuid.optional().nullable(),

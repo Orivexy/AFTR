@@ -238,7 +238,7 @@ export interface MapPlace {
   /** Venue type (CLUB, BAR, CONCERT_HALL…) or null for standalone events. */
   venueType: string | null;
   genres: string[];
-  /** NIVEX community rating (never a third-party rating we may not store). */
+  /** ORIVEXY NIGHTS community rating (never a third-party rating we may not store). */
   ratingAvg: number | null;
   ratingCount: number | null;
   priceMin: number | null;

@@ -83,7 +83,7 @@ function attributionFor(type: string | undefined): string | null {
 }
 
 /**
- * Everything the map shows for a city, from NIVEX's database only (no
+ * Everything the map shows for a city, from ORIVEXY NIGHTS's database only (no
  * external API calls on page views): active venues with their upcoming
  * events, plus standalone events, from now to the next 60 days. Filtering
  * by date/price/type/genre happens on the client so list and map agree.

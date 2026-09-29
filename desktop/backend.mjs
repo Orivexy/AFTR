@@ -1,5 +1,5 @@
 /**
- * NIVEX desktop backend: embedded PostgreSQL + the Next.js standalone server.
+ * ORIVEXY NIGHTS desktop backend: embedded PostgreSQL + the Next.js standalone server.
  * Plain Node (no Electron APIs) so it can be tested on any OS:
  *   node backend.mjs <resourcesDir> <dataDir>
  */
@@ -12,6 +12,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import EmbeddedPostgres from "embedded-postgres";
 import pg from "pg";
 
+// Internal database name/user: kept from the previous product name so existing installs keep their data.
 const DB_NAME = "nivex";
 const PG_PACKAGE = `@embedded-postgres/${process.platform === "win32" ? "windows" : process.platform}-${process.arch}`;
 const DB_USER = "nivex";
@@ -39,7 +40,7 @@ export function lanAddresses() {
 async function waitForHttp(url, timeoutMs, isAlive) {
   const until = Date.now() + timeoutMs;
   while (Date.now() < until) {
-    if (!isAlive()) throw new Error("El servidor se ha detenido al arrancar (ver nivex.log)");
+    if (!isAlive()) throw new Error("El servidor se ha detenido al arrancar (ver orivexy-nights.log)");
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
       if (res.status < 500) return;
@@ -187,7 +188,7 @@ function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databas
     RATE_LIMIT_SCALE: "20",
     NEXT_TELEMETRY_DISABLED: "1",
   };
-  log(`Arrancando NIVEX en el puerto ${port}`);
+  log(`Arrancando ORIVEXY NIGHTS en el puerto ${port}`);
   const child = spawn(nodeBinary, [path.join(appDir, "server.js")], { cwd: appDir, env, windowsHide: true });
   let alive = true;
   child.stdout.on("data", (d) => appendFileSync(logFile, `[app] ${d}`));
@@ -208,7 +209,7 @@ export async function startBackend(opts) {
   const t0 = Date.now();
   const { resourcesDir, dataDir, nodeBinary } = opts;
   mkdirSync(dataDir, { recursive: true });
-  const logFile = path.join(dataDir, "nivex.log");
+  const logFile = path.join(dataDir, "orivexy-nights.log");
   const log = (m) => {
     const line = `[${new Date().toISOString()}] ${m}\n`;
     appendFileSync(logFile, line);

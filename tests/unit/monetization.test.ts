@@ -54,7 +54,7 @@ describe("commerce inputs", () => {
   it("event input never carries owner or amounts", () => {
     const parsed = eventInputSchema.parse({
       title: "Test", category: "fiesta", citySlug: "barcelona", locationName: "Plaça", lat: 41.4, lng: 2.15, date: "2026-10-02", startTime: "23:00", isFree: true,
-      organizerId: "hacker", businessId: "x", total: 1, ticketing: "NIVEX",
+      organizerId: "hacker", businessId: "x", total: 1, ticketing: "PLATFORM",
     } as Record<string, unknown>);
     expect(parsed).not.toHaveProperty("organizerId");
     expect(parsed).not.toHaveProperty("businessId");

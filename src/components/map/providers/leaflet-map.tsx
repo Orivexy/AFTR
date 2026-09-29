@@ -8,7 +8,7 @@ import type { MapMarker, MapProviderProps } from "../types";
 
 /**
  * MapProvider: Leaflet renderer (raster tiles from CARTO / Mapbox / MapTiler,
- * see MapConfig). Markers and clusters are NIVEX's own HTML, so another
+ * see MapConfig). Markers and clusters are ORIVEXY NIGHTS's own HTML, so another
  * renderer can reproduce them exactly.
  */
 

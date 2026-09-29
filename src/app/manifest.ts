@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
 import { site } from "@/config/site";
 
-/** Web app manifest: lets people install NIVEX on their phone's home screen. */
+/** Web app manifest: lets people install ORIVEXY NIGHTS on their phone's home screen. */
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: site.name,
-    short_name: site.name,
+    short_name: site.shortName,
     description: site.description,
     start_url: "/",
     display: "standalone",

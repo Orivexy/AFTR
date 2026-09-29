@@ -77,7 +77,7 @@ describe("iCalendar", () => {
     expect(events[3]!.start).toMatchObject({ kind: "local", time: null });
     expect(events[3]!.description).toBeNull();
   });
-  it("normalizes to NIVEX format without inventing a price", () => {
+  it("normalizes to ORIVEXY NIGHTS format without inventing a price", () => {
     const r = normalizeEvent(events[0]!, TZ);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
@@ -152,9 +152,9 @@ describe("durations", () => {
 import { parseRobots, robotsPathAllowed } from "@/server/discovery/parsers/robots";
 
 describe("robots.txt", () => {
-  const txt = "User-agent: *\nDisallow: /private\nAllow: /private/agenda\n\nUser-agent: nivexbot\nDisallow: /events/*.json$\n";
+  const txt = "User-agent: *\nDisallow: /private\nAllow: /private/agenda\n\nUser-agent: orivexynightsbot\nDisallow: /events/*.json$\n";
   it("uses the most specific group for our bot", () => {
-    const rules = parseRobots(txt, "nivexbot");
+    const rules = parseRobots(txt, "orivexynightsbot");
     expect(robotsPathAllowed(rules, "/private")).toBe(true);
     expect(robotsPathAllowed(rules, "/events/list.json")).toBe(false);
   });

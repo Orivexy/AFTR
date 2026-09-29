@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Builds the NIVEX Windows installer (desktop/).
+# Builds the ORIVEXY NIGHTS Windows installer (desktop/).
 #
-#   scripts/build-desktop.sh            # full build → dist-desktop/NIVEX-Setup-x.y.z.exe
+#   scripts/build-desktop.sh            # full build → dist-desktop/ORIVEXY-NIGHTS-Setup-x.y.z.exe
 #   scripts/build-desktop.sh --resources-only [--keep-host-natives]
 #
 # Requires: Node 20+, a local PostgreSQL (to build the base configuration),
@@ -24,7 +24,7 @@ for arg in "$@"; do
 done
 
 MSVC_RUNTIME_VERSION="14.44.35112"
-BUILD_DB_URL="${BUILD_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/nivex_desktop_build}"
+BUILD_DB_URL="${BUILD_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/orivexy_desktop_build}"
 BUILD_DB_NAME="${BUILD_DB_URL##*/}"; BUILD_DB_NAME="${BUILD_DB_NAME%%\?*}"
 ADMIN_DB_URL="${BUILD_DB_URL%/*}/postgres"
 

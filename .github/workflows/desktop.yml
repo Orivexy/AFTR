@@ -1,6 +1,6 @@
 name: Desktop installer
 
-# Builds NIVEX-Setup-x.y.z.exe (Electron + embedded PostgreSQL + schema and base data)
+# Builds ORIVEXY-NIGHTS-Setup-x.y.z.exe (Electron + embedded PostgreSQL + schema and base data)
 # and publishes it as a GitHub Release so it can be downloaded.
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
           --health-cmd "pg_isready -U nightly" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgresql://nightly:nightly@localhost:5432/nightly?schema=public
-      BUILD_DATABASE_URL: postgresql://nightly:nightly@localhost:5432/nivex_desktop_build
+      BUILD_DATABASE_URL: postgresql://nightly:nightly@localhost:5432/orivexy_desktop_build
       NSIS_DOCKER: "1"
     steps:
       - uses: actions/checkout@v4
@@ -54,25 +54,25 @@ jobs:
         run: echo "version=$(node -p "require('./desktop/package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
-          name: NIVEX-Setup-${{ steps.v.outputs.version }}
-          path: dist-desktop/NIVEX-Setup-*.exe
+          name: ORIVEXY-NIGHTS-Setup-${{ steps.v.outputs.version }}
+          path: dist-desktop/ORIVEXY-NIGHTS-Setup-*.exe
           retention-days: 30
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('desktop-v{0}-{1}', steps.v.outputs.version, github.run_number) }}
-          name: NIVEX ${{ steps.v.outputs.version }} para Windows (build ${{ github.run_number }})
+          name: ORIVEXY NIGHTS ${{ steps.v.outputs.version }} para Windows (build ${{ github.run_number }})
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
           target_commitish: ${{ github.sha }}
-          files: dist-desktop/NIVEX-Setup-*.exe
+          files: dist-desktop/ORIVEXY-NIGHTS-Setup-*.exe
           body: |
-            **Instalador de NIVEX para Windows 10/11 (64 bits)** — incluye todo lo necesario:
+            **Instalador de ORIVEXY NIGHTS para Windows 10/11 (64 bits)** — incluye todo lo necesario:
             servidor, base de datos PostgreSQL, runtime de Visual C++ y ffmpeg. No hace falta instalar nada más.
 
-            1. Descarga `NIVEX-Setup-*.exe` y ábrelo.
+            1. Descarga `ORIVEXY-NIGHTS-Setup-*.exe` y ábrelo.
             2. SmartScreen (app sin firmar): *Más información* → *Ejecutar de todas formas*.
             3. Regístrate: la primera cuenta creada es la de administrador.
             4. Con Internet, los locales reales se descargan de OpenStreetMap al arrancar; no hay datos inventados.
 
-            **Móvil:** con el PC y el móvil en la misma Wi‑Fi, menú *NIVEX → Abrir en el móvil…* (Ctrl+M),
+            **Móvil:** con el PC y el móvil en la misma Wi‑Fi, menú *ORIVEXY NIGHTS → Abrir en el móvil…* (Ctrl+M),
             escanea el QR y añádela a la pantalla de inicio. Acepta el aviso del Firewall (redes privadas).

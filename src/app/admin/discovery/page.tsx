@@ -13,7 +13,7 @@ export const metadata = { title: "Event Discovery" };
 const TYPE_OPTIONS = [
   { value: "ICS_FEED", label: "Calendario iCal (.ics)" },
   { value: "JSON_LD_PAGE", label: "Web oficial (schema.org)" },
-  { value: "PARTNER_FEED", label: "Feed de partner NIVEX (JSON)" },
+  { value: "PARTNER_FEED", label: "Feed de partner ORIVEXY NIGHTS (JSON)" },
   { value: "TICKETMASTER", label: "Ticketmaster Discovery API" },
   { value: "OSM_OVERPASS", label: "OpenStreetMap · Overpass (locales y horarios)" },
   { value: "GOOGLE_PLACES", label: "Google Places (solo vincula IDs)" },
@@ -30,7 +30,7 @@ export default async function DiscoveryPage() {
         <div>
           <h1 className="font-display text-2xl font-bold">Event Discovery</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            Fuentes → normalización → deduplicación → validación → NIVEX. Solo APIs, feeds y datos publicados por las propias webs (respetando robots.txt). Intervalo por defecto: {o.defaultInterval}.
+            Fuentes → normalización → deduplicación → validación → ORIVEXY NIGHTS. Solo APIs, feeds y datos publicados por las propias webs (respetando robots.txt). Intervalo por defecto: {o.defaultInterval}.
             {!o.engineEnabled && <span className="text-warn"> El motor está desactivado (DISCOVERY_ENABLED=false).</span>}
           </p>
         </div>

@@ -1,4 +1,4 @@
-# NIVEX
+# ORIVEXY NIGHTS
 
 Plataforma social para descubrir qué pasa cada noche: fiestas, FM (fiestas mayores), discotecas, sesiones de DJ y planes, con un feed vertical de fotos y vídeos de la comunidad.
 
@@ -41,7 +41,7 @@ npm run db:seed               # datos base (idempotente): ciudades, categorías,
 npm run dev                   # http://localhost:3000
 ```
 
-NIVEX no trae contenido de ejemplo: **no hay usuarios, locales ni eventos
+ORIVEXY NIGHTS no trae contenido de ejemplo: **no hay usuarios, locales ni eventos
 inventados**. El seed solo crea la configuración base y, si defines
 `ADMIN_EMAIL` + `ADMIN_PASSWORD`, la cuenta de administrador.
 

@@ -18,7 +18,7 @@ export interface CreateOrderInput {
 }
 
 /**
- * Creates an order for NIVEX-sold tickets. Prices, fees, currency and owner
+ * Creates an order for platform-sold tickets. Prices, fees, currency and owner
  * are all derived on the server from the database — the client only sends
  * ticket type ids and quantities. Disabled while TICKETS_ENABLED is false.
  */
@@ -39,7 +39,7 @@ export async function createOrder(user: SessionUser & { email: string }, input: 
     select: { id: true, title: true, status: true, ticketProvider: true, salesStatus: true, salesStartAt: true, salesEndAt: true, businessId: true },
   });
   if (!event || event.status !== "PUBLISHED") throw notFound("Evento no encontrado");
-  if (event.ticketProvider !== "NIVEX" || event.salesStatus !== "ON_SALE") throw badRequest("Este evento no vende entradas en NIVEX");
+  if (event.ticketProvider !== "PLATFORM" || event.salesStatus !== "ON_SALE") throw badRequest("Este evento no vende entradas en ORIVEXY NIGHTS");
   if ((event.salesStartAt && event.salesStartAt > now) || (event.salesEndAt && event.salesEndAt < now)) throw badRequest("La venta no está abierta");
 
   const ids = [...new Set(input.items.map((i) => i.ticketTypeId))];

@@ -52,7 +52,7 @@ export default async function VenuePage({ params }: Props) {
     listPosts({ venueId: venue.id, viewerId: user?.id, limit: 9 }),
   ]);
   const status = openingStatus(venue.openingHours, venue.timezone);
-  const TRUST_LABEL: Record<string, string> = { COMMUNITY: "Comunidad", IMPORTED: "Importado", OFFICIAL: "Oficial", VERIFIED: "Verificado por NIVEX" };
+  const TRUST_LABEL: Record<string, string> = { COMMUNITY: "Comunidad", IMPORTED: "Importado", OFFICIAL: "Oficial", VERIFIED: "Verificado por ORIVEXY NIGHTS" };
   const official = events.items.filter((e) => e.venue?.id === venue.id);
 
   return (

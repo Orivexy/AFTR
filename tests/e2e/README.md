@@ -5,7 +5,7 @@ npm run build          # los tests usan el build de producción
 npm run test:e2e       # arranca scripts/e2e-server.sh en :3100 y ejecuta Playwright
 ```
 
-- `scripts/e2e-server.sh` **recrea** una base de datos aislada (`nivex_e2e` por
+- `scripts/e2e-server.sh` **recrea** una base de datos aislada (`orivexy_e2e` por
   defecto, `E2E_DATABASE_URL` para cambiarla; su nombre debe contener `e2e` o
   `test`), aplica las migraciones, ejecuta el seed base con un admin de prueba
   y carga `fixtures.mts` (un local y dos eventos). Nunca toca la base de datos

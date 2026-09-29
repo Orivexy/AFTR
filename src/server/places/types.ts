@@ -1,19 +1,19 @@
 import type { OpeningHours } from "@/lib/types";
 
 /**
- * PlaceProvider: the only thing NIVEX knows about a places API. Adding or
+ * PlaceProvider: the only thing ORIVEXY NIGHTS knows about a places API. Adding or
  * replacing a provider (Google, OSM, Foursquare, a partner…) means writing
  * one of these; the sync, deduplication and the app stay the same.
  */
 
-/** Nightlife categories NIVEX searches for (provider-neutral). */
+/** Nightlife categories ORIVEXY NIGHTS searches for (provider-neutral). */
 export const NIGHTLIFE_CATEGORIES = ["nightclub", "dance_club", "music_venue", "live_music_venue", "event_venue"] as const;
 export type NightlifeCategory = (typeof NIGHTLIFE_CATEGORIES)[number];
 
 /**
  * What the provider's terms allow us to do with its data. The sync enforces
  * it: content from a provider with `storeContent: false` is used only to
- * match places and is never written to NIVEX's tables.
+ * match places and is never written to ORIVEXY NIGHTS's tables.
  */
 export interface PlacePolicy {
   /** May name, address, hours, phone… be kept in our database? */

@@ -93,6 +93,6 @@ export async function systemStatus(): Promise<ServiceStatus[]> {
     fix: env.CRON_SECRET && env.CRON_SECRET !== "change-me" ? undefined : "CRON_SECRET (valor aleatorio largo)",
   });
 
-  out.push({ name: "Monetización", state: monetizationFlags.master ? "ok" : "off", detail: monetizationFlags.master ? "Activada (ver Monetización)" : "Desactivada: NIVEX es gratis.", fix: monetizationFlags.master ? undefined : "MONETIZATION_ENABLED + flags (docs/monetization.md)" });
+  out.push({ name: "Monetización", state: monetizationFlags.master ? "ok" : "off", detail: monetizationFlags.master ? "Activada (ver Monetización)" : "Desactivada: ORIVEXY NIGHTS es gratis.", fix: monetizationFlags.master ? undefined : "MONETIZATION_ENABLED + flags (docs/monetization.md)" });
   return out;
 }

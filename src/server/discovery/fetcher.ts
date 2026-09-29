@@ -13,8 +13,9 @@ import { parseRobots, robotsPathAllowed } from "./parsers/robots";
  * - throttles per host, times out and caps response size.
  * It never solves CAPTCHAs, logs in, or retries around blocks.
  */
-export const USER_AGENT = `${site.name}Bot/1.0 (+${env.APP_URL}/about/bot)`;
-const BOT_TOKEN = `${site.name.toLowerCase()}bot`;
+const BOT_NAME = site.name.replace(/[^a-z0-9]/gi, "");
+export const USER_AGENT = `${BOT_NAME}Bot/1.0 (+${env.APP_URL}/about/bot)`;
+const BOT_TOKEN = `${BOT_NAME.toLowerCase()}bot`;
 const MIN_INTERVAL_MS = 1500;
 const lastRequest = new Map<string, number>();
 

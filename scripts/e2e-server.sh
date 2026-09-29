@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Starts NIVEX for the end-to-end tests against an ISOLATED database that is
+# Starts ORIVEXY NIGHTS for the end-to-end tests against an ISOLATED database that is
 # recreated on every run (never the development or production database):
 # schema migrations → base seed (+ test admin) → test fixtures → `next start`.
 # Requires a previous `npm run build`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-E2E_DATABASE_URL="${E2E_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/nivex_e2e}"
+E2E_DATABASE_URL="${E2E_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/orivexy_e2e}"
 DB_NAME="${E2E_DATABASE_URL##*/}"; DB_NAME="${DB_NAME%%\?*}"
 case "$DB_NAME" in *e2e*|*test*) ;; *) echo "Refusing to reset '$DB_NAME': the e2e database name must contain 'e2e' or 'test'." >&2; exit 1 ;; esac
 ADMIN_URL="${E2E_DATABASE_URL%/*}/postgres"

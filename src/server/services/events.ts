@@ -272,7 +272,7 @@ async function resolveEventInput(user: SessionUser, input: EventInput, existingE
   const cover = input.coverPhotoId ? photos.find((p) => p.id === input.coverPhotoId) : photos[0];
 
   // Native ticket sales are not available yet; informative prices are.
-  if (input.ticketing === "NIVEX") assertFeature("tickets");
+  if (input.ticketing === "PLATFORM") assertFeature("tickets");
 
   return {
     city,
