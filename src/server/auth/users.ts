@@ -1,5 +1,8 @@
 import "server-only";
 import { db } from "../db";
+import { env } from "../env";
+import { getSettings } from "../settings";
+import { ApiError } from "../errors";
 import { buildSearchText, slugify } from "@/lib/text";
 import { site } from "@/config/site";
 
@@ -30,10 +33,14 @@ interface NewUser {
 }
 
 export async function createUserWithProfile(input: NewUser) {
+  if (!(await getSettings()).registrationsOpen) throw new ApiError(403, "El registro de nuevas cuentas está cerrado temporalmente.", "REGISTRATIONS_CLOSED");
   const cityId = await defaultCityId();
+  // Local single-user installs (desktop app): the first account administers it.
+  const firstAdmin = env.FIRST_USER_IS_ADMIN && (await db.user.count({ where: { role: "ADMIN" } })) === 0;
   return db.user.create({
     data: {
       email: input.email,
+      ...(firstAdmin ? { role: "ADMIN" as const } : {}),
       passwordHash: input.passwordHash,
       emailVerified: input.emailVerified,
       profile: {

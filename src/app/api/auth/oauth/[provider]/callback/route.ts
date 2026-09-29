@@ -5,6 +5,7 @@ import { env } from "@/server/env";
 import { getOAuthProvider } from "@/server/auth/oauth/providers";
 import { createSession } from "@/server/auth/session";
 import { availableUsername, createUserWithProfile } from "@/server/auth/users";
+import { getSettings } from "@/server/settings";
 
 /**
  * OAuth callback: validates state (CSRF) + PKCE, then links the identity to
@@ -53,6 +54,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
       await db.account.create({ data: { userId: existing.id, provider: provider.id, providerAccountId: profile.providerAccountId } });
       userId = existing.id;
     } else {
+      if (!(await getSettings()).registrationsOpen) return fail("registrations_closed");
       const user = await createUserWithProfile({
         email: profile.email,
         emailVerified: profile.emailVerified ? new Date() : undefined,

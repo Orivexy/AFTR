@@ -111,7 +111,7 @@ export function route<P = Record<string, never>>(options: RouteOptions, handler:
       }
 
       const params = (await context?.params) ?? ({} as P);
-      const auditBody = options.audit && mutating ? await req.clone().json().catch(() => null) : null;
+      const auditBody = options.audit && mutating ? redact(await req.clone().json().catch(() => null)) : null;
       const result = await handler({ req, params, user, ip });
       if (options.audit) {
         await audit({
@@ -119,7 +119,7 @@ export function route<P = Record<string, never>>(options: RouteOptions, handler:
           action: options.audit.action,
           targetType: options.audit.targetType,
           targetId: (params as { id?: string }).id,
-          metadata: auditBody,
+          metadata: auditBody ?? undefined,
           ip,
         });
       }
@@ -129,6 +129,18 @@ export function route<P = Record<string, never>>(options: RouteOptions, handler:
       return errorResponse(err);
     }
   };
+}
+
+const SECRET_KEY = /pass(word)?|token|secret|api_?key|authorization|card|cvc|iban/i;
+
+/** Audit metadata never stores credentials or payment data. */
+export function redact(value: unknown, depth = 0): Prisma.InputJsonValue | null {
+  if (value === null || value === undefined || depth > 5) return null;
+  if (Array.isArray(value)) return value.slice(0, 50).map((v) => redact(v, depth + 1)) as Prisma.InputJsonValue;
+  if (typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, SECRET_KEY.test(k) ? "[redacted]" : redact(v, depth + 1)])) as Prisma.InputJsonValue;
+  }
+  return typeof value === "string" ? value.slice(0, 500) : (value as Prisma.InputJsonValue);
 }
 
 export async function parseJson<T>(req: Request, schema: ZodType<T>): Promise<T> {

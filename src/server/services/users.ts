@@ -23,7 +23,6 @@ export async function getProfile(username: string, viewerId?: string): Promise<P
       followerCount: true,
       followingCount: true,
       postCount: true,
-      isDemo: true,
       createdAt: true,
       city: { select: { slug: true, name: true } },
       user: { select: { status: true } },
@@ -48,7 +47,6 @@ export async function getProfile(username: string, viewerId?: string): Promise<P
     postCount: p.postCount,
     eventCount,
     city: p.city,
-    isDemo: p.isDemo,
     joinedAt: p.createdAt,
     viewer: { isSelf: viewerId === p.userId, following: Boolean(following), followsYou: Boolean(followsYou) },
   };

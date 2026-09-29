@@ -21,6 +21,9 @@ const schema = z.object({
   MAPBOX_TOKEN: z.string().optional().default(""),
   MAPTILER_KEY: z.string().optional().default(""),
   CRON_SECRET: z.string().optional().default(""),
+  // Transactional email (password reset). SMTP URL: smtps://user:pass@smtp.example.com:465
+  SMTP_URL: z.string().optional().default(""),
+  EMAIL_FROM: z.string().optional().default(""),
   // Event discovery (see docs/event-discovery.md)
   DISCOVERY_ENABLED: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   EVENT_SYNC_INTERVAL: z.string().default("30m"),
@@ -37,6 +40,8 @@ const schema = z.object({
   TICKETMASTER_DAILY_LIMIT: z.coerce.number().int().min(0).default(1000),
   // Optional: your contracted price per 1000 Google Places requests, to estimate cost in /admin.
   GOOGLE_PLACES_COST_PER_1000: z.preprocess((v) => (v === "" ? undefined : v), z.coerce.number().min(0).optional()),
+  // Desktop app only: the first registered account becomes ADMIN. Never enable on a public site.
+  FIRST_USER_IS_ADMIN: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   ENABLE_INPROCESS_JOBS: z
     .enum(["true", "false"])
     .default("true")
@@ -55,4 +60,5 @@ export const useSecureCookies = env.APP_URL.startsWith("https://");
 
 export const features = {
   googleAuth: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+  email: Boolean(env.SMTP_URL && env.EMAIL_FROM),
 };

@@ -3,6 +3,7 @@ import type { EventStatus, Prisma } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { db } from "../db";
 import { env } from "../env";
+import { getSettings } from "../settings";
 import { badRequest, forbidden, notFound } from "../http";
 import type { SessionUser } from "../auth/session";
 import { eventCardSelect, nextOffset, parseOffset, photoSelect, toEventCard, toUserMini, userMiniSelect } from "./mappers";
@@ -214,10 +215,11 @@ async function uniqueEventSlug(title: string): Promise<string> {
   return `${base}-${randomBytes(3).toString("hex")}`;
 }
 
-export function needsModeration(user: Pick<SessionUser, "role">, accountCreatedAt: Date): boolean {
+export async function needsModeration(user: Pick<SessionUser, "role">, accountCreatedAt: Date): Promise<boolean> {
   if (isStaff(user.role)) return false;
-  if (env.EVENT_MODERATION === "all") return true;
-  if (env.EVENT_MODERATION === "new_users") return Date.now() - accountCreatedAt.getTime() < 7 * 24 * 3600_000;
+  const { eventModeration } = await getSettings();
+  if (eventModeration === "all") return true;
+  if (eventModeration === "new_users") return Date.now() - accountCreatedAt.getTime() < 7 * 24 * 3600_000;
   return false;
 }
 
@@ -291,9 +293,11 @@ async function resolveEventInput(user: SessionUser, input: EventInput, existingE
 export async function createEvent(user: SessionUser, input: EventInput) {
   const r = await resolveEventInput(user, input);
   const account = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { createdAt: true } });
-  const status: EventStatus = needsModeration(user, account.createdAt) ? "PENDING" : "PUBLISHED";
   // Owner and business are always derived from the session, never from the request.
   const businessId = await businessForOrganizer(user.id, r.venue?.id ?? null);
+  // Verified organizers/venues publish official events without the review queue.
+  const official = r.isVenueManager || Boolean(businessId);
+  const status: EventStatus = !official && (await needsModeration(user, account.createdAt)) ? "PENDING" : "PUBLISHED";
 
   const event = await db.$transaction(async (tx) => {
     const created = await tx.event.create({
@@ -321,7 +325,7 @@ export async function createEvent(user: SessionUser, input: EventInput) {
         coverKey: r.coverKey,
         status,
         source: r.isVenueManager ? "VENUE" : "USER",
-        trust: r.isVenueManager ? "OFFICIAL" : "COMMUNITY",
+        trust: official ? "OFFICIAL" : "COMMUNITY",
         businessId,
         searchText: buildSearchText(input.title, input.locationName, r.venue?.name, r.venue?.neighborhood, input.address, r.city.name),
         genres: { create: r.genreIds.map((genreId) => ({ genreId })) },

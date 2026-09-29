@@ -1,4 +1,5 @@
 import "server-only";
+import { getSettings } from "../settings";
 import type { DiscoverySource, Prisma } from "@prisma/client";
 import { db } from "../db";
 import { env } from "../env";
@@ -323,7 +324,7 @@ export interface DueRunResult {
 export async function runDueSources(kind: "events" | "venues", opts: { force?: boolean; mode?: SyncMode; job?: string; now?: Date } = {}): Promise<DueRunResult> {
   const result: DueRunResult = { ran: 0, ok: 0, failed: 0, errors: [] };
   const key = `${kind}:${opts.mode ?? "full"}`;
-  if (!env.DISCOVERY_ENABLED || running.has(key)) return result;
+  if (!(await getSettings()).discoveryEnabled || running.has(key)) return result;
   running.add(key);
   try {
     const now = opts.now ?? new Date();

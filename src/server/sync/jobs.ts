@@ -1,4 +1,5 @@
 import "server-only";
+import { getSettings } from "../settings";
 import type { Prisma } from "@prisma/client";
 import { db } from "../db";
 import { env } from "../env";
@@ -50,7 +51,7 @@ export type JobOutcome = { skipped: string } | { ok: boolean; result: DueRunResu
 
 /** Runs a job if it is due (or `force`), with lease, logging and backoff. */
 export async function runSyncJob(name: SyncJobName, { force = false } = {}): Promise<JobOutcome> {
-  if (!env.DISCOVERY_ENABLED) return { skipped: "DISCOVERY_ENABLED=false" };
+  if (!(await getSettings()).discoveryEnabled) return { skipped: "sincronización desactivada en los ajustes" };
   const job = await ensureJob(name);
   const now = new Date();
   if (!job.enabled && !force) return { skipped: "desactivado" };

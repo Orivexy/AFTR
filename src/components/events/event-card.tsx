@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MapPin, Music2, Users } from "lucide-react";
 import { CardActions } from "./card-actions";
 import { Cover } from "@/components/ui/cover";
-import { Badge, DemoBadge, LiveDot, SponsorBadge } from "@/components/ui/misc";
+import { Badge, LiveDot, SponsorBadge } from "@/components/ui/misc";
 import { Distance } from "@/components/ui/distance";
 import { formatPrice } from "@/lib/money";
 import { formatRelativeDay, formatTime, isHappeningNow } from "@/lib/time";
@@ -79,7 +79,6 @@ export function EventCard({ event, className, priority, size = "md" }: { event: 
                 {event.goingCount} van · {event.interestedCount} interesados
               </span>
             )}
-            {event.isDemo && <DemoBadge />}
           </span>
           <CardActions eventId={event.id} slug={event.slug} title={event.title} className="pointer-events-auto z-[3] shrink-0" />
         </div>

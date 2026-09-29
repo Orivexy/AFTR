@@ -4,8 +4,8 @@
 #   scripts/build-desktop.sh            # full build → dist-desktop/NIVEX-Setup-x.y.z.exe
 #   scripts/build-desktop.sh --resources-only [--keep-host-natives]
 #
-# Requires: Node 20+, a local PostgreSQL (for generating the demo data) with
-# pg_dump 16, python3 + pip (Visual C++ runtime), wine (NSIS on Linux) and
+# Requires: Node 20+, a local PostgreSQL (to build the base configuration),
+# python3 + pip (Visual C++ runtime), wine (NSIS on Linux) and
 # network access to the npm registry, PyPI and GitHub releases.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,18 +28,13 @@ BUILD_DB_URL="${BUILD_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/
 BUILD_DB_NAME="${BUILD_DB_URL##*/}"; BUILD_DB_NAME="${BUILD_DB_NAME%%\?*}"
 ADMIN_DB_URL="${BUILD_DB_URL%/*}/postgres"
 
-DEMO="$WORK/demo"
-if [ "${REUSE_DEMO:-0}" = 1 ] && [ -f "$DEMO/demo.sql" ]; then
-  echo "▸ 1/5 Demo data (reusing $DEMO)"
-else
-  echo "▸ 1/5 Demo data (fresh seed in $BUILD_DB_NAME)"
-  rm -rf "$DEMO" && mkdir -p "$DEMO/storage"
-  psql "$ADMIN_DB_URL" -qc "DROP DATABASE IF EXISTS \"$BUILD_DB_NAME\"" -c "CREATE DATABASE \"$BUILD_DB_NAME\""
-  DATABASE_URL="$BUILD_DB_URL" npx prisma migrate deploy >/dev/null
-  DATABASE_URL="$BUILD_DB_URL" STORAGE_LOCAL_DIR="$DEMO/storage" npx prisma db seed
-  pg_dump "$BUILD_DB_URL" --no-owner --no-privileges --no-comments --inserts --rows-per-insert=250 --file "$DEMO/demo.sql"
-  node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({ dumpedAt: new Date().toISOString() }))" "$DEMO/demo-meta.json"
-fi
+BASE="$WORK/base"
+echo "▸ 1/5 Base data (fresh database $BUILD_DB_NAME: migrations + seed, no content)"
+rm -rf "$BASE" && mkdir -p "$BASE"
+psql "$ADMIN_DB_URL" -qc "DROP DATABASE IF EXISTS \"$BUILD_DB_NAME\"" -c "CREATE DATABASE \"$BUILD_DB_NAME\""
+DATABASE_URL="$BUILD_DB_URL" npx prisma migrate deploy >/dev/null
+DATABASE_URL="$BUILD_DB_URL" ADMIN_EMAIL="" ADMIN_PASSWORD="" npx prisma db seed >/dev/null
+DATABASE_URL="$BUILD_DB_URL" npx tsx scripts/export-base-data.mts > "$BASE/base-data.sql"
 
 echo "▸ 2/5 Next.js standalone server"
 rm -rf .next
@@ -52,8 +47,9 @@ mkdir -p "$RES/server/.next" && cp -r .next/static "$RES/server/.next/static"
 cp -r public "$RES/server/public"
 rm -f "$RES/server/.env" # never ship local secrets
 rm -rf "$RES/server/src" "$RES/server/prisma" "$RES/server/tests" "$RES/server/desktop" # traced by accident, not needed at runtime
-cp -r "$DEMO/storage" "$RES/storage"
-cp "$DEMO/demo.sql" "$DEMO/demo-meta.json" "$RES/"
+# Schema (applied by the app on start, like `prisma migrate deploy`) and base configuration.
+mkdir -p "$RES/migrations" && cp -r prisma/migrations/2* "$RES/migrations/"
+cp "$BASE/base-data.sql" "$RES/"
 
 echo "▸ 4/5 Windows native binaries"
 PACKS="$WORK/packs" && rm -rf "$PACKS" && mkdir -p "$PACKS"

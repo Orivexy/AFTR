@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MapPin, Star } from "lucide-react";
 import { Cover } from "@/components/ui/cover";
-import { DemoBadge, SponsorBadge } from "@/components/ui/misc";
+import { SponsorBadge } from "@/components/ui/misc";
 import { Distance } from "@/components/ui/distance";
 import { formatPrice } from "@/lib/money";
 import { formatNumber } from "@/lib/text";
@@ -24,7 +24,6 @@ export function VenueCard({ venue, className }: { venue: VenueCardData; classNam
     <Link href={`/venues/${venue.slug}`} className={cn("group pressable block", className)}>
       <div className="relative">
         <Cover imageKey={venue.coverKey} alt={venue.name} sizes="(min-width: 768px) 300px, 70vw" className="aspect-[4/3] rounded-[var(--radius-card)] border border-line" />
-        {venue.isDemo && <DemoBadge className="absolute top-3 right-3" />}
         <SponsorBadge type={venue.promotionType} className="absolute top-3 left-3" />
       </div>
       <div className="space-y-0.5 px-1 pt-3">

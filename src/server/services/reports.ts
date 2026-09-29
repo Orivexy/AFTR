@@ -1,4 +1,5 @@
 import "server-only";
+import { getSettings } from "../settings";
 import type { Prisma, ReportTargetType } from "@prisma/client";
 import { db } from "../db";
 import { env } from "../env";
@@ -64,7 +65,7 @@ export async function createReport(reporterId: string, input: ReportInput) {
 
   // Enough distinct reporters → hide the content until a moderator reviews it.
   const openReports = await db.report.count({ where: { targetKey, status: "OPEN" } });
-  if (openReports >= env.AUTO_HIDE_REPORT_THRESHOLD) await setContentVisibility(input.targetType, input.targetId, "HIDDEN");
+  if (openReports >= (await getSettings()).autoHideReportThreshold) await setContentVisibility(input.targetType, input.targetId, "HIDDEN");
   return { alreadyReported: false };
 }
 

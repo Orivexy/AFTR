@@ -42,14 +42,6 @@ export function Badge({ children, tone = "neutral", className }: { children: Rea
   );
 }
 
-export function DemoBadge({ className }: { className?: string }) {
-  return (
-    <Badge tone="glass" className={cn("!text-[10px] !text-muted", className)}>
-      Demo
-    </Badge>
-  );
-}
-
 /** Mandatory, always-visible label for paid placements. Renders nothing for organic content. */
 export function SponsorBadge({ type, className }: { type: "NONE" | "FEATURED" | "SPONSORED" | "AD"; className?: string }) {
   if (type === "NONE") return null;

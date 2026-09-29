@@ -104,12 +104,13 @@ model User {
   reportsHandled Report[]          @relation("ReportResolver")
   postTags       PostTag[]
 
-  businesses       BusinessProfile[]
-  orders           Order[]
-  tickets          Ticket[]
-  refundsRequested Refund[]
-  auditLogs        AuditLog[]
-  reviewedImports  SourceEventRecord[]
+  businesses          BusinessProfile[]
+  orders              Order[]
+  tickets             Ticket[]
+  refundsRequested    Refund[]
+  auditLogs           AuditLog[]
+  reviewedImports     SourceEventRecord[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Profile {
@@ -122,7 +123,6 @@ model Profile {
   avatarKey      String?
   cityId         String?
   city           City?    @relation(fields: [cityId], references: [id])
-  isDemo         Boolean  @default(false)
   followerCount  Int      @default(0)
   followingCount Int      @default(0)
   postCount      Int      @default(0)
@@ -257,7 +257,6 @@ model Venue {
   ratingCount     Int              @default(0)
   followerCount   Int              @default(0)
   isFeatured      Boolean          @default(false)
-  isDemo          Boolean          @default(false)
   isActive        Boolean          @default(true)
   searchText      String           @default("")
   createdAt       DateTime         @default(now())
@@ -273,6 +272,7 @@ model Venue {
   reports   Report[]
 
   business         BusinessProfile?
+  businessRequests BusinessProfile[]   @relation("BusinessRequestedVenue")
   promotions       Promotion[]
   sourceRecords    SourceVenueRecord[]
   discoverySources DiscoverySource[]
@@ -415,7 +415,6 @@ model Event {
   /// Editorial pick by staff (free). Paid placement lives in `promotionType`.
   isFeatured      Boolean          @default(false)
   promotionType   SponsorType      @default(NONE)
-  isDemo          Boolean          @default(false)
   interestedCount Int              @default(0)
   goingCount      Int              @default(0)
   searchText      String           @default("")
@@ -580,7 +579,6 @@ model Post {
   commentCount  Int           @default(0)
   saveCount     Int           @default(0)
   status        ContentStatus @default(VISIBLE)
-  isDemo        Boolean       @default(false)
   promotionType SponsorType   @default(NONE)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -681,6 +679,8 @@ enum NotificationType {
   EVENT_APPROVED
   EVENT_REJECTED
   CONTENT_REMOVED
+  BUSINESS_APPROVED
+  BUSINESS_REJECTED
 }
 
 model Notification {
@@ -814,6 +814,13 @@ model BusinessProfile {
   verifiedAt       DateTime?
   commercialStatus CommercialStatus     @default(INACTIVE)
   plan             PlanCode             @default(PLAN_FREE)
+  /// Self-service request: venue the applicant says they manage (linked on approval).
+  requestedVenueId String?
+  requestedVenue   Venue?               @relation("BusinessRequestedVenue", fields: [requestedVenueId], references: [id], onDelete: SetNull)
+  requestMessage   String?
+  reviewNote       String?
+  reviewedAt       DateTime?
+  reviewedById     String?
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 
@@ -1444,4 +1451,25 @@ model ApiUsage {
   errors   Int      @default(0)
 
   @@id([provider, day])
+}
+
+/// One-time password reset link (only the SHA-256 of the token is stored).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Runtime settings editable by admins (/admin/settings). Env vars are the defaults.
+model AppSetting {
+  key         String   @id
+  value       Json
+  updatedAt   DateTime @updatedAt
+  updatedById String?
 }

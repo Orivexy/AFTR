@@ -9,7 +9,7 @@ import { listPosts } from "@/server/services/posts";
 import { getMapConfig } from "@/server/services/map";
 import { Cover } from "@/components/ui/cover";
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
-import { Badge, DemoBadge, LiveDot, SectionHeader } from "@/components/ui/misc";
+import { Badge, LiveDot, SectionHeader } from "@/components/ui/misc";
 import { buttonClass } from "@/components/ui/button";
 import { Rail } from "@/components/ui/rail";
 import { EventActions } from "@/components/events/event-actions";
@@ -91,7 +91,6 @@ export default async function EventPage({ params }: Props) {
                 <ShieldCheck className="size-3" /> Oficial
               </Badge>
             )}
-            {event.isDemo && <DemoBadge />}
           </div>
           <h1 className="font-display text-[34px] leading-[1.02] font-bold tracking-tight text-balance uppercase md:text-6xl">{event.title}</h1>
           <p className="mt-2 flex items-center gap-1.5 text-[15px] text-muted">

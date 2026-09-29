@@ -24,7 +24,6 @@ export default async function AdminVenuesPage({ searchParams }: { searchParams: 
               <p className="text-[12px] font-bold">
                 {v.isActive ? <span className="text-volt">ACTIVO</span> : <span className="text-danger">INACTIVO</span>}
                 {v.isFeatured && <span className="ml-2 text-volt">★ Destacado</span>}
-                {v.isDemo && <span className="ml-2 text-faint">DEMO</span>}
               </p>
             </div>
             <VenueEditor venue={v} />

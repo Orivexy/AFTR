@@ -39,7 +39,7 @@ export default async function NewEventPage({ searchParams }: { searchParams: Pro
         cityName={city.name}
         venues={venues}
         mapConfig={getMapConfig()}
-        moderationNotice={needsModeration(user, account.createdAt)}
+        moderationNotice={await needsModeration(user, account.createdAt)}
         initial={{
           title: "",
           description: "",

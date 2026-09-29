@@ -52,7 +52,6 @@ export interface EventCardData {
   interestedCount: number;
   goingCount: number;
   isFeatured: boolean;
-  isDemo: boolean;
   promotionType: SponsorType;
   trust: "COMMUNITY" | "IMPORTED" | "OFFICIAL" | "VERIFIED";
   status: "PENDING" | "PUBLISHED" | "REJECTED" | "CANCELLED" | "INACTIVE";
@@ -114,7 +113,6 @@ export interface VenueCardData {
   priceMax: number | null;
   currency: string;
   genres: GenreMini[];
-  isDemo: boolean;
   promotionType: SponsorType;
 }
 
@@ -168,7 +166,6 @@ export interface FeedPost {
   commentCount: number;
   saveCount: number;
   locationName: string | null;
-  isDemo: boolean;
   promotionType: SponsorType;
   author: UserMini;
   photos: PhotoData[];
@@ -194,7 +191,6 @@ export interface ProfileData extends UserMini {
   postCount: number;
   eventCount: number;
   city: { slug: string; name: string } | null;
-  isDemo: boolean;
   joinedAt: Date;
   viewer: { isSelf: boolean; following: boolean; followsYou: boolean };
 }

@@ -13,6 +13,7 @@ const ERRORS: Record<string, string> = {
   oauth_exchange: "No se pudo completar el acceso con Google.",
   oauth_email_unverified: "Tu email de Google no está verificado.",
   suspended: "Tu cuenta está suspendida.",
+  registrations_closed: "El registro de nuevas cuentas está cerrado temporalmente.",
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {

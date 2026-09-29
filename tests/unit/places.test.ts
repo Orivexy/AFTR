@@ -69,7 +69,7 @@ describe("Overpass queries", () => {
 });
 
 describe("sync rules", () => {
-  const venue = { id: "v1", primarySourceId: "s1", trust: "IMPORTED" as const, isDemo: false };
+  const venue = { id: "v1", primarySourceId: "s1", trust: "IMPORTED" as const };
 
   it("only the primary source or the venue's official source overwrites", () => {
     expect(mayOverwrite({ sourceId: "s1", sourceTrust: "IMPORTED", sourceVenueId: null, venue })).toBe(true);
@@ -77,9 +77,8 @@ describe("sync rules", () => {
     expect(mayOverwrite({ sourceId: "s2", sourceTrust: "OFFICIAL", sourceVenueId: "v1", venue })).toBe(true);
   });
 
-  it("never overwrites community or demo venues", () => {
+  it("never overwrites community venues", () => {
     expect(mayOverwrite({ sourceId: "s1", sourceTrust: "IMPORTED", sourceVenueId: null, venue: { ...venue, trust: "COMMUNITY" } })).toBe(false);
-    expect(mayOverwrite({ sourceId: "s1", sourceTrust: "OFFICIAL", sourceVenueId: "v1", venue: { ...venue, isDemo: true } })).toBe(false);
   });
 
   it("does not close places after an empty or truncated run", () => {

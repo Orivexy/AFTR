@@ -34,7 +34,7 @@ export async function adminUsers(q?: string, cursor?: string, limit = 30) {
     orderBy: { createdAt: "desc" },
     select: {
       id: true, email: true, role: true, status: true, createdAt: true,
-      profile: { select: { username: true, displayName: true, avatarKey: true, followerCount: true, postCount: true, isDemo: true } },
+      profile: { select: { username: true, displayName: true, avatarKey: true, followerCount: true, postCount: true } },
       _count: { select: { events: true, reportsAgainst: true } },
     },
     skip: offset,
@@ -74,7 +74,7 @@ export async function adminVenues(q?: string, cursor?: string, limit = 30) {
     select: {
       id: true, slug: true, name: true, address: true, neighborhood: true, lat: true, lng: true, description: true,
       priceMin: true, priceMax: true, minAge: true, website: true, instagram: true, isFeatured: true, isActive: true,
-      isDemo: true, ratingAvg: true, ratingCount: true, followerCount: true, coverKey: true,
+      ratingAvg: true, ratingCount: true, followerCount: true, coverKey: true,
       city: { select: { name: true } },
     },
     skip: offset,
@@ -90,7 +90,7 @@ export async function adminPosts(opts: { status?: "VISIBLE" | "HIDDEN" | "REMOVE
     where: opts.status ? { status: opts.status } : {},
     orderBy: { createdAt: "desc" },
     select: {
-      id: true, type: true, caption: true, status: true, createdAt: true, likeCount: true, commentCount: true, isDemo: true,
+      id: true, type: true, caption: true, status: true, createdAt: true, likeCount: true, commentCount: true,
       author: { select: userMiniSelect },
       photos: { select: { key: true }, orderBy: { position: "asc" }, take: 1 },
       video: { select: { posterKey: true } },

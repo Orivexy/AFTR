@@ -26,7 +26,7 @@ function GoogleButton({ next }: { next: string }) {
   );
 }
 
-function PasswordInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export function PasswordInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
@@ -84,6 +84,11 @@ export function LoginForm({ next, googleEnabled }: { next: string; googleEnabled
         <Button type="submit" size="lg" className="w-full" loading={loading}>
           Entrar
         </Button>
+        <p className="text-center text-sm">
+          <a href="/forgot-password" className="text-muted underline-offset-4 hover:text-fg hover:underline">
+            ¿Has olvidado tu contraseña?
+          </a>
+        </p>
       </form>
     </div>
   );
@@ -131,5 +136,104 @@ export function RegisterForm({ next, googleEnabled }: { next: string; googleEnab
         <p className="text-center text-xs text-faint">Al registrarte aceptas las normas de la comunidad. Solo mayores de edad en eventos +18.</p>
       </form>
     </div>
+  );
+}
+
+export function ForgotPasswordForm({ available }: { available: boolean }) {
+  const [state, setState] = useState<"idle" | "loading" | "sent">("idle");
+  const [error, setError] = useState<string | null>(null);
+  if (!available) {
+    return (
+      <p role="status" className="rounded-2xl bg-surface-2 px-4 py-3 text-sm text-muted">
+        Este servidor todavía no tiene configurado el envío de emails, así que no puede mandarte un enlace. Pide al administrador que restablezca tu acceso.
+      </p>
+    );
+  }
+  if (state === "sent") {
+    return (
+      <p role="status" className="rounded-2xl bg-volt/10 px-4 py-3 text-sm text-fg">
+        Si hay una cuenta con ese email, te hemos enviado un enlace para crear una contraseña nueva. Caduca en 1 hora; revisa también el correo no deseado.
+      </p>
+    );
+  }
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const email = new FormData(e.currentTarget).get("email");
+        setState("loading");
+        setError(null);
+        try {
+          await api.post("/api/auth/password/forgot", { email });
+          setState("sent");
+        } catch (err) {
+          setError((err as ApiClientError).message);
+          setState("idle");
+        }
+      }}
+    >
+      <Field label="Email" htmlFor="email">
+        <Input id="email" name="email" type="email" autoComplete="email" required placeholder="tu@email.com" />
+      </Field>
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+      <Button type="submit" size="lg" className="w-full" loading={state === "loading"}>
+        Enviar enlace
+      </Button>
+    </form>
+  );
+}
+
+export function ResetPasswordForm({ token }: { token: string }) {
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fields, setFields] = useState<Record<string, string>>({});
+  if (done) {
+    return (
+      <div className="space-y-4">
+        <p role="status" className="rounded-2xl bg-volt/10 px-4 py-3 text-sm">Contraseña cambiada. Hemos cerrado la sesión en todos tus dispositivos.</p>
+        <a href="/login" className="pressable flex h-12 w-full items-center justify-center rounded-full bg-volt font-semibold text-on-volt">
+          Entrar
+        </a>
+      </div>
+    );
+  }
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const f = new FormData(e.currentTarget);
+        if (f.get("password") !== f.get("confirm")) {
+          setFields({ confirm: "No coincide" });
+          return;
+        }
+        setLoading(true);
+        setError(null);
+        setFields({});
+        try {
+          await api.post("/api/auth/password/reset", { token, password: f.get("password") });
+          setDone(true);
+        } catch (err) {
+          const e2 = err as ApiClientError;
+          setError(e2.message);
+          setFields(e2.fields ?? {});
+        } finally {
+          setLoading(false);
+        }
+      }}
+    >
+      <Field label="Nueva contraseña" htmlFor="password" error={fields.password} hint="Mínimo 8 caracteres, con letras y números">
+        <PasswordInput id="password" name="password" autoComplete="new-password" required minLength={8} />
+      </Field>
+      <Field label="Repite la contraseña" htmlFor="confirm" error={fields.confirm}>
+        <PasswordInput id="confirm" name="confirm" autoComplete="new-password" required minLength={8} />
+      </Field>
+      {error && !Object.keys(fields).length && <p role="alert" className="text-sm text-danger">{error}</p>}
+      <Button type="submit" size="lg" className="w-full" loading={loading}>
+        Guardar contraseña
+      </Button>
+    </form>
   );
 }

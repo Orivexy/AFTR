@@ -79,7 +79,7 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron
 
 ### Reglas de actualización
 
-- **Quién puede sobrescribir.** La fuente principal de un local (la que lo creó), o la fuente oficial del propio local, puede cambiar cualquier campo. Las demás fuentes solo rellenan huecos. Los locales de la comunidad y los DEMO nunca se sobrescriben.
+- **Quién puede sobrescribir.** La fuente principal de un local (la que lo creó), o la fuente oficial del propio local, puede cambiar cualquier campo. Las demás fuentes solo rellenan huecos. Los locales de la comunidad nunca se sobrescriben.
 - **Historial.** Cada cambio queda en `VenueChange` (campo, antes, después, fuente, fecha) y en `Venue.fieldUpdatedAt` (fecha por campo). Además se guardan `lastSyncedAt`, `lastVerifiedAt`, `nextSyncAt`, `hoursUpdatedAt` y `hoursSource`.
 - **Cierres.** Un local importado se desactiva si la fuente lo marca como cerrado, o si desaparece en **dos** sincronizaciones completas seguidas. Nunca se desactiva nada si la respuesta viene vacía o con menos de la mitad de resultados que la vez anterior. Si vuelve a aparecer, se reactiva. Los locales oficiales o verificados solo reciben un aviso en *Map Data*.
 - **Confianza.** Lo importado es `IMPORTED`. Solo el staff marca algo como `VERIFIED`: una API nunca lo hace.

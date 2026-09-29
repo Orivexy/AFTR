@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Loader2, LogOut } from "lucide-react";
+import { Camera, Loader2 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
@@ -65,12 +65,6 @@ export function ProfileForm({ initial, cities, email }: Props) {
     }
   };
 
-  const logout = async () => {
-    await api.post("/api/auth/logout");
-    router.replace("/");
-    router.refresh();
-  };
-
   return (
     <form onSubmit={save} className="space-y-6">
       <div className="flex items-center gap-4">
@@ -107,9 +101,6 @@ export function ProfileForm({ initial, cities, email }: Props) {
       </Field>
       <Button type="submit" size="lg" className="w-full" loading={saving} disabled={uploading}>
         Guardar
-      </Button>
-      <Button type="button" variant="danger" className="w-full" onClick={logout}>
-        <LogOut className="size-4" /> Cerrar sesión
       </Button>
     </form>
   );

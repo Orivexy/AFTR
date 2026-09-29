@@ -5,7 +5,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { Flag, MapPin, Settings } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
-import { DemoBadge } from "@/components/ui/misc";
 import { buttonClass } from "@/components/ui/button";
 import { FollowButton } from "./follow-button";
 import { ShareButton } from "./share-button";
@@ -34,7 +33,7 @@ export function ProfileHeader({ profile }: { profile: ProfileData }) {
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-[26px] leading-tight font-bold uppercase">{profile.displayName}</h1>
           <p className="flex items-center gap-2 text-muted">
-            @{profile.username} {profile.isDemo && <DemoBadge />}
+            @{profile.username}
           </p>
           {profile.viewer.followsYou && !profile.viewer.isSelf && <p className="mt-1 text-[12px] font-semibold text-volt">Te sigue</p>}
         </div>

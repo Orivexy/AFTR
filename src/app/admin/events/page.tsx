@@ -41,7 +41,6 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
               <p className="text-[12px] font-bold">
                 <span className={e.status === "PUBLISHED" ? "text-volt" : e.status === "PENDING" ? "text-warn" : "text-danger"}>{e.status}</span>
                 {e.isFeatured && <span className="ml-2 text-volt">★ Destacado</span>}
-                {e.isDemo && <span className="ml-2 text-faint">DEMO</span>}
                 <span className="ml-2 text-muted">{e.trust}</span>
               </p>
             </div>

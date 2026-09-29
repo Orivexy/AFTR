@@ -44,6 +44,25 @@ export const registerSchema = z.object({
   website: z.string().max(0).optional(),
 });
 
+export const forgotPasswordSchema = z.object({ email: emailSchema });
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20).max(100),
+  password: passwordSchema,
+});
+
+export const changePasswordSchema = z.object({
+  /** Required when the account already has a password (OAuth-only accounts set one). */
+  currentPassword: z.string().max(128).optional(),
+  password: passwordSchema,
+});
+
+export const deleteAccountSchema = z.object({
+  /** Typed username, to avoid accidental deletions. */
+  confirm: z.string().max(40),
+  password: z.string().max(128).optional(),
+});
+
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1).max(128),
@@ -205,6 +224,17 @@ export const businessAdminUpdateSchema = z.object({
   verification: z.enum(["UNVERIFIED", "PENDING", "VERIFIED", "REJECTED"]).optional(),
   commercialStatus: z.enum(["INACTIVE", "ACTIVE", "SUSPENDED"]).optional(),
   plan: z.enum(["PLAN_FREE", "PLAN_PREMIUM", "PLAN_BUSINESS"]).optional(),
+  reviewNote: optionalText(300),
+});
+
+export const businessRequestSchema = z.object({
+  type: z.enum(["ORGANIZER", "VENUE"]),
+  tradeName: text(80).pipe(z.string().min(2, "Escribe el nombre")),
+  contactEmail: emailSchema.optional().or(z.literal("").transform(() => undefined)),
+  contactPhone: optionalText(30),
+  website: z.url({ protocol: /^https?$/ }).max(300).optional().or(z.literal("").transform(() => undefined)),
+  venueId: z.string().max(40).optional().or(z.literal("").transform(() => undefined)),
+  message: optionalText(500),
 });
 
 /** Owners may only edit contact data — never verification, status or plan. */

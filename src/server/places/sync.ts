@@ -34,7 +34,7 @@ type Source = Pick<DiscoverySource, "id" | "cityId" | "trust" | "venueId" | "aut
 
 const venueSelect = {
   id: true, name: true, address: true, neighborhood: true, lat: true, lng: true, phone: true, website: true, instagram: true,
-  openingHours: true, categories: true, type: true, googlePlaceId: true, primarySourceId: true, trust: true, isDemo: true,
+  openingHours: true, categories: true, type: true, googlePlaceId: true, primarySourceId: true, trust: true,
   isActive: true, closedAt: true, inactiveReason: true, fieldUpdatedAt: true, sourceUrl: true,
 } satisfies Prisma.VenueSelect;
 
@@ -269,7 +269,7 @@ async function linkRestrictedPlace(
     }
   }
   if (place.businessStatus === "CLOSED_PERMANENTLY" && venue.isActive) {
-    if (venue.trust === "IMPORTED" && !venue.isDemo) {
+    if (venue.trust === "IMPORTED") {
       Object.assign(data, { isActive: false, closedAt: now, inactiveReason: `Cerrado según ${opts.providerLabel}` });
       changes.push({ field: "isActive", oldValue: "true", newValue: "false" });
     } else await flagRecord(key, `${opts.providerLabel} indica cierre definitivo: revisar`);
@@ -291,7 +291,7 @@ async function closeMissing(source: Source, runStart: Date, providerLabel: strin
     where: {
       sourceId: source.id,
       missedSyncs: { gte: MISSED_SYNCS_TO_CLOSE },
-      venue: { primarySourceId: source.id, trust: "IMPORTED", isActive: true, isDemo: false },
+      venue: { primarySourceId: source.id, trust: "IMPORTED", isActive: true },
     },
     select: { venueId: true },
   });
@@ -314,7 +314,7 @@ export async function refreshHours(source: Source, provider: PlaceProvider, c: P
     return;
   }
   const records = await db.sourceVenueRecord.findMany({
-    where: { sourceId: source.id, venueId: { not: null }, venue: { isDemo: false } },
+    where: { sourceId: source.id, venueId: { not: null } },
     select: { externalId: true, venueId: true },
     take: 3000,
   });

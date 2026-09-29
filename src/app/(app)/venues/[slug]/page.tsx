@@ -8,7 +8,7 @@ import { listEvents } from "@/server/services/events";
 import { listPosts } from "@/server/services/posts";
 import { getMapConfig } from "@/server/services/map";
 import { Cover } from "@/components/ui/cover";
-import { Badge, DemoBadge, LiveDot, SectionHeader, Stars } from "@/components/ui/misc";
+import { Badge, LiveDot, SectionHeader, Stars } from "@/components/ui/misc";
 import { buttonClass } from "@/components/ui/button";
 import { BackButton } from "@/components/events/event-header-actions";
 import { EventRow } from "@/components/events/event-card";
@@ -72,7 +72,6 @@ export default async function VenuePage({ params }: Props) {
               </Badge>
             )}
             {venue.provenance.trust === "VERIFIED" && <Badge tone="glass">Verificado</Badge>}
-            {venue.isDemo && <DemoBadge />}
           </div>
           <h1 className="font-display text-[34px] leading-none font-bold tracking-tight uppercase md:text-6xl">{venue.name}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px]">

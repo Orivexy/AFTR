@@ -1,4 +1,5 @@
 import "server-only";
+import { getSettings } from "../settings";
 import { db } from "../db";
 import { CONNECTORS } from "../discovery/connectors";
 import { intervalMinutes } from "../discovery/engine";
@@ -30,7 +31,7 @@ export async function discoveryOverview() {
     pendingVenues,
     imported,
     recentRuns,
-    engineEnabled: env.DISCOVERY_ENABLED,
+    engineEnabled: (await getSettings()).discoveryEnabled,
     defaultInterval: env.EVENT_SYNC_INTERVAL,
   };
 }

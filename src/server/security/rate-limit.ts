@@ -47,6 +47,10 @@ export const RATE_LIMITS = {
   /** Per target account (credential stuffing); never scaled. */
   authAccount: { limit: 8, windowMs: 15 * 60_000 },
   register: { limit: 5, windowMs: 60 * 60_000 },
+  /** Password reset emails: per IP and per address. */
+  passwordReset: { limit: 5, windowMs: 60 * 60_000 },
+  /** Sensitive account changes (password, deletion). */
+  account: { limit: 10, windowMs: 15 * 60_000 },
   upload: { limit: 40, windowMs: 60 * 60_000 },
   createEvent: { limit: 10, windowMs: 60 * 60_000 },
   createPost: { limit: 20, windowMs: 60 * 60_000 },

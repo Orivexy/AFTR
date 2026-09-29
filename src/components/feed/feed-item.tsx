@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bookmark, CalendarDays, Flag, Heart, MapPin, MessageCircle, Share2, Trash2, Volume2, VolumeX } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
-import { DemoBadge, SponsorBadge } from "@/components/ui/misc";
+import { SponsorBadge } from "@/components/ui/misc";
 import { MoreMenu, type MenuItem } from "@/components/social/more-menu";
 import { shareLink } from "@/components/social/share-button";
 import { useReport } from "@/components/social/report-dialog";
@@ -160,7 +160,6 @@ export function FeedItem({ post, active, nearby, muted, onToggleMute, onChange, 
             </button>
           )}
           <SponsorBadge type={post.promotionType} className="ml-auto" />
-          {post.isDemo && <DemoBadge className={post.promotionType === "NONE" ? "ml-auto" : ""} />}
         </div>
         {post.caption && <p className="line-clamp-3 text-[15px] leading-snug">{post.caption}</p>}
         {post.tagged.length > 0 && (

@@ -2,15 +2,15 @@ import "server-only";
 import type { BusinessType, BusinessVerification, CommercialStatus, PlanCode } from "@prisma/client";
 import { db } from "../db";
 import { badRequest, notFound } from "../errors";
-import { isStaff } from "@/lib/roles";
 import { assertFeature } from "./flags";
+import { approveBusiness } from "../services/business-requests";
 
 /**
  * Commercial accounts (organizers and venues). Staff creates them; owners
  * can only edit their own contact data. Verification, commercial status and
  * plan are staff-only fields and are never accepted from owners.
  */
-export async function createBusiness(input: {
+export async function createBusiness(staffId: string, input: {
   username: string;
   type: BusinessType;
   tradeName: string;
@@ -19,32 +19,28 @@ export async function createBusiness(input: {
   website?: string;
   venueSlug?: string;
 }) {
-  const profile = await db.profile.findUnique({ where: { username: input.username }, select: { userId: true, user: { select: { role: true } } } });
+  const profile = await db.profile.findUnique({ where: { username: input.username }, select: { userId: true } });
   if (!profile) throw notFound("Usuario no encontrado");
   const venue = input.venueSlug ? await db.venue.findUnique({ where: { slug: input.venueSlug }, select: { id: true, business: { select: { id: true } } } }) : null;
   if (input.venueSlug && !venue) throw notFound("Local no encontrado");
   if (venue?.business) throw badRequest("Ese local ya tiene un negocio asociado");
   if (input.type === "VENUE" && !venue) throw badRequest("Un negocio de tipo local necesita un local asociado");
 
-  return db.$transaction(async (tx) => {
-    const business = await tx.businessProfile.create({
-      data: {
-        ownerId: profile.userId,
-        type: input.type,
-        tradeName: input.tradeName,
-        contactEmail: input.contactEmail,
-        contactPhone: input.contactPhone,
-        website: input.website,
-        venueId: venue?.id,
-      },
-    });
-    // Commercial role for regular users; staff keep their role.
-    if (!isStaff(profile.user.role)) {
-      await tx.user.update({ where: { id: profile.userId }, data: { role: input.type === "VENUE" ? "VENUE" : "ORGANIZER" } });
-    }
-    if (venue) await tx.venue.update({ where: { id: venue.id }, data: { managers: { connect: { id: profile.userId } } } });
-    return business;
+  const business = await db.businessProfile.create({
+    data: {
+      ownerId: profile.userId,
+      type: input.type,
+      tradeName: input.tradeName,
+      contactEmail: input.contactEmail,
+      contactPhone: input.contactPhone,
+      website: input.website,
+      requestedVenueId: venue?.id,
+      verification: "PENDING",
+    },
   });
+  // Staff-created businesses are approved right away (same path as requests).
+  await approveBusiness(business.id, staffId);
+  return business;
 }
 
 export async function updateBusinessAdmin(id: string, input: { verification?: BusinessVerification; commercialStatus?: CommercialStatus; plan?: PlanCode; tradeName?: string }) {
@@ -68,10 +64,12 @@ export async function updateOwnBusiness(userId: string, id: string, input: { con
 export function listOwnBusinesses(userId: string) {
   return db.businessProfile.findMany({
     where: { ownerId: userId },
+    orderBy: { createdAt: "desc" },
     select: {
       id: true, type: true, tradeName: true, contactEmail: true, contactPhone: true, website: true,
-      verification: true, commercialStatus: true, plan: true,
+      verification: true, commercialStatus: true, plan: true, requestMessage: true, reviewNote: true, reviewedAt: true, createdAt: true,
       venue: { select: { slug: true, name: true } },
+      requestedVenue: { select: { slug: true, name: true } },
       _count: { select: { events: true } },
     },
   });
@@ -79,6 +77,6 @@ export function listOwnBusinesses(userId: string) {
 
 /** The business an event created by this user should belong to (never client-provided). */
 export async function businessForOrganizer(userId: string, venueId: string | null): Promise<string | null> {
-  const businesses = await db.businessProfile.findMany({ where: { ownerId: userId }, select: { id: true, venueId: true } });
+  const businesses = await db.businessProfile.findMany({ where: { ownerId: userId, verification: "VERIFIED" }, select: { id: true, venueId: true } });
   return (venueId ? businesses.find((b) => b.venueId === venueId)?.id : undefined) ?? businesses.find((b) => !b.venueId)?.id ?? null;
 }

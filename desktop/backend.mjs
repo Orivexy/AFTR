@@ -4,12 +4,11 @@
  *   node backend.mjs <resourcesDir> <dataDir>
  */
 import { execFile, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
-import { cp } from "node:fs/promises";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { networkInterfaces } from "node:os";
 import path from "node:path";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import EmbeddedPostgres from "embedded-postgres";
 import pg from "pg";
 
@@ -71,43 +70,35 @@ function tail(file, lines = 15) {
   }
 }
 
-/** Loads the demo database dump (plain SQL) generated at build time. */
-async function restoreDemo(client, dumpFile) {
-  const sql = readFileSync(dumpFile, "utf8")
-    .split("\n")
-    .filter((l) => !l.startsWith("\\")) // psql meta-commands (\restrict, \connect…)
-    .join("\n");
-  await client.query(sql);
-}
-
 /**
- * Keeps the demo agenda current: shifts demo dates forward in whole weeks
- * (so weekdays still match each club's schedule) since the dump was made.
+ * Applies pending Prisma migrations (shipped in resources/migrations) with
+ * Prisma's own bookkeeping table, so the result is identical to
+ * `prisma migrate deploy` and later upgrades just apply the new ones.
  */
-async function refreshDemoDates(client, meta, state) {
-  const weeks = Math.floor((Date.now() - new Date(meta.dumpedAt).getTime()) / (7 * 86400_000));
-  const delta = weeks - (state.shiftedWeeks ?? 0);
-  if (delta <= 0) return 0;
-  const days = delta * 7;
-  const cutoff = new Date(new Date(meta.dumpedAt).getTime() + (state.shiftedWeeks ?? 0) * 7 * 86400_000).toISOString();
-  const shift = (col) => `"${col}" = "${col}" + interval '${days} days'`;
-  await client.query("BEGIN");
-  await client.query(`UPDATE "Event" SET ${shift("startsAt")}, ${shift("endsAt")}, ${shift("doorsAt")}, ${shift("createdAt")}, "reminderSentAt" = NULL WHERE "isDemo"`);
-  for (const [table, cols] of [
-    ["Post", ["createdAt", "updatedAt"]],
-    ["Comment", ["createdAt"]],
-    ["Photo", ["createdAt"]],
-    ["Video", ["createdAt"]],
-    ["Notification", ["createdAt"]],
-    ["Review", ["createdAt", "updatedAt"]],
-    ["Follow", ["createdAt"]],
-    ["Like", ["createdAt"]],
-  ]) {
-    await client.query(`UPDATE "${table}" SET ${cols.map(shift).join(", ")} WHERE "createdAt" <= $1`, [cutoff]);
+async function applyMigrations(client, dir, log) {
+  await client.query(`CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
+    "id" VARCHAR(36) PRIMARY KEY NOT NULL, "checksum" VARCHAR(64) NOT NULL, "finished_at" TIMESTAMPTZ,
+    "migration_name" VARCHAR(255) NOT NULL, "logs" TEXT, "rolled_back_at" TIMESTAMPTZ,
+    "started_at" TIMESTAMPTZ NOT NULL DEFAULT now(), "applied_steps_count" INTEGER NOT NULL DEFAULT 0)`);
+  const done = new Set((await client.query(`SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`)).rows.map((r) => r.migration_name));
+  const names = readdirSync(dir).filter((n) => existsSync(path.join(dir, n, "migration.sql"))).sort();
+  for (const name of names) {
+    if (done.has(name)) continue;
+    const sql = readFileSync(path.join(dir, name, "migration.sql"), "utf8");
+    log(`Actualizando base de datos: ${name}`);
+    await client.query("BEGIN");
+    try {
+      await client.query(sql);
+      await client.query(
+        `INSERT INTO "_prisma_migrations" (id, checksum, finished_at, migration_name, started_at, applied_steps_count) VALUES ($1, $2, now(), $3, now(), 1)`,
+        [randomUUID(), createHash("sha256").update(sql).digest("hex"), name],
+      );
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw new Error(`Migración ${name}: ${err.message}`);
+    }
   }
-  await client.query("COMMIT");
-  state.shiftedWeeks = weeks;
-  return days;
 }
 
 async function preparePostgres({ resourcesDir, dataDir, pgDir, pgPort, pg_ctl, databaseUrl, state, saveState, logFile, log, since }) {
@@ -150,34 +141,22 @@ async function preparePostgres({ resourcesDir, dataDir, pgDir, pgPort, pg_ctl, d
   }
   log(`PostgreSQL listo (${Date.now() - since} ms)`);
 
-  const meta = JSON.parse(readFileSync(path.join(resourcesDir, "demo-meta.json"), "utf8"));
   const admin = new pg.Client({ connectionString: databaseUrl.replace(/\/[^/]+$/, "/postgres") });
   await admin.connect();
   const exists = (await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [DB_NAME])).rowCount > 0;
-  const loadDemo = !exists || !state.demoLoaded;
-  if (exists && loadDemo) await admin.query(`DROP DATABASE ${DB_NAME}`); // half-restored earlier
-  if (loadDemo) await admin.query(`CREATE DATABASE ${DB_NAME}`);
+  if (!exists) await admin.query(`CREATE DATABASE ${DB_NAME}`);
   await admin.end();
 
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
-  if (loadDemo) {
-    log("Cargando datos de demostración…");
-    await restoreDemo(client, path.join(resourcesDir, "demo.sql"));
-    state.shiftedWeeks = 0;
-    state.demoLoaded = true;
-    saveState();
+  try {
+    await applyMigrations(client, path.join(resourcesDir, "migrations"), log);
+    // Base configuration (cities, categories, genres, discovery sources) — never content.
+    // Idempotent: rows that already exist are left untouched.
+    await client.query(readFileSync(path.join(resourcesDir, "base-data.sql"), "utf8"));
+  } finally {
+    await client.end();
   }
-  const shifted = await refreshDemoDates(client, meta, state);
-  if (shifted) log(`Fechas demo actualizadas (+${shifted} días)`);
-  await client.end();
-}
-
-async function copyDemoMedia({ resourcesDir, storageDir, state, log }) {
-  if (state.storageCopied) return;
-  log("Copiando imágenes y vídeos de demostración…");
-  await cp(path.join(resourcesDir, "storage"), storageDir, { recursive: true, force: true });
-  state.storageCopied = true;
 }
 
 function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databaseUrl, storageDir, cronSecret, logFile, log }) {
@@ -202,6 +181,8 @@ function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databas
     FFPROBE_PATH: bin("ffprobe"),
     CRON_SECRET: cronSecret,
     ENABLE_INPROCESS_JOBS: "true",
+    // Local single-user install: the first account created becomes its administrator.
+    FIRST_USER_IS_ADMIN: "true",
     EVENT_MODERATION: "off",
     RATE_LIMIT_SCALE: "20",
     NEXT_TELEMETRY_DISABLED: "1",
@@ -254,7 +235,6 @@ export async function startBackend(opts) {
   try {
     await Promise.all([
       preparePostgres({ resourcesDir, dataDir, pgDir, pgPort, pg_ctl, databaseUrl, state, saveState, logFile, log, since: t0 }),
-      copyDemoMedia({ resourcesDir, storageDir, state, log }),
       server.ready,
     ]);
   } catch (err) {

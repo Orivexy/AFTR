@@ -25,16 +25,15 @@ export interface OwnershipInput {
   sourceId: string;
   sourceTrust: "COMMUNITY" | "IMPORTED" | "OFFICIAL" | "VERIFIED";
   sourceVenueId: string | null;
-  venue: { id: string; primarySourceId: string | null; trust: "COMMUNITY" | "IMPORTED" | "OFFICIAL" | "VERIFIED"; isDemo: boolean };
+  venue: { id: string; primarySourceId: string | null; trust: "COMMUNITY" | "IMPORTED" | "OFFICIAL" | "VERIFIED" };
 }
 
 /**
  * The venue's primary source (or the venue's own official source) may update
- * any field; any other source only fills empty fields. Demo and community
+ * any field; any other source only fills empty fields. Community
  * venues are never overwritten.
  */
 export function mayOverwrite({ sourceId, sourceTrust, sourceVenueId, venue }: OwnershipInput): boolean {
-  if (venue.isDemo) return false;
   if (sourceTrust === "OFFICIAL" && sourceVenueId === venue.id) return true;
   if (venue.trust === "COMMUNITY") return false;
   return venue.primarySourceId === sourceId || (venue.trust === "IMPORTED" && !venue.primarySourceId);
