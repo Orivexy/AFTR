@@ -56,7 +56,8 @@ fi
 
 echo "▸ 2/5 Next.js standalone server"
 rm -rf .next
-NEXT_OUTPUT=standalone APP_URL="http://localhost:3000" NEXT_TELEMETRY_DISABLED=1 npx next build >/dev/null
+# The build never connects to the database; a syntactically valid URL is enough.
+DATABASE_URL="${DATABASE_URL:-postgresql://build:build@localhost:5432/build}" NEXT_OUTPUT=standalone APP_URL="http://localhost:3000" NEXT_TELEMETRY_DISABLED=1 npx next build >/dev/null
 
 echo "▸ 3/5 Assembling resources"
 rm -rf "$RES" && mkdir -p "$RES/bin"
