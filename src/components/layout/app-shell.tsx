@@ -38,7 +38,7 @@ export function AppShell({ cities, city, children }: ShellProps) {
     <>
       {/* Desktop top bar */}
       <header className="glass sticky top-0 z-40 hidden border-b border-line md:block">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 lg:gap-6 lg:px-6">
           <Logo />
           <nav className="flex items-center gap-1">
             {DESKTOP_NAV.map((item) => (
@@ -46,7 +46,7 @@ export function AppShell({ cities, city, children }: ShellProps) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "rounded-full px-3.5 py-2 text-sm font-semibold transition-colors",
+                  "rounded-full px-2.5 py-2 text-sm font-semibold transition-colors lg:px-3.5",
                   (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)) ? "bg-surface-2 text-fg" : "text-muted hover:text-fg",
                 )}
               >
@@ -54,8 +54,8 @@ export function AppShell({ cities, city, children }: ShellProps) {
               </Link>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-2">
-            <CityPicker cities={cities} current={city} className="px-3 hover:bg-surface-2" />
+          <div className="ml-auto flex min-w-0 items-center gap-1 lg:gap-2">
+            <CityPicker cities={cities} current={city} className="px-3 hover:bg-surface-2" labelClassName={user ? "max-lg:hidden" : undefined} />
             <Link href="/search" aria-label="Buscar" className="pressable grid size-10 place-items-center rounded-full hover:bg-surface-2">
               <Search className="size-5" />
             </Link>
@@ -67,8 +67,8 @@ export function AppShell({ cities, city, children }: ShellProps) {
                   </Link>
                 )}
                 <NotificationBell />
-                <button onClick={openCreate} className={buttonClass("primary", "md", "ml-1")}>
-                  <Plus className="size-4" /> Crear
+                <button onClick={openCreate} aria-label="Crear" className={buttonClass("primary", "md", "ml-1")}>
+                  <Plus className="size-4" /> <span className="hidden lg:inline">Crear</span>
                 </button>
                 <Link href={`/u/${user.username}`} aria-label="Tu perfil" className="pressable ml-1">
                   <Avatar user={user} size={36} />
@@ -79,7 +79,7 @@ export function AppShell({ cities, city, children }: ShellProps) {
                 <Link href="/login" className={buttonClass("ghost", "md")}>
                   Entrar
                 </Link>
-                <Link href="/register" className={buttonClass("primary", "md")}>
+                <Link href="/register" className={buttonClass("primary", "md", "max-lg:hidden")}>
                   Crear cuenta
                 </Link>
               </>

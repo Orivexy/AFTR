@@ -1,6 +1,7 @@
 import "server-only";
 import type { EventStatus, Prisma } from "@prisma/client";
 import { db } from "../db";
+import { badRequest, notFound } from "../errors";
 import { eventCardSelect, parseOffset, nextOffset, toEventCard, toUserMini, userMiniSelect } from "./mappers";
 import { buildSearchText, normalizeSearch } from "@/lib/text";
 import type { z } from "zod";
@@ -130,5 +131,10 @@ export async function deleteEvent(eventId: string) {
 }
 
 export async function setUserRole(userId: string, role: AppRole) {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!user) throw notFound("Usuario no encontrado");
+  if (user.role === "ADMIN" && role !== "ADMIN" && (await db.user.count({ where: { role: "ADMIN", status: "ACTIVE" } })) <= 1) {
+    throw badRequest("Debe quedar al menos un administrador");
+  }
   await db.user.update({ where: { id: userId }, data: { role } });
 }

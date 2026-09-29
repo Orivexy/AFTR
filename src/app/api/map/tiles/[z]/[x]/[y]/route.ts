@@ -7,7 +7,7 @@ import { upstreamTileUrl } from "@/server/services/map";
 export async function GET(_req: Request, { params }: { params: Promise<{ z: string; x: string; y: string }> }) {
   const p = await params;
   const [z, x, y] = [p.z, p.x, p.y].map((v) => Number.parseInt(v, 10));
-  if (![z, x, y].every((n) => Number.isInteger(n) && n! >= 0) || z! > 20) return new Response("Bad tile", { status: 400 });
+  if (![z, x, y].every((n) => Number.isInteger(n) && n! >= 0) || z! > 20 || x! >= 2 ** z! || y! >= 2 ** z!) return new Response("Bad tile", { status: 400 });
   const url = upstreamTileUrl(z!, x!, y!);
   if (!url) return new Response("Map provider not configured", { status: 404 });
   const upstream = await fetch(url, { next: { revalidate: 86400 } });

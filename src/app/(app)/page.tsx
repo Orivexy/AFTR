@@ -139,9 +139,13 @@ export default async function HomePage() {
 
           <section>
             <SectionHeader title="Discotecas populares" action={<Link href="/venues" className="text-sm font-semibold text-muted hover:text-fg">Ver todas</Link>} />
-            <Rail itemClassName="w-[70vw] sm:w-[280px]">
-              {venues.items.map((v) => <VenueCard key={v.id} venue={v} />)}
-            </Rail>
+            {venues.items.length ? (
+              <Rail itemClassName="w-[70vw] sm:w-[280px]">
+                {venues.items.map((v) => <VenueCard key={v.id} venue={v} />)}
+              </Rail>
+            ) : (
+              <p className="text-sm text-muted">Aún no hay locales en {city.name}. Se añaden automáticamente al sincronizar con OpenStreetMap y cuando los locales se registran.</p>
+            )}
           </section>
 
           <section>

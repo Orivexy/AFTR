@@ -175,14 +175,14 @@ export function VenueManageForm({ venueId, slug, mapConfig, initial }: { venueId
             const ranges = v.hours[day] ?? [];
             return (
               <div key={day} className="flex flex-wrap items-center gap-2 px-4 py-3">
-                <span className="w-24 shrink-0 text-sm font-semibold">{label}</span>
+                <span className="w-full shrink-0 text-sm font-semibold sm:w-24">{label}</span>
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                   {ranges.length === 0 && <span className="text-sm text-muted">Cerrado</span>}
                   {ranges.map((r, i) => (
                     <span key={i} className="flex items-center gap-1">
-                      <Input type="time" aria-label={`${label} abre`} value={r.open} onChange={(e) => setDay(day, ranges.map((x, j) => (j === i ? { ...x, open: e.target.value } : x)))} className="h-10 w-[7.5rem] px-3" />
+                      <Input type="time" aria-label={`${label} abre`} value={r.open} onChange={(e) => setDay(day, ranges.map((x, j) => (j === i ? { ...x, open: e.target.value } : x)))} className="h-10 w-[6.75rem] px-2.5" />
                       <span className="text-muted">–</span>
-                      <Input type="time" aria-label={`${label} cierra`} value={r.close} onChange={(e) => setDay(day, ranges.map((x, j) => (j === i ? { ...x, close: e.target.value } : x)))} className="h-10 w-[7.5rem] px-3" />
+                      <Input type="time" aria-label={`${label} cierra`} value={r.close} onChange={(e) => setDay(day, ranges.map((x, j) => (j === i ? { ...x, close: e.target.value } : x)))} className="h-10 w-[6.75rem] px-2.5" />
                       <button type="button" aria-label="Quitar franja" onClick={() => setDay(day, ranges.filter((_, j) => j !== i))} className="grid size-8 place-items-center rounded-full text-muted hover:bg-surface-2">
                         <X className="size-4" />
                       </button>

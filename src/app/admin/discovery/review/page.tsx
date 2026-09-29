@@ -94,9 +94,9 @@ export default async function ReviewPage() {
                 <p className="text-[12px] text-faint">{r.source.name} · {r.reviewReasons.join(" · ")}{r.expiresAt && " · datos con caducidad (proveedor)"}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {!googleOnly && <AdminAction url={`/api/admin/discovery/venue-records/${r.id}`} method="POST" body={{ action: "approve" }} tone="primary" success="Local creado">Approve</AdminAction>}
-                <AdminAction url={`/api/admin/discovery/venue-records/${r.id}`} method="POST" body={{ action: "reject" }} tone="danger" success="Rechazado">Reject</AdminAction>
-                <AdminAction url={`/api/admin/discovery/venue-records/${r.id}`} method="POST" body={{ action: "delete" }} success="Eliminado">Delete</AdminAction>
+                {!googleOnly && <AdminAction url={`/api/admin/discovery/venue-records/${r.id}`} method="POST" body={{ action: "approve" }} tone="primary" success="Local creado">Aprobar</AdminAction>}
+                <AdminAction url={`/api/admin/discovery/venue-records/${r.id}`} method="POST" body={{ action: "reject" }} tone="danger" success="Rechazado">Rechazar</AdminAction>
+                <AdminAction url={`/api/admin/discovery/venue-records/${r.id}`} method="POST" body={{ action: "delete" }} success="Eliminado">Eliminar</AdminAction>
               </div>
             </article>
           );

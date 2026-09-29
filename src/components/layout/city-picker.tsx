@@ -14,7 +14,7 @@ export interface CityOption {
   name: string;
 }
 
-export function CityPicker({ cities, current, className }: { cities: CityOption[]; current: CityOption; className?: string }) {
+export function CityPicker({ cities, current, className, labelClassName }: { cities: CityOption[]; current: CityOption; className?: string; labelClassName?: string }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -35,9 +35,9 @@ export function CityPicker({ cities, current, className }: { cities: CityOption[
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className={cn("pressable inline-flex items-center gap-1.5 rounded-full py-1.5 text-sm font-semibold", className)}>
+      <button onClick={() => setOpen(true)} aria-label={`Ciudad: ${current.name}`} className={cn("pressable inline-flex items-center gap-1.5 rounded-full py-1.5 text-sm font-semibold", className)}>
         {status === "granted" ? <LocateFixed className="size-4 text-volt" /> : <MapPin className="size-4 text-volt" />}
-        {current.name}
+        <span className={labelClassName}>{current.name}</span>
         <ChevronDown className="size-4 text-muted" />
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title="¿Dónde sales?">

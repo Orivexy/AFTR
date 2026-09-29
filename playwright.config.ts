@@ -1,17 +1,21 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * E2E tests run against a seeded database (`npm run db:reset`).
- * Set E2E_BASE_URL to test a deployed instance; otherwise `npm run dev` is started.
+ * End-to-end tests. By default they start NIVEX (`scripts/e2e-server.sh`)
+ * on port 3100 against an isolated, freshly recreated database (nivex_e2e)
+ * with only base data + a few fixtures; tests create everything else through
+ * the real UI and API. Run `npm run build` first.
+ * Set E2E_BASE_URL to run against an already running instance instead.
  */
-const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`;
 
 export default defineConfig({
   testDir: "tests/e2e",
-  timeout: 60_000,
+  timeout: 90_000,
+  expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   reporter: [["list"]],
   use: {
     baseURL,
@@ -21,10 +25,10 @@ export default defineConfig({
     launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : undefined,
   },
   projects: [
-    { name: "mobile", use: { ...devices["Pixel 7"], browserName: "chromium" } },
-    { name: "desktop", use: { viewport: { width: 1440, height: 900 } }, testMatch: /guest|admin/ },
+    { name: "desktop", use: { viewport: { width: 1440, height: 900 } } },
+    { name: "mobile", use: { ...devices["Pixel 7"], browserName: "chromium" }, testMatch: /guest|responsive/ },
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : { command: "RATE_LIMIT_SCALE=20 npm run dev", url: baseURL, reuseExistingServer: true, timeout: 120_000 },
+    : { command: "bash scripts/e2e-server.sh", url: `${baseURL}/api/health`, reuseExistingServer: false, timeout: 180_000, stdout: "ignore", stderr: "pipe" },
 });

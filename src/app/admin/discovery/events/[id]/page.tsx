@@ -20,7 +20,7 @@ export default async function EventHistoryPage({ params }: { params: Promise<{ i
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link href={`/events/${e.slug}`} target="_blank" className="inline-flex h-8 items-center rounded-full bg-surface-3 px-3 text-[12px] font-bold">Ver</Link>
-          <Link href={`/events/${e.slug}/edit`} className="inline-flex h-8 items-center rounded-full bg-surface-3 px-3 text-[12px] font-bold">Edit</Link>
+          <Link href={`/events/${e.slug}/edit`} className="inline-flex h-8 items-center rounded-full bg-surface-3 px-3 text-[12px] font-bold">Editar</Link>
           <AdminAction url={`/api/admin/events/${e.id}`} body={{ verified: e.trust !== "VERIFIED" }} tone={e.trust === "VERIFIED" ? "default" : "primary"}>
             {e.trust === "VERIFIED" ? "Quitar verificado" : "Mark as verified"}
           </AdminAction>

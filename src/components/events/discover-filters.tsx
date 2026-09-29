@@ -85,7 +85,7 @@ export function DiscoverFilters({ options }: { options: FilterOptions }) {
             {o.label}
           </Chip>
         ))}
-        <label className={cn(selectClass, "flex items-center gap-1.5", date && "border-volt")}>
+        <label className={cn(selectClass, "relative flex items-center gap-1.5", date && "border-volt")}>
           <CalendarDays className="size-3.5 text-muted" />
           <span className="sr-only">Fecha</span>
           <input type="date" value={date} onChange={(e) => update((p) => (p.delete("when"), e.target.value ? p.set("date", e.target.value) : p.delete("date")))} className="bg-transparent text-[13px] outline-none [color-scheme:dark]" />

@@ -19,7 +19,9 @@ export default async function PeoplePage() {
           {people.map((p) => <UserRow key={p.id} user={p} following={false} showFollow={p.id !== user?.id} />)}
         </div>
       ) : (
-        <EmptyState title="Ya sigues a todo el mundo 🙌" />
+        <EmptyState title={user ? "No hay más gente que sugerirte ahora mismo." : `Todavía no hay perfiles en ${city.name}.`}>
+          {user ? "Vuelve más tarde: aquí aparecerá la gente activa de tu ciudad." : "Crea tu cuenta y sé de los primeros."}
+        </EmptyState>
       )}
     </div>
   );

@@ -27,3 +27,4 @@ desktop/node_modules/
 desktop/resources/
 desktop/.build/
 dist-desktop/
+/storage-e2e/

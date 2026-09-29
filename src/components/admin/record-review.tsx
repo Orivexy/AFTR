@@ -61,15 +61,15 @@ export function RecordReview({ recordId, initial, venues, duplicateOf }: Props) 
   const btn = "inline-flex h-8 items-center rounded-full px-3 text-[12px] font-bold disabled:opacity-50";
   return (
     <div className="flex flex-wrap gap-2">
-      <button disabled={busy} onClick={() => act({ action: "approve" }, "Evento publicado")} className={`${btn} bg-volt text-on-volt`}>Approve</button>
-      <button disabled={busy} onClick={() => setOpen("edit")} className={`${btn} bg-surface-3 hover:bg-line-strong`}>Edit</button>
+      <button disabled={busy} onClick={() => act({ action: "approve" }, "Evento publicado")} className={`${btn} bg-volt text-on-volt`}>Aprobar</button>
+      <button disabled={busy} onClick={() => setOpen("edit")} className={`${btn} bg-surface-3 hover:bg-line-strong`}>Editar</button>
       {duplicateOf ? (
         <button disabled={busy} onClick={() => act({ action: "merge", eventId: duplicateOf.id }, "Fusionado")} className={`${btn} bg-surface-3 hover:bg-line-strong`}>Merge con «{duplicateOf.title.slice(0, 24)}»</button>
       ) : (
-        <button disabled={busy} onClick={() => setOpen("merge")} className={`${btn} bg-surface-3 hover:bg-line-strong`}>Merge</button>
+        <button disabled={busy} onClick={() => setOpen("merge")} className={`${btn} bg-surface-3 hover:bg-line-strong`}>Fusionar</button>
       )}
-      <button disabled={busy} onClick={() => act({ action: "reject" }, "Rechazado")} className={`${btn} bg-danger/15 text-danger`}>Reject</button>
-      <button disabled={busy} onClick={() => confirm("¿Eliminar el registro? Podría volver a importarse.") && act({ action: "delete" }, "Eliminado")} className={`${btn} text-muted hover:text-fg`}>Delete</button>
+      <button disabled={busy} onClick={() => act({ action: "reject" }, "Rechazado")} className={`${btn} bg-danger/15 text-danger`}>Rechazar</button>
+      <button disabled={busy} onClick={() => confirm("¿Eliminar el registro? Podría volver a importarse.") && act({ action: "delete" }, "Eliminado")} className={`${btn} text-muted hover:text-fg`}>Eliminar</button>
 
       <Sheet open={open === "merge"} onClose={() => setOpen(null)} title="Fusionar con un evento existente">
         <form onSubmit={(e) => { e.preventDefault(); void act({ action: "merge", eventId: target }, "Fusionado"); }} className="space-y-4 pb-4">

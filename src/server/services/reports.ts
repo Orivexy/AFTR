@@ -3,7 +3,8 @@ import { getSettings } from "../settings";
 import type { Prisma, ReportTargetType } from "@prisma/client";
 import { db } from "../db";
 import { env } from "../env";
-import { badRequest, notFound } from "../http";
+import { badRequest, forbidden, notFound } from "../http";
+import type { AppRole } from "@/lib/roles";
 import { destroyAllSessions } from "../auth/session";
 import { toUserMini, userMiniSelect } from "./mappers";
 import { notify } from "./notifications";
@@ -115,10 +116,12 @@ export async function setContentVisibility(type: ReportTargetType, id: string, s
   }
 }
 
-export async function setUserSuspended(userId: string, suspended: boolean) {
+/** Moderators suspend regular accounts; only admins suspend moderators; nobody suspends an admin. */
+export async function setUserSuspended(userId: string, suspended: boolean, actorRole: AppRole) {
   const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
   if (!user) throw notFound("Usuario no encontrado");
   if (user.role === "ADMIN" && suspended) throw badRequest("No se puede suspender a un administrador");
+  if (user.role === "MODERATOR" && actorRole !== "ADMIN") throw forbidden("Solo un administrador puede suspender a un moderador");
   await db.user.update({
     where: { id: userId },
     data: { status: suspended ? "SUSPENDED" : "ACTIVE", suspendedAt: suspended ? new Date() : null },
@@ -129,7 +132,7 @@ export async function setUserSuspended(userId: string, suspended: boolean) {
 export type ReportAction = "dismiss" | "remove" | "restore" | "suspend";
 
 /** Resolves every open report on the same target at once. */
-export async function resolveReport(reportId: string, moderatorId: string, action: ReportAction, note?: string) {
+export async function resolveReport(reportId: string, moderatorId: string, action: ReportAction, note?: string, actorRole: AppRole = "MODERATOR") {
   const report = await db.report.findUnique({ where: { id: reportId } });
   if (!report) throw notFound("Reporte no encontrado");
   const [, targetId] = report.targetKey.split(":") as [string, string];
@@ -143,7 +146,7 @@ export async function resolveReport(reportId: string, moderatorId: string, actio
   }
   if (action === "suspend") {
     const owner = report.targetType === "USER" ? targetId : await targetOwner(report.targetType, targetId);
-    if (owner) await setUserSuspended(owner, true);
+    if (owner) await setUserSuspended(owner, true, actorRole);
     if (report.targetType !== "USER") await setContentVisibility(report.targetType, targetId, "REMOVED");
   }
   if (action === "dismiss") {
