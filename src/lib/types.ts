@@ -192,7 +192,7 @@ export interface ProfileData extends UserMini {
   eventCount: number;
   city: { slug: string; name: string } | null;
   joinedAt: Date;
-  viewer: { isSelf: boolean; following: boolean; followsYou: boolean };
+  viewer: { isSelf: boolean; following: boolean; followsYou: boolean; blocked: boolean; blockedBy: boolean };
 }
 
 export interface NotificationData {

@@ -3,6 +3,7 @@ import { route, parseJson, parseQuery, badRequest } from "@/server/http";
 import { eventInputSchema } from "@/lib/validators";
 import { createEvent, listEvents, viewerEventStates } from "@/server/services/events";
 import { getCityBySlug, getCurrentCity } from "@/server/services/cities";
+import { ISO_DATE_RE, dateNightWindow } from "@/lib/time";
 
 const csv = z
   .string()
@@ -13,6 +14,8 @@ const csv = z
 const querySchema = z.object({
   city: z.string().max(40).optional(),
   when: z.enum(["today", "tomorrow", "weekend", "week", "upcoming"]).optional(),
+  date: z.string().regex(ISO_DATE_RE).optional(),
+  venue: z.string().max(40).optional(),
   category: csv,
   genre: csv,
   maxPrice: z.coerce.number().int().min(0).max(100000).optional(),
@@ -31,7 +34,9 @@ export const GET = route({ rateLimit: "read" }, async ({ req, user }) => {
   const page = await listEvents({
     cityId: city.id,
     timezone: city.timezone,
-    when: q.when,
+    when: q.date ? undefined : q.when,
+    window: q.date ? dateNightWindow(q.date, city.timezone) : undefined,
+    venueId: q.venue,
     categories: q.category,
     genres: q.genre,
     maxPrice: q.maxPrice,

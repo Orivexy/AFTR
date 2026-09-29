@@ -13,8 +13,17 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
   EVENT_MODERATION: z.enum(["off", "new_users", "all"]).default("new_users"),
   AUTO_HIDE_REPORT_THRESHOLD: z.coerce.number().int().min(1).default(5),
-  STORAGE_DRIVER: z.enum(["local"]).default("local"),
+  STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_DIR: z.string().default("./storage"),
+  // S3-compatible object storage (AWS S3, Cloudflare R2, MinIO, Backblaze B2…).
+  S3_BUCKET: z.string().optional().default(""),
+  S3_REGION: z.string().optional().default("auto"),
+  // Custom endpoint for non-AWS providers, e.g. https://<account>.r2.cloudflarestorage.com
+  S3_ENDPOINT: z.string().optional().default(""),
+  S3_ACCESS_KEY_ID: z.string().optional().default(""),
+  S3_SECRET_ACCESS_KEY: z.string().optional().default(""),
+  // Optional public base URL (CDN / public bucket): /media redirects there instead of proxying.
+  S3_PUBLIC_URL: z.string().optional().default(""),
   MAX_IMAGE_MB: z.coerce.number().positive().default(12),
   MAX_VIDEO_MB: z.coerce.number().positive().default(80),
   MAP_PROVIDER: z.enum(["carto", "mapbox", "maptiler"]).default("carto"),

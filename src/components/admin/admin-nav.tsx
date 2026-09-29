@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeEuro, Briefcase, CalendarClock, CalendarDays, Flag, Image as ImageIcon, LayoutDashboard, Map as MapIcon, Megaphone, Radar, ReceiptText, ScrollText, Store, Users } from "lucide-react";
+import { BadgeEuro, Briefcase, CalendarClock, CalendarDays, Flag, Image as ImageIcon, LayoutDashboard, Map as MapIcon, Megaphone, Radar, ReceiptText, ScrollText, Settings, Store, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const ITEMS = [
@@ -21,6 +21,7 @@ const ITEMS = [
   { href: "/admin/orders", label: "Pedidos y pagos", icon: ReceiptText, admin: true },
   { href: "/admin/promotions", label: "Patrocinado", icon: Megaphone, admin: true },
   { href: "/admin/audit", label: "Auditoría", icon: ScrollText, admin: true },
+  { href: "/admin/settings", label: "Ajustes", icon: Settings, admin: true },
 ];
 
 export function AdminNav({ openReports, isAdmin }: { openReports: number; isAdmin: boolean }) {

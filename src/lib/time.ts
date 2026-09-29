@@ -134,3 +134,12 @@ export function utcToLocalParts(date: Date, tz: string): { date: string; time: s
     time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
   };
 }
+
+/** The night of a local calendar date ("2026-10-02" → Fri 06:00 → Sat 06:00). */
+export function dateNightWindow(date: string, tz: string): TimeWindow {
+  const [y, m, d] = date.split("-").map(Number);
+  const start = new TZDate(y!, m! - 1, d!, NIGHT_START_HOUR, 0, 0, tz);
+  return { from: new Date(start.getTime()), to: new Date(addDays(start, 1).getTime()) };
+}
+
+export const ISO_DATE_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;

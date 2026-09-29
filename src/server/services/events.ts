@@ -526,3 +526,22 @@ export async function moderateEvent(eventId: string, decision: "approve" | "reje
   });
   if (decision === "approve") await notifyVenueFollowers(event.id, event.venueId, event.organizerId);
 }
+
+/**
+ * Discover filter options, straight from the database: every category and
+ * genre, plus the city's venues that have upcoming events.
+ */
+export async function discoverFilterOptions(cityId: string, now = new Date()) {
+  const [categories, genres, venues] = await Promise.all([
+    db.category.findMany({ orderBy: { order: "asc" }, select: { slug: true, name: true } }),
+    db.musicGenre.findMany({ orderBy: { order: "asc" }, select: { slug: true, name: true } }),
+    db.venue.findMany({
+      where: { cityId, isActive: true, events: { some: { status: "PUBLISHED", ...notEndedWhere(now) } } },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+      take: 200,
+    }),
+  ]);
+  return { categories, genres, venues };
+}
+export type DiscoverFilterOptions = Awaited<ReturnType<typeof discoverFilterOptions>>;

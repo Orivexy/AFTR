@@ -5,6 +5,7 @@ import { badRequest, forbidden, notFound } from "../http";
 import type { SessionUser } from "../auth/session";
 import { nextOffset, parseOffset, photoSelect, toUserMini, userMiniSelect } from "./mappers";
 import { notify, notifyMany } from "./notifications";
+import { assertNotBlocked, notBlockedWith } from "./blocks";
 import type { CommentData, FeedPost, Page } from "@/lib/types";
 import type { z } from "zod";
 import type { postInputSchema } from "@/lib/validators";
@@ -37,6 +38,9 @@ const visiblePost: Prisma.PostWhereInput = {
   OR: [{ type: { not: "VIDEO" } }, { video: { status: "READY" } }],
   author: { status: "ACTIVE" },
 };
+
+/** Visible posts, minus those of users in a block relation with the viewer. */
+const visibleFor = (viewerId?: string): Prisma.PostWhereInput => (viewerId ? { AND: [visiblePost, { author: notBlockedWith(viewerId) }] } : visiblePost);
 
 async function hydrate(rows: PostRow[], viewerId?: string): Promise<FeedPost[]> {
   const ids = rows.map((r) => r.id);
@@ -105,7 +109,7 @@ export async function getFeed(q: FeedQuery): Promise<Page<FeedPost>> {
     const rows = await db.post.findMany({
       where: {
         AND: [
-          visiblePost,
+          visibleFor(q.viewerId),
           {
             OR: [
               { author: { followers: { some: { followerId: q.viewerId } } } },
@@ -133,6 +137,7 @@ export async function getFeed(q: FeedQuery): Promise<Page<FeedPost>> {
     LEFT JOIN "Video" v ON v."postId" = p.id
     WHERE p.status = 'VISIBLE'
       AND (p.type <> 'VIDEO' OR v.status = 'READY')
+      AND NOT EXISTS (SELECT 1 FROM "Block" b WHERE (b."blockerId" = ${viewer} AND b."blockedId" = p."authorId") OR (b."blockerId" = p."authorId" AND b."blockedId" = ${viewer}))
       ${q.videoOnly ? Prisma.sql`AND p.type = 'VIDEO'` : Prisma.empty}
     ORDER BY (
       (p."likeCount" + 3 * p."commentCount" + 2 * p."saveCount" + 4)
@@ -149,7 +154,7 @@ export async function getFeed(q: FeedQuery): Promise<Page<FeedPost>> {
 }
 
 export async function getPost(id: string, viewerId?: string): Promise<FeedPost | null> {
-  const row = await db.post.findFirst({ where: { id, ...visiblePost }, select: postSelect });
+  const row = await db.post.findFirst({ where: { AND: [{ id }, visibleFor(viewerId)] }, select: postSelect });
   return row ? (await hydrate([row], viewerId))[0]! : null;
 }
 
@@ -167,7 +172,7 @@ interface PostListQuery {
 export async function listPosts(q: PostListQuery): Promise<Page<FeedPost>> {
   const limit = q.limit ?? 12;
   const offset = parseOffset(q.cursor);
-  const where: Prisma.PostWhereInput = { AND: [visiblePost] };
+  const where: Prisma.PostWhereInput = { AND: [visibleFor(q.viewerId)] };
   const and = where.AND as Prisma.PostWhereInput[];
   if (q.authorId) and.push({ authorId: q.authorId });
   if (q.eventId) and.push({ eventId: q.eventId });
@@ -200,7 +205,7 @@ export async function createPost(user: SessionUser, input: z.infer<typeof postIn
       : null,
     input.venueId ? db.venue.findFirst({ where: { id: input.venueId, isActive: true }, select: { id: true, cityId: true, name: true } }) : null,
     input.taggedUsernames.length
-      ? db.profile.findMany({ where: { username: { in: input.taggedUsernames } }, select: { userId: true } })
+      ? db.profile.findMany({ where: { username: { in: input.taggedUsernames }, user: { status: "ACTIVE", ...notBlockedWith(user.id) } }, select: { userId: true } })
       : [],
   ]);
 
@@ -258,6 +263,7 @@ async function assertVisiblePost(postId: string) {
 
 export async function setPostLike(userId: string, postId: string, like: boolean) {
   const post = await assertVisiblePost(postId);
+  if (like) await assertNotBlocked(userId, post.authorId);
   const result = await db.$transaction(async (tx) => {
     const existing = await tx.like.findUnique({ where: { userId_postId: { userId, postId } } });
     if (like && !existing) {
@@ -294,7 +300,7 @@ export async function setPostSaved(userId: string, postId: string, save: boolean
 export async function listComments(postId: string, viewer: SessionUser | null, cursor?: string, limit = 30): Promise<Page<CommentData>> {
   const offset = parseOffset(cursor);
   const rows = await db.comment.findMany({
-    where: { postId, status: "VISIBLE", author: { status: "ACTIVE" } },
+    where: { postId, status: "VISIBLE", author: { status: "ACTIVE", ...notBlockedWith(viewer?.id) } },
     orderBy: { createdAt: "asc" },
     select: { id: true, body: true, createdAt: true, authorId: true, author: { select: userMiniSelect }, post: { select: { authorId: true } } },
     skip: offset,
@@ -316,6 +322,7 @@ const LINK_RE = /(https?:\/\/|www\.)/gi;
 
 export async function addComment(user: SessionUser, postId: string, body: string): Promise<CommentData> {
   const post = await assertVisiblePost(postId);
+  await assertNotBlocked(user.id, post.authorId);
   // Basic anti-spam: link-heavy comments and exact repeats are rejected.
   if ((body.match(LINK_RE)?.length ?? 0) > 1) throw badRequest("Demasiados enlaces en el comentario");
   const duplicate = await db.comment.findFirst({

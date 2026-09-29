@@ -25,8 +25,8 @@ function binary(pkg: string): string | null {
   }
 }
 
-const ffmpegPath = () => process.env.FFMPEG_PATH || binary("@ffmpeg-installer/ffmpeg");
-const ffprobePath = () => process.env.FFPROBE_PATH || binary("@ffprobe-installer/ffprobe");
+export const ffmpegPath = () => process.env.FFMPEG_PATH || binary("@ffmpeg-installer/ffmpeg");
+export const ffprobePath = () => process.env.FFPROBE_PATH || binary("@ffprobe-installer/ffprobe");
 
 /** Container sniffing by magic bytes (MP4/MOV "ftyp" box, WebM/Matroska EBML). */
 export function sniffVideo(buf: Buffer): "mp4" | "webm" | null {

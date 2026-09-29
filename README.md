@@ -6,7 +6,8 @@ Plataforma social para descubrir qué pasa cada noche: fiestas, FM (fiestas mayo
 
 **Documentación adicional**
 
-- [Monetización (preparada y desactivada)](docs/monetization.md)
+- [Despliegue en producción](docs/deployment.md)
+- [Monetización (desactivada hasta integrar un proveedor de pagos)](docs/monetization.md)
 - [Event Discovery (importación automática de eventos y locales)](docs/event-discovery.md)
 - [Locales, horarios, eventos y mapa (APIs, jobs, API keys)](docs/places-and-map.md)
 - [App de Windows (.exe) y móvil (PWA)](docs/desktop.md)
@@ -33,29 +34,27 @@ Ciclo principal: **descubrir → ir → publicar → interactuar → seguir → 
 Requisitos: Node ≥ 20.9 y PostgreSQL ≥ 14.
 
 ```bash
-cp .env.example .env          # ajusta DATABASE_URL
+cp .env.example .env          # ajusta DATABASE_URL (y ADMIN_EMAIL/ADMIN_PASSWORD para tu admin)
 npm install                   # instala deps + prisma generate (+ ffmpeg estático opcional)
 npm run db:migrate            # crea el esquema
-npm run db:seed               # datos DEMO de Barcelona (tarda ~2-5 min: genera imágenes y vídeos)
+npm run db:seed               # datos base (idempotente): ciudades, categorías, géneros, fuentes, admin
 npm run dev                   # http://localhost:3000
 ```
 
-Cuentas demo (contraseña `nightly123`, configurable con `SEED_PASSWORD`):
+NIVEX no trae contenido de ejemplo: **no hay usuarios, locales ni eventos
+inventados**. El seed solo crea la configuración base y, si defines
+`ADMIN_EMAIL` + `ADMIN_PASSWORD`, la cuenta de administrador.
 
-| Email | Rol |
-| --- | --- |
-| `eric@nightly.demo` | usuario con posts, seguidores y notificaciones |
-| `admin@nightly.demo` | administrador (panel en `/admin`) |
+- **Locales y horarios**: se importan de OpenStreetMap en la primera
+  sincronización (job `VENUE_SYNC`, visible en `/admin/map-data`; desde ahí se
+  puede lanzar a mano).
+- **Eventos**: fuentes de `/admin/discovery` (iCal, schema.org, feeds de
+  partners, Ticketmaster con clave), locales y organizadores verificados
+  (`/business`) y la comunidad.
+- Si falta una clave de API, esa fuente aparece como no configurada; nunca se
+  simulan respuestas.
 
-### Datos demo
-
-`npm run db:seed` **borra la base de datos y el almacenamiento local** y crea una escena nocturna **ficticia**: 17 locales en Barcelona (y alguno en Madrid/Valencia), ~120 eventos con fechas relativas a *hoy*, 24 usuarios, publicaciones (fotos y vídeos), valoraciones, fotos de la comunidad, likes, comentarios y seguidores.
-
-- Ningún local, persona o evento es real. Todo está marcado con `isDemo` y la interfaz lo muestra con la etiqueta **DEMO**.
-- Las imágenes y vídeos se generan proceduralmente (sin fotos de lugares reales) y funcionan sin conexión.
-- Como las fechas son relativas, vuelve a ejecutar el seed si pasan varios días.
-
-Para datos reales, `Event.source = IMPORT` + `externalId` (único por fuente) están preparados para un importador.
+Producción: ver [docs/deployment.md](docs/deployment.md).
 
 ## Scripts
 
@@ -64,7 +63,7 @@ Para datos reales, `Event.source = IMPORT` + `externalId` (único por fuente) es
 | `npm run dev` / `build` / `start` | Desarrollo / build de producción / servidor |
 | `npm run typecheck` · `npm run lint` | TypeScript · ESLint |
 | `npm test` | Tests unitarios (Vitest) |
-| `npm run test:e2e` | Tests end-to-end (Playwright, requiere BD con seed) |
+| `npm run test:e2e` | Tests end-to-end (Playwright; crean sus propios datos en una BD aislada, ver `tests/e2e/README.md`) |
 | `npm run db:migrate` · `db:deploy` · `db:seed` · `db:reset` | Prisma |
 
 ## Arquitectura
@@ -72,7 +71,7 @@ Para datos reales, `Event.source = IMPORT` + `externalId` (único por fuente) es
 ```
 prisma/
   schema.prisma           Modelo de datos normalizado
-  seed/                   Datos demo + generador de arte procedural
+  seed/                   Datos base (sin contenido ficticio)
 src/
   config/                 Marca, ciudades, categorías y géneros
   lib/                    Código compartido cliente/servidor (validadores zod, fechas, dinero, geo, tipos DTO)
@@ -80,13 +79,13 @@ src/
     auth/                 Sesiones, contraseñas, proveedores OAuth
     services/             Lógica de negocio (eventos, locales, posts, usuarios, notificaciones, reportes, admin…)
     media/                Pipeline de imágenes y vídeo
-    storage/              Abstracción de almacenamiento (local; lista para S3/R2)
+    storage/              Almacenamiento de archivos: disco local o S3-compatible (S3, R2, MinIO)
     security/             Rate limiting
-    jobs/                 Tareas periódicas (recordatorios, limpieza de subidas)
+    jobs/                 Tareas periódicas (recordatorios, sincronización, limpieza de archivos)
     http.ts               Wrapper de rutas API: auth, roles, CSRF, rate limit, errores
   app/
     (app)/                Páginas con la navegación principal
-    (auth)/               Login y registro
+    (auth)/               Login, registro y recuperación de contraseña
     admin/                Panel de administración
     api/                  API REST
     media/[...key]        Servidor de ficheros (con HTTP Range para vídeo)
@@ -130,9 +129,16 @@ Para Mapbox GL o Google Maps basta con otro renderer que implemente `MapProvider
 ### Moderación
 
 - Reportes de usuario, evento, local, publicación, foto, vídeo y comentario (motivos: spam, inapropiado, acoso, evento falso, información incorrecta, otro). Uno por usuario y contenido.
-- Con `AUTO_HIDE_REPORT_THRESHOLD` reportes distintos el contenido se oculta hasta revisión.
-- `EVENT_MODERATION`: `off` · `new_users` (cuentas de menos de 7 días pasan revisión) · `all`.
-- Panel `/admin` (roles MODERATOR/ADMIN): resumen, reportes (descartar, retirar, restaurar, suspender autor), eventos (aprobar, rechazar, destacar, editar, eliminar), usuarios (suspender, roles), locales (editar ficha, destacar, desactivar), publicaciones.
+- Con N reportes distintos (ajustable en `/admin/settings`) el contenido se oculta hasta revisión.
+- Moderación de eventos (`/admin/settings`): `off` · `new_users` (cuentas de menos de 7 días pasan revisión) · `all`. Los eventos de locales y organizadores verificados se publican como oficiales.
+- Bloqueo de usuarios: ni sus publicaciones ni sus comentarios aparecen a quien los bloquea.
+- Panel `/admin` (roles MODERATOR/ADMIN): resumen, reportes (descartar, retirar, restaurar, suspender autor), eventos (aprobar, rechazar, destacar, editar, eliminar), usuarios (suspender, roles), locales (crear, editar ficha, destacar, desactivar), publicaciones, fuentes y sincronizaciones, solicitudes de negocio, auditoría y **ajustes** (registro abierto, sincronización, moderación y estado de cada servicio externo).
+
+### Locales y organizadores
+
+1. Desde `/business` un usuario solicita cuenta de **local** (eligiendo su ficha) u **organizador**.
+2. Un admin la aprueba o rechaza en `/admin/businesses` (el usuario recibe una notificación).
+3. Aprobado: rol ORGANIZER/VENUE, eventos publicados sin revisión y marcados como oficiales; el local puede editar su ficha en `/venues/<slug>/manage` (datos, horario, música, precios, portada y ubicación). Esos datos pasan a ser oficiales y las fuentes externas ya no los sobrescriben; cada cambio queda en el historial.
 
 ### Notificaciones
 
@@ -142,8 +148,10 @@ Tareas periódicas (`src/server/jobs`): se ejecutan dentro del proceso si `ENABL
 
 ```bash
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/event-reminders
-curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/cleanup-uploads
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/event-sync
 ```
+
+Lista completa y frecuencias: [docs/deployment.md](docs/deployment.md#6-tareas-periódicas).
 
 ## Seguridad
 
@@ -176,13 +184,16 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron
 
 Apple/TikTok: implementa `OAuthProvider` en `src/server/auth/oauth/providers.ts`.
 
+## Cuentas
+
+Registro con email y contraseña o Google, sesiones en BD, cerrar sesión (o en todos los dispositivos), cambio de contraseña, recuperación por email (`SMTP_URL` + `EMAIL_FROM`; si no está configurado la app lo dice) y eliminación de cuenta con sus archivos (`/settings`).
+
 ## Almacenamiento
 
-`STORAGE_DRIVER=local` guarda en `STORAGE_LOCAL_DIR`. Para S3/R2 implementa `StorageDriver` (`src/server/storage/index.ts`). Si no hay ffmpeg disponible, los vídeos MP4/WebM se aceptan sin transcodificar.
+`STORAGE_DRIVER=local` guarda en `STORAGE_LOCAL_DIR`; `STORAGE_DRIVER=s3` usa cualquier bucket S3-compatible (AWS S3, Cloudflare R2, MinIO, B2) con firma SigV4 propia, sin SDK. Los archivos nunca van a PostgreSQL. Un job diario borra archivos sin referencia en la BD. Si no hay ffmpeg disponible, los vídeos MP4/WebM se aceptan sin transcodificar.
 
-## Próximos pasos sugeridos
+## Escalado futuro
 
-- Cola de trabajos (BullMQ) para transcodificar vídeo y enviar notificaciones push.
-- Rate limiting y caché en Redis al escalar horizontalmente.
+- Cola de trabajos (BullMQ) para transcodificar vídeo fuera de la petición.
+- Rate limiting y caché en Redis al escalar horizontalmente (hoy en memoria por instancia).
 - Búsqueda con `pg_trgm` / full-text sobre `searchText`.
-- Importadores de eventos reales (`EventSource.IMPORT`).

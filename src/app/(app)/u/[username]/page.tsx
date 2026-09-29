@@ -27,7 +27,7 @@ export default async function ProfilePage({ params }: Props) {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 pt-6 md:pt-10">
       <ProfileHeader profile={profile} />
-      <ProfileTabs userId={profile.id} isSelf={profile.viewer.isSelf} initialPosts={posts} />
+      {!profile.viewer.blocked && !profile.viewer.blockedBy && <ProfileTabs userId={profile.id} isSelf={profile.viewer.isSelf} initialPosts={posts} />}
     </div>
   );
 }

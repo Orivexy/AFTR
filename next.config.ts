@@ -6,12 +6,21 @@ const isHttps = (process.env.APP_URL ?? "").startsWith("https://");
 /** Tile hosts the map may load directly (keyless providers only). */
 const MAP_TILE_HOSTS = "https://*.basemaps.cartocdn.com";
 
+/** Media CDN / public bucket (S3_PUBLIC_URL), if any. Read at build time. */
+const MEDIA_ORIGIN = (() => {
+  try {
+    return process.env.S3_PUBLIC_URL ? ` ${new URL(process.env.S3_PUBLIC_URL).origin}` : "";
+  } catch {
+    return "";
+  }
+})();
+
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${MAP_TILE_HOSTS}`,
-  "media-src 'self' blob:",
+  `img-src 'self' data: blob: ${MAP_TILE_HOSTS}${MEDIA_ORIGIN}`,
+  `media-src 'self' blob:${MEDIA_ORIGIN}`,
   "font-src 'self' data:",
   `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
   "frame-ancestors 'none'",

@@ -4,6 +4,7 @@ import { badRequest, notFound } from "../http";
 import type { SessionUser } from "../auth/session";
 import { nextOffset, parseOffset, photoSelect, toUserMini, userMiniSelect } from "./mappers";
 import { notify } from "./notifications";
+import { assertNotBlocked, notBlockedWith } from "./blocks";
 import { getCityBySlug } from "./cities";
 import { buildSearchText } from "@/lib/text";
 import { SYSTEM_USERNAMES } from "@/config/system";
@@ -30,10 +31,13 @@ export async function getProfile(username: string, viewerId?: string): Promise<P
   });
   if (!p || (p.user.status === "SUSPENDED" && p.userId !== viewerId)) return null;
 
-  const [eventCount, following, followsYou] = await Promise.all([
+  const [eventCount, following, followsYou, blocks] = await Promise.all([
     db.event.count({ where: { organizerId: p.userId, status: "PUBLISHED" } }),
     viewerId ? db.follow.findUnique({ where: { followerId_followingId: { followerId: viewerId, followingId: p.userId } } }) : null,
     viewerId ? db.follow.findUnique({ where: { followerId_followingId: { followerId: p.userId, followingId: viewerId } } }) : null,
+    viewerId && viewerId !== p.userId
+      ? db.block.findMany({ where: { OR: [{ blockerId: viewerId, blockedId: p.userId }, { blockerId: p.userId, blockedId: viewerId }] }, select: { blockerId: true } })
+      : [],
   ]);
 
   return {
@@ -48,7 +52,13 @@ export async function getProfile(username: string, viewerId?: string): Promise<P
     eventCount,
     city: p.city,
     joinedAt: p.createdAt,
-    viewer: { isSelf: viewerId === p.userId, following: Boolean(following), followsYou: Boolean(followsYou) },
+    viewer: {
+      isSelf: viewerId === p.userId,
+      following: Boolean(following),
+      followsYou: Boolean(followsYou),
+      blocked: blocks.some((b) => b.blockerId === viewerId),
+      blockedBy: blocks.some((b) => b.blockerId === p.userId),
+    },
   };
 }
 
@@ -56,6 +66,7 @@ export async function setFollow(followerId: string, followingId: string, follow:
   if (followerId === followingId) throw badRequest("No puedes seguirte a ti mismo");
   const target = await db.user.findFirst({ where: { id: followingId, status: "ACTIVE" }, select: { id: true } });
   if (!target) throw notFound("Usuario no encontrado");
+  if (follow) await assertNotBlocked(followerId, followingId);
 
   const result = await db.$transaction(async (tx) => {
     const existing = await tx.follow.findUnique({ where: { followerId_followingId: { followerId, followingId } } });
@@ -125,7 +136,7 @@ export async function suggestedUsers(viewerId: string | undefined, cityId: strin
     where: {
       user: {
         status: "ACTIVE",
-        ...(viewerId ? { id: { not: viewerId }, followers: { none: { followerId: viewerId } } } : {}),
+        ...(viewerId ? { id: { not: viewerId }, followers: { none: { followerId: viewerId } }, ...notBlockedWith(viewerId) } : {}),
       },
       OR: [{ cityId }, { cityId: null }],
       username: { notIn: [...SYSTEM_USERNAMES] },

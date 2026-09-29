@@ -111,6 +111,8 @@ model User {
   auditLogs           AuditLog[]
   reviewedImports     SourceEventRecord[]
   passwordResetTokens PasswordResetToken[]
+  blocking            Block[]              @relation("Blocker")
+  blockedBy           Block[]              @relation("Blocked")
 }
 
 model Profile {
@@ -665,6 +667,19 @@ model Follow {
 
   @@id([followerId, followingId])
   @@index([followingId])
+}
+
+/// A user blocks another: neither sees the other's posts or comments, and
+/// they can't follow, comment, tag or notify each other.
+model Block {
+  blockerId String
+  blockedId String
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────────

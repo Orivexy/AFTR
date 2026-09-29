@@ -1,0 +1,46 @@
+# Production-style stack: PostgreSQL + one-off migrations/seed + NIVEX.
+#   cp .env.production.example .env.production   # fill in real values (never commit it)
+#   docker compose --env-file .env.production up -d --build
+# Put a TLS-terminating reverse proxy (Caddy, nginx, Traefik…) in front of
+# port 3000 and set APP_URL to the public https:// URL.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nivex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-nivex}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nivex} -d ${POSTGRES_DB:-nivex}"]
+      interval: 5s
+      retries: 20
+
+  migrate:
+    build: { context: ., target: builder, args: { S3_PUBLIC_URL: "${S3_PUBLIC_URL:-}" } }
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nivex}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nivex}?schema=public
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed"
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  app:
+    build: { context: ., target: runner, args: { S3_PUBLIC_URL: "${S3_PUBLIC_URL:-}" } }
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nivex}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nivex}?schema=public
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - media:/app/storage
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+volumes:
+  db-data:
+  media:

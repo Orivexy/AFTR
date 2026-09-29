@@ -1,6 +1,6 @@
 name: Desktop installer
 
-# Builds NIVEX-Setup-x.y.z.exe (Electron + embedded PostgreSQL + DEMO data)
+# Builds NIVEX-Setup-x.y.z.exe (Electron + embedded PostgreSQL + schema and base data)
 # and publishes it as a GitHub Release so it can be downloaded.
 on:
   push:
@@ -67,12 +67,12 @@ jobs:
           files: dist-desktop/NIVEX-Setup-*.exe
           body: |
             **Instalador de NIVEX para Windows 10/11 (64 bits)** — incluye todo lo necesario:
-            servidor, base de datos PostgreSQL, runtime de Visual C++, ffmpeg y datos DEMO de Barcelona.
-            No hace falta instalar nada más ni tener conexión.
+            servidor, base de datos PostgreSQL, runtime de Visual C++ y ffmpeg. No hace falta instalar nada más.
 
             1. Descarga `NIVEX-Setup-*.exe` y ábrelo.
             2. SmartScreen (app sin firmar): *Más información* → *Ejecutar de todas formas*.
-            3. Cuenta demo: `eric@nightly.demo` / `nightly123`.
+            3. Regístrate: la primera cuenta creada es la de administrador.
+            4. Con Internet, los locales reales se descargan de OpenStreetMap al arrancar; no hay datos inventados.
 
             **Móvil:** con el PC y el móvil en la misma Wi‑Fi, menú *NIVEX → Abrir en el móvil…* (Ctrl+M),
             escanea el QR y añádela a la pantalla de inicio. Acepta el aviso del Firewall (redes privadas).

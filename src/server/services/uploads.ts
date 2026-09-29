@@ -67,3 +67,56 @@ export async function cleanupOrphanUploads() {
   await db.video.deleteMany({ where: { id: { in: videos.map((v) => v.id) } } });
   return { photos: orphans.length, videos: videos.length };
 }
+
+/**
+ * Deletes stored files no database row points to any more (media of deleted
+ * posts, events, accounts…). Only files older than 24 h are considered, so
+ * an upload in progress is never touched.
+ */
+export async function sweepOrphanFiles({ dryRun = false } = {}) {
+  const cutoff = Date.now() - 24 * 3600_000;
+  let scanned = 0;
+  let deleted = 0;
+
+  const flush = async (batch: Array<{ key: string; base: string; kind: "img" | "vid" }>) => {
+    if (!batch.length) return;
+    const bases = [...new Set(batch.map((b) => b.base))];
+    const img = bases.filter((b) => b.startsWith("img/"));
+    const vid = bases.filter((b) => b.startsWith("vid/"));
+    const [photos, posters, avatars, eventCovers, venueCovers, videos] = await Promise.all([
+      db.photo.findMany({ where: { key: { in: img } }, select: { key: true } }),
+      db.video.findMany({ where: { posterKey: { in: img } }, select: { posterKey: true } }),
+      db.profile.findMany({ where: { avatarKey: { in: img } }, select: { avatarKey: true } }),
+      db.event.findMany({ where: { coverKey: { in: img } }, select: { coverKey: true } }),
+      db.venue.findMany({ where: { coverKey: { in: img } }, select: { coverKey: true } }),
+      db.video.findMany({ where: { key: { in: vid } }, select: { key: true } }),
+    ]);
+    const used = new Set<string | null>([
+      ...photos.map((p) => p.key),
+      ...posters.map((p) => p.posterKey),
+      ...avatars.map((a) => a.avatarKey),
+      ...eventCovers.map((e) => e.coverKey),
+      ...venueCovers.map((v) => v.coverKey),
+      ...videos.map((v) => v.key),
+    ]);
+    const orphans = batch.filter((b) => !used.has(b.base)).map((b) => b.key);
+    if (orphans.length && !dryRun) await storage.delete(orphans);
+    deleted += orphans.length;
+  };
+
+  for (const kind of ["img", "vid"] as const) {
+    let batch: Array<{ key: string; base: string; kind: "img" | "vid" }> = [];
+    for await (const file of storage.list(`${kind}/`)) {
+      scanned++;
+      if (file.mtime.getTime() > cutoff) continue;
+      const base = kind === "img" ? file.key.replace(/_(sm|lg)\.webp$/, "") : file.key;
+      batch.push({ key: file.key, base, kind });
+      if (batch.length >= 500) {
+        await flush(batch);
+        batch = [];
+      }
+    }
+    await flush(batch);
+  }
+  return { scanned, deleted, dryRun };
+}

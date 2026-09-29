@@ -27,8 +27,19 @@ interface NotifyInput {
   dedupeKey?: string;
 }
 
+async function blockedPairs(inputs: NotifyInput[]) {
+  const pairs = inputs.filter((i) => i.actorId).map((i) => ({ a: i.actorId!, b: i.userId }));
+  if (!pairs.length) return new Set<string>();
+  const rows = await db.block.findMany({
+    where: { OR: pairs.flatMap(({ a, b }) => [{ blockerId: a, blockedId: b }, { blockerId: b, blockedId: a }]) },
+    select: { blockerId: true, blockedId: true },
+  });
+  return new Set(rows.flatMap((r) => [`${r.blockerId}:${r.blockedId}`, `${r.blockedId}:${r.blockerId}`]));
+}
+
 export async function notify(input: NotifyInput) {
   if (input.actorId && input.actorId === input.userId) return; // never notify yourself
+  if (input.actorId && (await blockedPairs([input])).size) return; // nor across a block
   try {
     const n = await db.notification.create({ data: input, select: { id: true, userId: true, type: true } });
     await Promise.allSettled(channels.map((c) => c.deliver(n)));
@@ -39,7 +50,9 @@ export async function notify(input: NotifyInput) {
 }
 
 export async function notifyMany(inputs: NotifyInput[]) {
-  const rows = inputs.filter((i) => !(i.actorId && i.actorId === i.userId));
+  const candidates = inputs.filter((i) => !(i.actorId && i.actorId === i.userId));
+  const blocked = await blockedPairs(candidates);
+  const rows = candidates.filter((i) => !(i.actorId && blocked.has(`${i.actorId}:${i.userId}`)));
   if (rows.length) await db.notification.createMany({ data: rows, skipDuplicates: true });
 }
 

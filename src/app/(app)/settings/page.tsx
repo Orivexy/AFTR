@@ -8,15 +8,18 @@ import { BackButton } from "@/components/events/event-header-actions";
 import { AccountSettings } from "@/components/forms/account-settings";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { listBlocked } from "@/server/services/blocks";
+import { BlockedList } from "@/components/social/blocked-list";
 
 export const metadata: Metadata = { title: "Ajustes" };
 
 export default async function SettingsPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login?next=/settings");
-  const [profile, cities] = await Promise.all([
+  const [profile, cities, blocked] = await Promise.all([
     db.profile.findUniqueOrThrow({ where: { userId: user.id }, select: { bio: true, city: { select: { slug: true } }, user: { select: { passwordHash: true } } } }),
     listCities(),
+    listBlocked(user.id),
   ]);
   return (
     <div className="mx-auto max-w-lg px-4 pt-4 pb-16 md:pt-10">
@@ -37,6 +40,10 @@ export default async function SettingsPage() {
         </span>
         <ArrowRight className="size-4 shrink-0 text-muted" />
       </Link>
+      <section className="mb-10 space-y-3">
+        <h2 className="text-[13px] font-bold tracking-wider text-muted uppercase">Usuarios bloqueados</h2>
+        <BlockedList initial={blocked} />
+      </section>
       <AccountSettings username={user.username} hasPassword={Boolean(profile.user.passwordHash)} />
     </div>
   );

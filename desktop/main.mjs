@@ -121,13 +121,13 @@ ${urls.length > 1 ? `<p>Otras direcciones: ${urls.slice(1).map((u) => `<code>${u
   );
 }
 
-async function resetDemo() {
+async function resetData() {
   const { response } = await dialog.showMessageBox({
     type: "warning",
-    buttons: ["Cancelar", "Reiniciar datos"],
+    buttons: ["Cancelar", "Borrar todo"],
     defaultId: 0,
-    message: "¿Reiniciar los datos de demostración?",
-    detail: "Se borrarán las cuentas, publicaciones y eventos creados en este ordenador.",
+    message: "¿Borrar todos los datos de NIVEX en este ordenador?",
+    detail: "Se eliminarán las cuentas, publicaciones, fotos, eventos y locales guardados aquí. No se puede deshacer.",
   });
   if (response !== 1) return;
   quitting = true;
@@ -148,7 +148,7 @@ function buildMenu() {
           { type: "separator" },
           { label: "Iniciar con Windows (abre al instante)", type: "checkbox", checked: loginItem(), click: (item) => setOpenAtLogin(item.checked) },
           { label: "Ver carpeta de datos", click: () => shell.openPath(dataDir) },
-          { label: "Reiniciar datos de demostración…", click: resetDemo },
+          { label: "Borrar datos locales…", click: resetData },
           { type: "separator" },
           { role: "quit", label: "Salir" },
         ],

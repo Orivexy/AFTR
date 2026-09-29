@@ -3,7 +3,8 @@
 import { site } from "@/config/site";
 import { useState } from "react";
 import Link from "next/link";
-import { Flag, MapPin, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Ban, Flag, MapPin, Settings } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonClass } from "@/components/ui/button";
 import { FollowButton } from "./follow-button";
@@ -11,11 +12,32 @@ import { ShareButton } from "./share-button";
 import { MoreMenu } from "./more-menu";
 import { useReport } from "./report-dialog";
 import { formatNumber } from "@/lib/text";
+import { api } from "@/lib/api-client";
+import { useToast } from "@/components/providers/toast-provider";
+import { Button } from "@/components/ui/button";
 import type { ProfileData } from "@/lib/types";
 
 export function ProfileHeader({ profile }: { profile: ProfileData }) {
   const [followers, setFollowers] = useState(profile.followerCount);
   const report = useReport();
+  const router = useRouter();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const { blocked, blockedBy } = profile.viewer;
+
+  const setBlocked = async (value: boolean) => {
+    if (value && !window.confirm(`¿Bloquear a @${profile.username}? No veréis vuestras publicaciones ni comentarios y dejaréis de seguiros.`)) return;
+    setBusy(true);
+    try {
+      await api.put(`/api/users/${profile.id}/block`, { blocked: value });
+      toast(value ? "Usuario bloqueado" : "Usuario desbloqueado");
+      router.refresh();
+    } catch (err) {
+      toast((err as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const stats = [
     { label: "Publicaciones", value: profile.postCount },
@@ -71,12 +93,29 @@ export function ProfileHeader({ profile }: { profile: ProfileData }) {
           <Link href="/settings" className={buttonClass("secondary", "md", "flex-1")}>
             <Settings className="size-4" /> Editar perfil
           </Link>
+        ) : blocked ? (
+          <Button variant="secondary" className="flex-1" loading={busy} onClick={() => setBlocked(false)}>
+            Desbloquear
+          </Button>
+        ) : blockedBy ? (
+          <p className="flex flex-1 items-center text-sm text-muted">No puedes interactuar con este perfil.</p>
         ) : (
           <FollowButton targetId={profile.id} initial={profile.viewer.following} onChange={(_, c) => c != null && setFollowers(c)} className="flex-1" />
         )}
         <ShareButton url={`/u/${profile.username}`} title={`${profile.displayName} en ${site.name}`} iconOnly className="size-10 rounded-full border border-line-strong hover:bg-surface-2" />
-        {!profile.viewer.isSelf && <MoreMenu items={[{ label: "Reportar usuario", icon: <Flag className="size-4" />, onSelect: () => report.open("USER", profile.id) }]} className="border border-line-strong" />}
+        {!profile.viewer.isSelf && (
+          <MoreMenu
+            items={[
+              { label: "Reportar usuario", icon: <Flag className="size-4" />, onSelect: () => report.open("USER", profile.id) },
+              blocked
+                ? { label: "Desbloquear", icon: <Ban className="size-4" />, onSelect: () => setBlocked(false) }
+                : { label: "Bloquear", icon: <Ban className="size-4" />, danger: true, onSelect: () => setBlocked(true) },
+            ]}
+            className="border border-line-strong"
+          />
+        )}
       </div>
+      {blocked && <p className="rounded-2xl bg-surface px-4 py-3 text-[13px] text-muted">Has bloqueado a este usuario. No verás sus publicaciones ni comentarios.</p>}
       {report.dialog}
     </header>
   );
