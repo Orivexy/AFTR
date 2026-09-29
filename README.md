@@ -1,4 +1,33 @@
+<div align="center">
+
+<img src="public/icons/icon-512.png" alt="ORIVEXY NIGHTS" width="140" />
+
 # ORIVEXY NIGHTS
+
+**Qué pasa esta noche: fiestas, discotecas, FM y eventos cerca de ti.**
+
+## ⬇️ Descargar
+
+<a href="https://github.com/Orivexy/AFTR/releases/latest/download/ORIVEXY-NIGHTS-Windows.exe"><img src="https://img.shields.io/badge/Windows-Descargar%20.exe-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar para Windows" height="44" /></a>
+&nbsp;
+<a href="https://github.com/Orivexy/AFTR/releases/latest/download/ORIVEXY-NIGHTS-Mac.dmg"><img src="https://img.shields.io/badge/macOS-Descargar%20.dmg-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Descargar para Mac" height="44" /></a>
+&nbsp;
+<a href="https://github.com/Orivexy/AFTR/releases/latest/download/ORIVEXY-NIGHTS-Linux.AppImage"><img src="https://img.shields.io/badge/Linux-Descargar%20AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Descargar para Linux" height="44" /></a>
+
+Todo incluido (servidor y base de datos): descargar, abrir y listo. · [Todas las versiones](https://github.com/Orivexy/AFTR/releases)
+
+</div>
+
+| Sistema | Cómo abrirlo la primera vez |
+| --- | --- |
+| 🪟 Windows 10/11 (64 bits) | Abre el `.exe` → si aparece SmartScreen: *Más información* → *Ejecutar de todas formas*. |
+| 🍎 macOS (Apple Silicon, M1 o posterior) | Abre el `.dmg`, arrastra la app a *Aplicaciones* → clic derecho sobre ella → *Abrir* → *Abrir*. |
+| 🐧 Linux (x64) | `chmod +x ORIVEXY-NIGHTS-Linux.AppImage` y ábrelo con doble clic. |
+| 📱 Móvil | Con la app abierta en el ordenador: menú *ORIVEXY NIGHTS → Abrir en el móvil…*, escanea el QR y añádela a la pantalla de inicio. |
+
+La primera cuenta que registres es la de administrador.
+
+---
 
 Plataforma social para descubrir qué pasa cada noche: fiestas, FM (fiestas mayores), discotecas, sesiones de DJ y planes, con un feed vertical de fotos y vídeos de la comunidad.
 
@@ -10,7 +39,7 @@ Plataforma social para descubrir qué pasa cada noche: fiestas, FM (fiestas mayo
 - [Monetización (desactivada hasta integrar un proveedor de pagos)](docs/monetization.md)
 - [Event Discovery (importación automática de eventos y locales)](docs/event-discovery.md)
 - [Locales, horarios, eventos y mapa (APIs, jobs, API keys)](docs/places-and-map.md)
-- [App de Windows (.exe) y móvil (PWA)](docs/desktop.md)
+- [Apps de Windows, Mac y Linux y móvil (PWA)](docs/desktop.md)
 
 Ciclo principal: **descubrir → ir → publicar → interactuar → seguir → descubrir**.
 

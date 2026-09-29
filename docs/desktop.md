@@ -1,10 +1,10 @@
-# App de escritorio (Windows) y móvil
+# Apps de escritorio (Windows, macOS, Linux) y móvil
 
-## Windows — `ORIVEXY-NIGHTS-Setup-x.y.z.exe`
+## Windows — `ORIVEXY-NIGHTS-Windows.exe`
 
 Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visual C++ + ffmpeg + servidor Next.js + esquema y datos base). No hace falta instalar nada más.
 
-**Descarga:** pestaña *Releases* del repositorio. El workflow [`desktop.yml`](../.github/workflows/desktop.yml) genera y publica el `.exe` en cada push a `main` (prerelease) o al crear un tag `v*` (release).
+**Descarga:** botones al principio del README (última versión) o pestaña *Releases*. El workflow [`desktop.yml`](../.github/workflows/desktop.yml) genera y publica el `.exe` en cada push a `main` (prerelease) o al crear un tag `v*` (release).
 
 - Se instala en `C:\Program Files\ORIVEXY NIGHTS` (pide permiso de administrador): PostgreSQL para Windows no admite rutas con acentos.
 - Primera ejecución: crea la base de datos en `%APPDATA%\ORIVEXY NIGHTS\data` (o en `%ProgramData%\ORIVEXY-NIGHTS\…` si el nombre de usuario tiene acentos), aplica las migraciones y carga los datos base (ciudades, categorías, géneros, fuentes). En cada actualización aplica solo las migraciones nuevas, sin tocar tus datos.
@@ -23,6 +23,13 @@ Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visua
 - El `.exe` no está firmado: SmartScreen muestra "Windows protegió su PC" → *Más información* → *Ejecutar de todas formas*.
 - Log: `orivexy-nights.log` en la carpeta de datos (menú **ORIVEXY NIGHTS → Ver carpeta de datos**).
 
+## macOS y Linux
+
+- **macOS** (`ORIVEXY-NIGHTS-Mac.dmg`, Apple Silicon): arrastra la app a *Aplicaciones*. No está firmada ni notarizada por Apple: la primera vez, clic derecho → *Abrir* → *Abrir* (o *Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente*). Datos en `~/Library/Application Support/ORIVEXY NIGHTS/data`.
+- **Linux** (`ORIVEXY-NIGHTS-Linux.AppImage`, x64): `chmod +x` y ejecútalo. Datos en `~/.config/ORIVEXY NIGHTS/data`.
+- Mismo funcionamiento que en Windows: PostgreSQL y servidor incluidos, bandeja del sistema, QR para el móvil. "Iniciar con…" existe en Windows y Mac.
+- Se generan en GitHub Actions (`desktop.yml`): Windows y Linux en Ubuntu, Mac en `macos-latest`.
+
 ## Móvil (Android / iPhone)
 
 El servidor del PC escucha en la red local (`0.0.0.0`). Con el PC y el móvil en la misma Wi‑Fi:
@@ -40,7 +47,9 @@ Un APK/IPA nativo requiere el SDK de Android o un Mac con cuenta de Apple; la AP
 Requisitos (Linux): Node 22, PostgreSQL local para generar los datos base, `python3` + `pip` (runtime de Visual C++ desde PyPI) y `wine64` + `wine32` (NSIS). Con `NSIS_DOCKER=1` se usa la imagen `electronuserland/builder:wine` en lugar de wine local.
 
 ```bash
-bash scripts/build-desktop.sh                 # completo → dist-desktop/ORIVEXY-NIGHTS-Setup-*.exe
+bash scripts/build-desktop.sh                     # Windows → dist-desktop/ORIVEXY-NIGHTS-Windows.exe
+bash scripts/build-desktop.sh --platform linux    # en Linux → ORIVEXY-NIGHTS-Linux.AppImage
+bash scripts/build-desktop.sh --platform mac      # en un Mac Apple Silicon → ORIVEXY-NIGHTS-Mac.dmg
 bash scripts/build-desktop.sh --resources-only --keep-host-natives   # solo recursos (pruebas en Linux)
 ```
 

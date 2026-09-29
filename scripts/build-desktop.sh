@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# Builds the ORIVEXY NIGHTS Windows installer (desktop/).
+# Builds the ORIVEXY NIGHTS desktop app (desktop/).
 #
-#   scripts/build-desktop.sh            # full build → dist-desktop/ORIVEXY-NIGHTS-Setup-x.y.z.exe
+#   scripts/build-desktop.sh                     # Windows installer (cross-built on Linux) → dist-desktop/ORIVEXY-NIGHTS-Windows.exe
+#   scripts/build-desktop.sh --platform linux    # on Linux x64 → dist-desktop/ORIVEXY-NIGHTS-Linux.AppImage
+#   scripts/build-desktop.sh --platform mac      # on an Apple Silicon Mac → dist-desktop/ORIVEXY-NIGHTS-Mac.dmg
+#   scripts/build-desktop.sh --base-data FILE    # reuse a base-data.sql (no PostgreSQL needed)
 #   scripts/build-desktop.sh --resources-only [--keep-host-natives]
 #
-# Requires: Node 20+, a local PostgreSQL (to build the base configuration),
-# python3 + pip (Visual C++ runtime), wine (NSIS on Linux) and
-# network access to the npm registry, PyPI and GitHub releases.
+# Requires: Node 20+, a local PostgreSQL (to build the base configuration,
+# unless --base-data is given) and network access to the npm registry and
+# GitHub releases. Windows also needs python3 + pip (Visual C++ runtime) and
+# wine (NSIS on Linux) or NSIS_DOCKER=1.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -16,12 +20,21 @@ RES="$DESK/resources"
 WORK="$DESK/.build"
 RESOURCES_ONLY=false
 KEEP_HOST=false
-for arg in "$@"; do
-  case "$arg" in
+PLATFORM=win
+BASE_DATA=""
+while [ $# -gt 0 ]; do
+  case "$1" in
     --resources-only) RESOURCES_ONLY=true ;;
     --keep-host-natives) KEEP_HOST=true ;;
+    --platform) PLATFORM="$2"; shift ;;
+    --base-data) BASE_DATA="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift ;;
+    *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
+  shift
 done
+case "$PLATFORM" in win|linux|mac) ;; *) echo "--platform must be win, linux or mac" >&2; exit 1 ;; esac
+# Linux and Mac are built on their own OS, with the host's native modules.
+[ "$PLATFORM" != win ] && KEEP_HOST=true
 
 MSVC_RUNTIME_VERSION="14.44.35112"
 BUILD_DB_URL="${BUILD_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/orivexy_desktop_build}"
@@ -29,12 +42,17 @@ BUILD_DB_NAME="${BUILD_DB_URL##*/}"; BUILD_DB_NAME="${BUILD_DB_NAME%%\?*}"
 ADMIN_DB_URL="${BUILD_DB_URL%/*}/postgres"
 
 BASE="$WORK/base"
-echo "▸ 1/5 Base data (fresh database $BUILD_DB_NAME: migrations + seed, no content)"
 rm -rf "$BASE" && mkdir -p "$BASE"
-psql "$ADMIN_DB_URL" -qc "DROP DATABASE IF EXISTS \"$BUILD_DB_NAME\"" -c "CREATE DATABASE \"$BUILD_DB_NAME\""
-DATABASE_URL="$BUILD_DB_URL" npx prisma migrate deploy >/dev/null
-DATABASE_URL="$BUILD_DB_URL" ADMIN_EMAIL="" ADMIN_PASSWORD="" npx prisma db seed >/dev/null
-DATABASE_URL="$BUILD_DB_URL" npx tsx scripts/export-base-data.mts > "$BASE/base-data.sql"
+if [ -n "$BASE_DATA" ]; then
+  echo "▸ 1/5 Base data (from $BASE_DATA)"
+  cp "$BASE_DATA" "$BASE/base-data.sql"
+else
+  echo "▸ 1/5 Base data (fresh database $BUILD_DB_NAME: migrations + seed, no content)"
+  psql "$ADMIN_DB_URL" -qc "DROP DATABASE IF EXISTS \"$BUILD_DB_NAME\"" -c "CREATE DATABASE \"$BUILD_DB_NAME\""
+  DATABASE_URL="$BUILD_DB_URL" npx prisma migrate deploy >/dev/null
+  DATABASE_URL="$BUILD_DB_URL" ADMIN_EMAIL="" ADMIN_PASSWORD="" npx prisma db seed >/dev/null
+  DATABASE_URL="$BUILD_DB_URL" npx tsx scripts/export-base-data.mts > "$BASE/base-data.sql"
+fi
 
 echo "▸ 2/5 Next.js standalone server"
 rm -rf .next
@@ -51,7 +69,7 @@ rm -rf "$RES/server/src" "$RES/server/prisma" "$RES/server/tests" "$RES/server/d
 mkdir -p "$RES/migrations" && cp -r prisma/migrations/2* "$RES/migrations/"
 cp "$BASE/base-data.sql" "$RES/"
 
-echo "▸ 4/5 Windows native binaries"
+echo "▸ 4/5 Native binaries ($PLATFORM)"
 PACKS="$WORK/packs" && rm -rf "$PACKS" && mkdir -p "$PACKS"
 pkg_version() { node -p "JSON.parse(require('fs').readFileSync('$1/package.json','utf8')).version"; }
 fetch_pkg() { # name@version → extracted dir
@@ -61,47 +79,63 @@ fetch_pkg() { # name@version → extracted dir
   tar -xzf "$tgz" -C "$out" --strip-components=1 && rm "$tgz"
   echo "$out"
 }
-SHARP_VERSION=$(pkg_version node_modules/sharp)
-SHARP_WIN=$(fetch_pkg "@img/sharp-win32-x64@$SHARP_VERSION")
-mkdir -p "$RES/server/node_modules/@img" && rm -rf "$RES/server/node_modules/@img/sharp-win32-x64" && cp -r "$SHARP_WIN" "$RES/server/node_modules/@img/sharp-win32-x64"
-mkdir -p "$RES/server/node_modules/.prisma/client"
-cp node_modules/.prisma/client/query_engine-windows.dll.node "$RES/server/node_modules/.prisma/client/"
-FF=$(fetch_pkg "@ffmpeg-installer/win32-x64") && cp "$FF/ffmpeg.exe" "$RES/bin/"
-FP=$(fetch_pkg "@ffprobe-installer/win32-x64") && cp "$FP/ffprobe.exe" "$RES/bin/"
-
+if [ "$PLATFORM" = win ]; then
+  SHARP_VERSION=$(pkg_version node_modules/sharp)
+  SHARP_WIN=$(fetch_pkg "@img/sharp-win32-x64@$SHARP_VERSION")
+  mkdir -p "$RES/server/node_modules/@img" && rm -rf "$RES/server/node_modules/@img/sharp-win32-x64" && cp -r "$SHARP_WIN" "$RES/server/node_modules/@img/sharp-win32-x64"
+  mkdir -p "$RES/server/node_modules/.prisma/client"
+  cp node_modules/.prisma/client/query_engine-windows.dll.node "$RES/server/node_modules/.prisma/client/"
+  FF=$(fetch_pkg "@ffmpeg-installer/win32-x64") && cp "$FF/ffmpeg.exe" "$RES/bin/"
+  FP=$(fetch_pkg "@ffprobe-installer/win32-x64") && cp "$FP/ffprobe.exe" "$RES/bin/"
+fi
 if [ "$KEEP_HOST" = false ]; then
   # Drop host (Linux) natives from the Windows bundle.
   rm -rf "$RES/server/node_modules/@img/sharp-linux"* "$RES/server/node_modules/@img/sharp-libvips-linux"* \
          "$RES/server/node_modules/@ffmpeg-installer" "$RES/server/node_modules/@ffprobe-installer"
   find "$RES/server/node_modules" -name "*.so.node" -delete
 else
-  cp "$(node -p "require('@ffmpeg-installer/ffmpeg').path")" "$RES/bin/ffmpeg"
-  cp "$(node -p "require('@ffprobe-installer/ffprobe').path")" "$RES/bin/ffprobe"
+  # Host ffmpeg/ffprobe (optional: without them videos are stored as uploaded).
+  for tool in ffmpeg ffprobe; do
+    src=$(node -p "try { require('@$tool-installer/$tool').path } catch { '' }")
+    if [ -n "$src" ] && [ -f "$src" ]; then cp "$src" "$RES/bin/$tool"; chmod +x "$RES/bin/$tool"; else echo "   ($tool not available for this platform: videos won't be transcoded)"; fi
+  done
+  [ "$PLATFORM" != win ] && rm -rf "$RES/server/node_modules/@ffmpeg-installer" "$RES/server/node_modules/@ffprobe-installer"
 fi
 du -sh "$RES"/* | sed 's/^/   /'
 
 [ "$RESOURCES_ONLY" = true ] && { echo "✔ Resources ready in desktop/resources"; exit 0; }
 
-echo "▸ 5/5 Windows installer"
 cd "$DESK"
 npm install --no-audit --no-fund >/dev/null
-npm install --no-save --force --no-audit --no-fund "@embedded-postgres/windows-x64@$(pkg_version node_modules/embedded-postgres)" >/dev/null
-
-# PostgreSQL for Windows links against the Visual C++ runtime, which is not
-# part of a clean Windows install: ship the redistributable DLLs app-locally.
-MSVC="$WORK/msvc" && rm -rf "$MSVC" && mkdir -p "$MSVC"
-python3 -m pip download --quiet --no-deps --only-binary=:all: --platform win_amd64 --python-version 3.12 \
-  -d "$MSVC" "msvc-runtime==$MSVC_RUNTIME_VERSION"
-(cd "$MSVC" && python3 -m zipfile -e ./*.whl .)
-PG_BIN="$DESK/node_modules/@embedded-postgres/windows-x64/native/bin"
-for dll in vcruntime140.dll vcruntime140_1.dll msvcp140.dll msvcp140_1.dll msvcp140_2.dll; do
-  cp "$(find "$MSVC" -path "*/Scripts/$dll" | head -1)" "$PG_BIN/"
-done
-if [ "${NSIS_DOCKER:-0}" = 1 ]; then
-  # CI: electron-builder's official image ships the wine needed for NSIS.
-  docker run --rm -v "$ROOT:/project" -w /project/desktop -e ELECTRON_CACHE=/project/desktop/.build/electron-cache \
-    electronuserland/builder:wine npx electron-builder --win nsis --x64 --publish never
-else
-  npx electron-builder --win nsis --x64 --publish never
-fi
-echo "✔ Installer in dist-desktop/"
+case "$PLATFORM" in
+  linux)
+    echo "▸ 5/5 Linux AppImage"
+    npx electron-builder --linux AppImage --x64 --publish never
+    ;;
+  mac)
+    echo "▸ 5/5 macOS dmg"
+    CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --arm64 --publish never
+    ;;
+  win)
+    echo "▸ 5/5 Windows installer"
+    npm install --no-save --force --no-audit --no-fund "@embedded-postgres/windows-x64@$(pkg_version node_modules/embedded-postgres)" >/dev/null
+    # PostgreSQL for Windows links against the Visual C++ runtime, which is not
+    # part of a clean Windows install: ship the redistributable DLLs app-locally.
+    MSVC="$WORK/msvc" && rm -rf "$MSVC" && mkdir -p "$MSVC"
+    python3 -m pip download --quiet --no-deps --only-binary=:all: --platform win_amd64 --python-version 3.12 \
+      -d "$MSVC" "msvc-runtime==$MSVC_RUNTIME_VERSION"
+    (cd "$MSVC" && python3 -m zipfile -e ./*.whl .)
+    PG_BIN="$DESK/node_modules/@embedded-postgres/windows-x64/native/bin"
+    for dll in vcruntime140.dll vcruntime140_1.dll msvcp140.dll msvcp140_1.dll msvcp140_2.dll; do
+      cp "$(find "$MSVC" -path "*/Scripts/$dll" | head -1)" "$PG_BIN/"
+    done
+    if [ "${NSIS_DOCKER:-0}" = 1 ]; then
+      # CI: electron-builder's official image ships the wine needed for NSIS.
+      docker run --rm -v "$ROOT:/project" -w /project/desktop -e ELECTRON_CACHE=/project/desktop/.build/electron-cache \
+        electronuserland/builder:wine npx electron-builder --win nsis --x64 --publish never
+    else
+      npx electron-builder --win nsis --x64 --publish never
+    fi
+    ;;
+esac
+echo "✔ Package in dist-desktop/"

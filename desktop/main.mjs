@@ -1,5 +1,5 @@
 /**
- * ORIVEXY NIGHTS for Windows — Electron shell. Starts the embedded backend
+ * ORIVEXY NIGHTS for Windows, Linux and macOS — Electron shell. Starts the embedded backend
  * (backend.mjs), opens the app in a window and offers a QR code so phones on
  * the same Wi-Fi can use this computer as their server.
  */
@@ -59,12 +59,14 @@ let backend = null;
 let mainWindow = null;
 let tray = null;
 let quitting = false;
-/** Started by Windows at login: stay in the tray, ready for an instant open. */
-const startHidden = process.argv.includes("--hidden");
+/** Started at login: stay in the tray, ready for an instant open. */
+const startHidden = process.argv.includes("--hidden") || (process.platform === "darwin" && app.getLoginItemSettings().wasOpenedAsHidden);
 
 if (!app.requestSingleInstanceLock()) app.quit();
 // Opening ORIVEXY NIGHTS again (shortcut, taskbar) just shows the running window: instant.
 app.on("second-instance", () => showMain());
+// macOS: clicking the Dock icon reopens the hidden window.
+app.on("activate", () => showMain());
 
 function showMain() {
   if (!mainWindow) return;
@@ -75,7 +77,7 @@ function showMain() {
 
 const loginItem = () => app.getLoginItemSettings({ args: ["--hidden"] }).openAtLogin;
 function setOpenAtLogin(enabled) {
-  app.setLoginItemSettings({ openAtLogin: enabled, args: ["--hidden"] });
+  app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: true, args: ["--hidden"] });
   buildMenu();
 }
 
@@ -129,7 +131,7 @@ ${urls.length > 1 ? `<p>Otras direcciones: ${urls.slice(1).map((u) => `<code>${u
 <h1 style="margin-top:20px;font-size:17px">Instalar como app</h1>
 <ol><li><b>Android (Chrome):</b> menú ⋮ → “Añadir a pantalla de inicio”.</li>
 <li><b>iPhone (Safari):</b> botón compartir → “Añadir a pantalla de inicio”.</li>
-<li>Si no carga, permite ORIVEXY NIGHTS en el Firewall de Windows (redes privadas).</li></ol>`),
+<li>Si no carga, permite ORIVEXY NIGHTS en el firewall del ordenador (redes privadas).</li></ol>`),
   );
 }
 
@@ -158,7 +160,10 @@ function buildMenu() {
           { label: "Abrir en el móvil…", accelerator: "CmdOrCtrl+M", click: showMobile },
           { label: "Abrir en el navegador", click: () => backend && shell.openExternal(backend.url) },
           { type: "separator" },
-          { label: "Iniciar con Windows (abre al instante)", type: "checkbox", checked: loginItem(), click: (item) => setOpenAtLogin(item.checked) },
+          // Login items exist on Windows and macOS (not on Linux).
+          ...(process.platform === "linux"
+            ? []
+            : [{ label: `Iniciar con ${process.platform === "darwin" ? "el Mac" : "Windows"} (abre al instante)`, type: "checkbox", checked: loginItem(), click: (item) => setOpenAtLogin(item.checked) }]),
           { label: "Ver carpeta de datos", click: () => shell.openPath(dataDir) },
           { label: "Borrar datos locales…", click: resetData },
           { type: "separator" },
@@ -173,7 +178,7 @@ function buildMenu() {
 app.whenReady().then(async () => {
   const loading = startHidden ? null : splash();
   try {
-    if (!isAscii(resourcesDir)) {
+    if (process.platform === "win32" && !isAscii(resourcesDir)) {
       throw new Error(`ORIVEXY NIGHTS está instalado en una carpeta con acentos o caracteres especiales:\n${resourcesDir}\n\nReinstálalo en una carpeta sin ellos, por ejemplo C:\\Program Files\\ORIVEXY NIGHTS.`);
     }
     backend = await startBackend({
