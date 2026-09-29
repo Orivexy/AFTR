@@ -5,6 +5,7 @@ import { getCityBySlug, getCurrentCity } from "@/server/services/cities";
 
 const q = z.object({
   city: z.string().max(40).optional(),
+  q: z.string().max(80).optional(),
   genre: z.string().max(100).optional(),
   sort: z.enum(["popular", "rating", "name"]).default("popular"),
   lat: z.coerce.number().min(-90).max(90).optional(),
@@ -21,7 +22,8 @@ export const GET = route({ rateLimit: "read" }, async ({ req }) => {
   return listVenues({
     cityId: city.id,
     genres: p.genre?.split(",").filter(Boolean),
-    sort: p.sort,
+    sort: p.q ? "name" : p.sort,
+    q: p.q,
     near: p.lat != null && p.lng != null ? { lat: p.lat, lng: p.lng, radiusKm: p.radius } : undefined,
     cursor: p.cursor,
     limit: p.limit,

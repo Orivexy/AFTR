@@ -9,14 +9,14 @@ import { useToast } from "@/components/providers/toast-provider";
 import { api, ApiClientError } from "@/lib/api-client";
 
 export type SimpleField =
-  | { name: string; label: string; type?: "text" | "email" | "url" | "number" | "integer" | "date" | "textarea" | "json" | "checkbox"; required?: boolean; placeholder?: string; hint?: string; defaultValue?: string | boolean }
+  | { name: string; label: string; type?: "text" | "email" | "url" | "number" | "decimal" | "integer" | "date" | "textarea" | "json" | "checkbox"; required?: boolean; placeholder?: string; hint?: string; defaultValue?: string | boolean }
   | { name: string; label: string; type: "select"; options: Array<{ value: string; label: string }>; required?: boolean; hint?: string; defaultValue?: string };
 
 /**
  * Generic admin form in a sheet: posts the field values as JSON (empty
  * strings omitted, `number` fields converted) and refreshes the page.
  */
-export function SimpleForm({ trigger, title, url, method = "POST", fields, submitLabel = "Guardar", note }: { trigger: string; title: string; url: string; method?: "POST" | "PATCH"; fields: SimpleField[]; submitLabel?: string; note?: string }) {
+export function SimpleForm({ trigger, title, url, method = "POST", fields, submitLabel = "Guardar", note, extra }: { trigger: string; title: string; url: string; method?: "POST" | "PATCH"; fields: SimpleField[]; submitLabel?: string; note?: string; /** Fixed values sent with the form. */ extra?: Record<string, unknown> }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -26,7 +26,7 @@ export function SimpleForm({ trigger, title, url, method = "POST", fields, submi
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
-    const body: Record<string, unknown> = {};
+    const body: Record<string, unknown> = { ...extra };
     for (const f of fields) {
       if (f.type === "checkbox") {
         body[f.name] = data.get(f.name) === "on";
@@ -35,6 +35,7 @@ export function SimpleForm({ trigger, title, url, method = "POST", fields, submi
       const value = String(data.get(f.name) ?? "").trim();
       if (!value) continue;
       if (f.type === "number") body[f.name] = Math.round(Number(value.replace(",", ".")) * 100);
+      else if (f.type === "decimal") body[f.name] = Number(value.replace(",", "."));
       else if (f.type === "integer") body[f.name] = Number.parseInt(value, 10);
       else if (f.type === "json") {
         try {
@@ -81,7 +82,7 @@ export function SimpleForm({ trigger, title, url, method = "POST", fields, submi
                   {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </Select>
               ) : (
-                <Input id={f.name} name={f.name} type={f.type === "number" || f.type === "integer" ? "text" : (f.type ?? "text")} inputMode={f.type === "number" ? "decimal" : f.type === "integer" ? "numeric" : undefined} required={f.required} placeholder={"placeholder" in f ? f.placeholder : undefined} defaultValue={"defaultValue" in f && typeof f.defaultValue === "string" ? f.defaultValue : undefined} />
+                <Input id={f.name} name={f.name} type={f.type === "number" || f.type === "decimal" || f.type === "integer" ? "text" : (f.type ?? "text")} inputMode={f.type === "number" || f.type === "decimal" ? "decimal" : f.type === "integer" ? "numeric" : undefined} required={f.required} placeholder={"placeholder" in f ? f.placeholder : undefined} defaultValue={"defaultValue" in f && typeof f.defaultValue === "string" ? f.defaultValue : undefined} />
               )}
             </Field>
           ))}

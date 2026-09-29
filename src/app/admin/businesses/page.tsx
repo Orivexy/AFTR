@@ -50,7 +50,10 @@ export default async function BusinessesPage({ searchParams }: { searchParams: P
                 @{b.owner.profile?.username} ({ROLE_LABEL[b.owner.role]}) · {b.contactEmail ?? b.owner.email}
                 {b.contactPhone && ` · ${b.contactPhone}`}
                 {b.venue && <> · <Link href={`/venues/${b.venue.slug}`} target="_blank" className="hover:underline">{b.venue.name}</Link></>}
+                {!b.venue && b.requestedVenue && <> · solicita <Link href={`/venues/${b.requestedVenue.slug}`} target="_blank" className="underline">{b.requestedVenue.name}</Link></>}
               </p>
+              {b.requestMessage && <p className="rounded-xl bg-surface-2 p-2 text-[13px]">“{b.requestMessage}”</p>}
+              {b.reviewNote && <p className="text-[12px] text-muted">Nota de revisión: {b.reviewNote}</p>}
               <p className="text-[12px]">
                 <span className={cn("font-bold", VERIFICATION_TONE[b.verification])}>{b.verification}</span>
                 <span className="ml-2 text-muted">Estado comercial: {b.commercialStatus}</span>
@@ -59,8 +62,18 @@ export default async function BusinessesPage({ searchParams }: { searchParams: P
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {b.verification !== "VERIFIED" && <AdminAction url={`/api/admin/businesses/${b.id}`} body={{ verification: "VERIFIED" }} tone="primary" success="Negocio verificado">Verificar</AdminAction>}
-              {b.verification !== "REJECTED" && <AdminAction url={`/api/admin/businesses/${b.id}`} body={{ verification: "REJECTED" }} tone="danger" success="Verificación rechazada">Rechazar</AdminAction>}
+              {b.verification !== "VERIFIED" && <AdminAction url={`/api/admin/businesses/${b.id}`} body={{ verification: "VERIFIED" }} tone="primary" success="Negocio verificado">{b.verification === "PENDING" ? "Aprobar" : "Verificar"}</AdminAction>}
+              {b.verification !== "REJECTED" && (
+                <SimpleForm
+                  trigger="Rechazar"
+                  title={`Rechazar ${b.tradeName}`}
+                  url={`/api/admin/businesses/${b.id}`}
+                  method="PATCH"
+                  extra={{ verification: "REJECTED" }}
+                  note="El usuario verá el motivo y recibirá una notificación. Si estaba verificado, pierde el rol comercial."
+                  fields={[{ name: "reviewNote", label: "Motivo", type: "textarea" }]}
+                />
+              )}
               {b.commercialStatus !== "SUSPENDED" ? (
                 <AdminAction url={`/api/admin/businesses/${b.id}`} body={{ commercialStatus: "SUSPENDED" }} tone="danger" confirm="¿Suspender la actividad comercial?" success="Suspendido">Suspender</AdminAction>
               ) : (

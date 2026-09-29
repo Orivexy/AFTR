@@ -95,6 +95,11 @@ export default async function VenuePage({ params }: Props) {
       <div className="grid gap-8 px-4 pt-5 md:grid-cols-[1fr_340px] md:px-0">
         <div className="min-w-0 space-y-10">
           <VenueActions venueId={venue.id} slug={venue.slug} name={venue.name} following={venue.viewer.following} followerCount={venue.followerCount} />
+          {venue.viewer.canManage && (
+            <Link href={`/venues/${venue.slug}/manage`} className={buttonClass("secondary", "sm")}>
+              Gestionar ficha
+            </Link>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-3">
             <Info icon={<Music2 className="size-4" />} label="Música" value={venue.genres.map((g) => g.name).join(" · ") || "No disponible"} />

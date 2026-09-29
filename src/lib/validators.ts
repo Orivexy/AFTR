@@ -181,6 +181,42 @@ export const venueAdminUpdateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora no válida");
+/** Weekly hours: { mon: [{ open: "23:00", close: "06:00" }], … }; close ≤ open = next day. */
+export const openingHoursSchema = z
+  .object(Object.fromEntries(["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((d) => [d, z.array(z.object({ open: hhmm, close: hhmm })).max(3).optional()])))
+  .strict();
+
+/** Venue profile edited by its managers (or staff) — never trust/featured/active. */
+export const venueManageSchema = z.object({
+  name: text(80).pipe(z.string().min(2)).optional(),
+  description: optionalText(2000).nullable(),
+  address: text(160).optional(),
+  neighborhood: optionalText(60).nullable(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  phone: optionalText(40).nullable(),
+  website: z.url({ protocol: /^https?$/ }).max(300).nullable().optional().or(z.literal("").transform(() => null)),
+  instagram: optionalText(60).nullable(),
+  priceMin: z.number().int().min(0).max(100000).nullable().optional(),
+  priceMax: z.number().int().min(0).max(100000).nullable().optional(),
+  minAge: z.number().int().min(0).max(25).nullable().optional(),
+  genres: z.array(z.string().max(20)).max(5).optional(),
+  openingHours: openingHoursSchema.nullable().optional(),
+  coverPhotoId: z.string().max(40).nullable().optional(),
+});
+
+export const venueCreateSchema = z.object({
+  name: text(80).pipe(z.string().min(2, "Escribe el nombre")),
+  citySlug: z.string().max(40),
+  type: z.enum(["CLUB", "BAR", "CONCERT_HALL", "OPEN_AIR", "OTHER"]),
+  address: text(160).pipe(z.string().min(3, "Escribe la dirección")),
+  neighborhood: optionalText(60),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  website: z.url({ protocol: /^https?$/ }).max(300).optional().or(z.literal("").transform(() => undefined)),
+});
+
 // ─── Commerce (admin + owners) ────────────────────────────────────────────────
 
 const bpsRate = z.number().int().min(0).max(10_000);

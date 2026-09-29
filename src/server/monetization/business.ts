@@ -68,7 +68,7 @@ export function listOwnBusinesses(userId: string) {
     select: {
       id: true, type: true, tradeName: true, contactEmail: true, contactPhone: true, website: true,
       verification: true, commercialStatus: true, plan: true, requestMessage: true, reviewNote: true, reviewedAt: true, createdAt: true,
-      venue: { select: { slug: true, name: true } },
+      venue: { select: { id: true, slug: true, name: true } },
       requestedVenue: { select: { slug: true, name: true } },
       _count: { select: { events: true } },
     },

@@ -8,6 +8,7 @@ import { venueOptions } from "@/server/services/venues";
 import { getMapConfig } from "@/server/services/map";
 import { db } from "@/server/db";
 import { needsModeration } from "@/server/services/events";
+import { businessForOrganizer } from "@/server/monetization/business";
 import { utcToLocalParts } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Crear evento" };
@@ -39,7 +40,7 @@ export default async function NewEventPage({ searchParams }: { searchParams: Pro
         cityName={city.name}
         venues={venues}
         mapConfig={getMapConfig()}
-        moderationNotice={await needsModeration(user, account.createdAt)}
+        moderationNotice={!(await businessForOrganizer(user.id, preset?.id ?? null)) && (await needsModeration(user, account.createdAt))}
         initial={{
           title: "",
           description: "",

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { AlertTriangle, CalendarClock, CalendarPlus, CheckCircle2, Heart, Loader2, MessageCircle, Tag, UserPlus, XCircle } from "lucide-react";
+import { AlertTriangle, BadgeCheck, CalendarClock, CalendarPlus, CheckCircle2, Heart, Loader2, MessageCircle, Tag, UserPlus, XCircle } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/misc";
 import { useInfinite } from "@/hooks/use-infinite";
@@ -33,6 +33,10 @@ function describe(n: NotificationData): { icon: React.ReactNode; text: React.Rea
       return { icon: <CheckCircle2 className="size-3.5" />, text: <>Tu evento <b>{n.event?.title}</b> ha sido aprobado y ya es público.</>, href: event };
     case "EVENT_REJECTED":
       return { icon: <XCircle className="size-3.5" />, text: <>Tu evento <b>{n.event?.title}</b> no ha sido aprobado. Revísalo y vuelve a enviarlo.</>, href: event };
+    case "BUSINESS_APPROVED":
+      return { icon: <BadgeCheck className="size-3.5" />, text: <>Tu cuenta de organizador/local ha sido <b>verificada</b>. Ya puedes publicar eventos oficiales.</>, href: "/business" };
+    case "BUSINESS_REJECTED":
+      return { icon: <XCircle className="size-3.5" />, text: <>Tu solicitud de cuenta de organizador/local no ha sido aprobada. Mira el motivo.</>, href: "/business" };
     default:
       return { icon: <AlertTriangle className="size-3.5" />, text: <>Parte de tu contenido ha sido retirado por incumplir las normas.</>, href: "/" };
   }

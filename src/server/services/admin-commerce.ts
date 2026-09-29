@@ -33,11 +33,13 @@ export function listPlans() {
 export function listBusinesses(q?: string) {
   return db.businessProfile.findMany({
     where: q ? { OR: [{ tradeName: { contains: q, mode: "insensitive" } }, { owner: { profile: { username: { contains: q.toLowerCase() } } } }] } : {},
-    orderBy: { createdAt: "desc" },
+    // Pending requests first.
+    orderBy: [{ verification: "asc" }, { createdAt: "desc" }],
     take: 100,
     include: {
       owner: { select: { email: true, role: true, profile: { select: { username: true } } } },
       venue: { select: { slug: true, name: true } },
+      requestedVenue: { select: { slug: true, name: true } },
       _count: { select: { events: true, subscriptions: true, transactions: true, promotions: true } },
     },
   });

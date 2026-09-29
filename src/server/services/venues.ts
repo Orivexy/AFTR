@@ -9,6 +9,7 @@ import type { GalleryPhoto, OpeningHours, Page, ReviewData, VenueCardData, Venue
 import type { z } from "zod";
 import type { reviewSchema } from "@/lib/validators";
 import { isStaff } from "@/lib/roles";
+import { normalizeSearch } from "@/lib/text";
 import { sanitizeHours } from "@/lib/hours";
 
 export type VenueSort = "popular" | "rating" | "name";
@@ -19,6 +20,8 @@ export interface VenueQuery {
   sort?: VenueSort;
   near?: LatLng & { radiusKm: number };
   featured?: boolean;
+  /** Free text over name, address, neighbourhood (accent-insensitive). */
+  q?: string;
   cursor?: string;
   limit?: number;
 }
@@ -29,6 +32,8 @@ export async function listVenues(q: VenueQuery): Promise<Page<VenueCardData>> {
   const where: Prisma.VenueWhereInput = { cityId: q.cityId, isActive: true };
   if (q.genres?.length) where.genres = { some: { genre: { slug: { in: q.genres } } } };
   if (q.featured) where.isFeatured = true;
+  const terms = normalizeSearch(q.q ?? "").split(" ").filter((t) => t.length >= 2).slice(0, 5);
+  if (terms.length) where.AND = terms.map((t) => ({ searchText: { contains: t } }));
   if (q.near) {
     const bb = boundingBox(q.near, q.near.radiusKm);
     where.lat = { gte: bb.minLat, lte: bb.maxLat };
