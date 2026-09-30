@@ -123,4 +123,6 @@ export interface Connector {
   fetchVenues?(ctx: SourceContext): Promise<ExternalVenue[]>;
   /** Places API (see src/server/places): discovery + hours refresh, with its usage policy. */
   placeProvider?: PlaceProvider;
+  /** What is missing to run (e.g. an API key); null when ready. Unconfigured sources wait quietly. */
+  missingConfig?(): string | null;
 }

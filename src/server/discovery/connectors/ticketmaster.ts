@@ -24,6 +24,7 @@ interface TmEvent {
 
 export const ticketmasterConnector: Connector = {
   label: "Ticketmaster Discovery API",
+  missingConfig: () => (env.TICKETMASTER_API_KEY ? null : "Falta la clave TICKETMASTER_API_KEY"),
   async fetchEvents(ctx) {
     if (!env.TICKETMASTER_API_KEY) throw new Error("Falta TICKETMASTER_API_KEY");
     const cfg = ctx.config as { classificationName?: string; keyword?: string; radiusKm?: number; maxPages?: number };

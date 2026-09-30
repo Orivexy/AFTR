@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/misc";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { MapView } from "@/components/map/map-view";
+import { AddressSearch } from "@/components/map/address-search";
 import { useToast } from "@/components/providers/toast-provider";
 import { useUpload, type UploadedImage } from "@/hooks/use-upload";
 import { api, ApiClientError } from "@/lib/api-client";
@@ -211,6 +212,7 @@ export function VenueManageForm({ venueId, slug, mapConfig, initial }: { venueId
             <Input id="hood" value={v.neighborhood} onChange={(e) => set("neighborhood", e.target.value)} maxLength={60} />
           </Field>
         </div>
+        <AddressSearch onPick={(r) => setV((s) => ({ ...s, lat: r.lat, lng: r.lng }))} placeholder="Buscar la dirección para situar el pin…" />
         <div className="overflow-hidden rounded-2xl border border-line">
           <div className="relative h-56">
             <MapView config={mapConfig} center={{ lat: v.lat, lng: v.lng }} zoom={16} markers={[{ id: "pin", lat: v.lat, lng: v.lng, variant: "discoteca" }]} onMapClick={(p) => setV((s) => ({ ...s, lat: p.lat, lng: p.lng }))} className="size-full" />

@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "../db";
 import { env, features, isProd } from "../env";
 import { storageStatus } from "../storage";
-import { ffmpegPath, ffprobePath } from "../media/video";
+import { ffmpegPath } from "../media/video";
 import { monetizationFlags } from "../monetization/flags";
 
 export type ServiceState = "ok" | "off" | "warn" | "error";
@@ -17,6 +17,8 @@ export interface ServiceStatus {
 /** Configuration and health of every external dependency, for /admin/settings. */
 export async function systemStatus(): Promise<ServiceStatus[]> {
   const out: ServiceStatus[] = [];
+  // Desktop app: keys are entered in its menu instead of environment variables.
+  const keyFix = (names: string) => (env.DESKTOP_APP ? "menú ORIVEXY NIGHTS → Claves de API…" : names);
 
   try {
     const [{ version }] = await db.$queryRaw<Array<{ version: string }>>`SELECT split_part(version(), ' ', 2) AS version`;
@@ -26,17 +28,21 @@ export async function systemStatus(): Promise<ServiceStatus[]> {
     out.push({ name: "Base de datos", state: "error", detail: (err as Error).message.slice(0, 200) });
   }
 
-  out.push({
-    name: "URL pública",
-    state: env.APP_URL.startsWith("https://") ? "ok" : isProd ? "warn" : "off",
-    detail: env.APP_URL,
-    fix: env.APP_URL.startsWith("https://") ? undefined : "En producción APP_URL debe ser https:// (cookies seguras, OAuth, enlaces de email).",
-  });
+  out.push(
+    env.DESKTOP_APP
+      ? { name: "URL", state: "ok", detail: `App de escritorio · ${env.APP_URL} (y en la red local para el móvil)` }
+      : {
+          name: "URL pública",
+          state: env.APP_URL.startsWith("https://") ? "ok" : isProd ? "warn" : "off",
+          detail: env.APP_URL,
+          fix: env.APP_URL.startsWith("https://") ? undefined : "En producción APP_URL debe ser https:// (cookies seguras, OAuth, enlaces de email).",
+        },
+  );
 
   out.push(
     features.email
       ? { name: "Email (recuperar contraseña)", state: "ok", detail: `SMTP configurado · remitente ${env.EMAIL_FROM}` }
-      : { name: "Email (recuperar contraseña)", state: isProd ? "warn" : "off", detail: "Sin SMTP: la recuperación de contraseña muestra que no está disponible.", fix: "SMTP_URL y EMAIL_FROM" },
+      : { name: "Email (recuperar contraseña)", state: isProd && !env.DESKTOP_APP ? "warn" : "off", detail: "Sin SMTP: la recuperación de contraseña muestra que no está disponible.", fix: keyFix("SMTP_URL y EMAIL_FROM") },
   );
 
   out.push(
@@ -53,8 +59,8 @@ export async function systemStatus(): Promise<ServiceStatus[]> {
     fix: s.configured ? (s.driver === "local" && isProd ? "Con varias instancias o sin disco persistente usa STORAGE_DRIVER=s3." : undefined) : `Falta: ${s.missing.join(", ")}`,
   });
 
-  const video = Boolean(ffmpegPath() && ffprobePath());
-  out.push({ name: "Procesado de vídeo", state: video ? "ok" : "warn", detail: video ? "ffmpeg disponible" : "Sin ffmpeg: los vídeos MP4/WebM se guardan sin transcodificar.", fix: video ? undefined : "FFMPEG_PATH y FFPROBE_PATH" });
+  const video = Boolean(ffmpegPath());
+  out.push({ name: "Procesado de vídeo", state: video ? "ok" : "warn", detail: video ? "ffmpeg disponible" : "Sin ffmpeg: los vídeos MP4/WebM se guardan sin transcodificar.", fix: video ? undefined : "FFMPEG_PATH" });
 
   const keyed = env.MAP_PROVIDER !== "carto";
   const mapKey = env.MAP_PROVIDER === "mapbox" ? env.MAPBOX_TOKEN : env.MAP_PROVIDER === "maptiler" ? env.MAPTILER_KEY : "n/a";
@@ -62,19 +68,20 @@ export async function systemStatus(): Promise<ServiceStatus[]> {
     name: "Mapas",
     state: !keyed || mapKey ? "ok" : "error",
     detail: keyed ? `${env.MAP_PROVIDER} (teselas vía proxy del servidor)` : "CARTO (sin clave)",
-    fix: keyed && !mapKey ? (env.MAP_PROVIDER === "mapbox" ? "MAPBOX_TOKEN" : "MAPTILER_KEY") : undefined,
+    fix: keyed && !mapKey ? keyFix(env.MAP_PROVIDER === "mapbox" ? "MAPBOX_TOKEN" : "MAPTILER_KEY") : undefined,
   });
 
   out.push({ name: "OpenStreetMap (locales y horarios)", state: "ok", detail: `Sin clave · límite ${env.OVERPASS_DAILY_LIMIT} peticiones/día` });
+  out.push({ name: "Búsqueda de direcciones (Nominatim)", state: "ok", detail: `Sin clave · 1 petición/s · límite ${env.NOMINATIM_DAILY_LIMIT}/día` });
   out.push(
     env.TICKETMASTER_API_KEY
       ? { name: "Ticketmaster (eventos)", state: "ok", detail: `Clave configurada · límite ${env.TICKETMASTER_DAILY_LIMIT}/día` }
-      : { name: "Ticketmaster (eventos)", state: "off", detail: "Las fuentes de Ticketmaster no se ejecutan.", fix: "TICKETMASTER_API_KEY" },
+      : { name: "Ticketmaster (eventos)", state: "off", detail: "Las fuentes de Ticketmaster no se ejecutan.", fix: keyFix("TICKETMASTER_API_KEY") },
   );
   out.push(
     env.GOOGLE_PLACES_API_KEY
       ? { name: "Google Places (vincular locales)", state: "ok", detail: `Clave configurada · límite ${env.GOOGLE_PLACES_DAILY_LIMIT}/día` }
-      : { name: "Google Places (vincular locales)", state: "off", detail: "Opcional: solo vincula IDs y detecta cierres.", fix: "GOOGLE_PLACES_API_KEY" },
+      : { name: "Google Places (vincular locales)", state: "off", detail: "Opcional: solo vincula IDs y detecta cierres.", fix: keyFix("GOOGLE_PLACES_API_KEY") },
   );
 
   const jobs = await db.syncJob.findMany({ select: { name: true, lastRunAt: true, status: true } });

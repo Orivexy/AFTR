@@ -87,27 +87,48 @@ if [ "$PLATFORM" = win ]; then
   mkdir -p "$RES/server/node_modules/.prisma/client"
   cp node_modules/.prisma/client/query_engine-windows.dll.node "$RES/server/node_modules/.prisma/client/"
   FF=$(fetch_pkg "@ffmpeg-installer/win32-x64") && cp "$FF/ffmpeg.exe" "$RES/bin/"
-  FP=$(fetch_pkg "@ffprobe-installer/win32-x64") && cp "$FP/ffprobe.exe" "$RES/bin/"
 fi
 if [ "$KEEP_HOST" = false ]; then
   # Drop host (Linux) natives from the Windows bundle.
   rm -rf "$RES/server/node_modules/@img/sharp-linux"* "$RES/server/node_modules/@img/sharp-libvips-linux"* \
-         "$RES/server/node_modules/@ffmpeg-installer" "$RES/server/node_modules/@ffprobe-installer"
+         "$RES/server/node_modules/@ffmpeg-installer"
   find "$RES/server/node_modules" -name "*.so.node" -delete
 else
-  # Host ffmpeg/ffprobe (optional: without them videos are stored as uploaded).
-  for tool in ffmpeg ffprobe; do
+  # Host ffmpeg (optional: without it videos are stored as uploaded).
+  for tool in ffmpeg; do
     src=$(node -p "try { require('@$tool-installer/$tool').path } catch { '' }")
     if [ -n "$src" ] && [ -f "$src" ]; then cp "$src" "$RES/bin/$tool"; chmod +x "$RES/bin/$tool"; else echo "   ($tool not available for this platform: videos won't be transcoded)"; fi
   done
-  [ "$PLATFORM" != win ] && rm -rf "$RES/server/node_modules/@ffmpeg-installer" "$RES/server/node_modules/@ffprobe-installer"
+  [ "$PLATFORM" != win ] && rm -rf "$RES/server/node_modules/@ffmpeg-installer"
 fi
+
+# Smaller download, faster install: drop what the server never loads.
+NM="$RES/server/node_modules"
+# Prisma: the Node-API engine (library.js + one native engine) is used; not the
+# WebAssembly/edge/binary variants for other databases and runtimes.
+rm -f "$NM/@prisma/client/runtime/"*wasm* "$NM/@prisma/client/runtime/"edge* "$NM/@prisma/client/runtime/"react-native* \
+      "$NM/@prisma/client/runtime/"binary.* "$NM/.prisma/client/"*.wasm "$NM/.prisma/client/wasm."* "$NM/.prisma/client/edge."*
+[ "$PLATFORM" != win ] && rm -f "$NM/.prisma/client/"*windows*
+# sharp: glibc builds only (no musl, no WebAssembly fallback).
+rm -rf "$NM/@img/sharp-linuxmusl"* "$NM/@img/sharp-libvips-linuxmusl"* "$NM/@img/sharp-wasm32"
+# Source maps, type declarations and changelogs (licences are kept).
+find "$NM" \( -name "*.map" -o -name "*.d.ts" -o -iname "CHANGELOG*" -o -iname "README*" \) -type f -delete 2>/dev/null || true
 du -sh "$RES"/* | sed 's/^/   /'
+
+# PostgreSQL: server, initdb and pg_ctl are enough — no pgAdmin GUI libraries,
+# message translations, headers or client/ecpg libraries.
+prune_postgres() {
+  local pg="$1"
+  [ -d "$pg" ] || return 0
+  rm -rf "$pg/share/locale" "$pg/include" "$pg/share/doc" "$pg/share/man"
+  rm -f "$pg"/bin/wx*.dll "$pg"/bin/testplug.dll "$pg"/bin/libecpg*.dll "$pg"/bin/libpgtypes.dll "$pg"/lib/*.lib "$pg"/lib/*.a "$pg"/lib/libecpg* "$pg"/lib/libpgtypes*
+}
 
 [ "$RESOURCES_ONLY" = true ] && { echo "✔ Resources ready in desktop/resources"; exit 0; }
 
 cd "$DESK"
 npm install --no-audit --no-fund >/dev/null
+for pg in "$DESK"/node_modules/@embedded-postgres/*/native; do prune_postgres "$pg"; done
 case "$PLATFORM" in
   linux)
     echo "▸ 5/5 Linux AppImage"
@@ -126,6 +147,7 @@ case "$PLATFORM" in
     python3 -m pip download --quiet --no-deps --only-binary=:all: --platform win_amd64 --python-version 3.12 \
       -d "$MSVC" "msvc-runtime==$MSVC_RUNTIME_VERSION"
     (cd "$MSVC" && python3 -m zipfile -e ./*.whl .)
+    prune_postgres "$DESK/node_modules/@embedded-postgres/windows-x64/native"
     PG_BIN="$DESK/node_modules/@embedded-postgres/windows-x64/native/bin"
     for dll in vcruntime140.dll vcruntime140_1.dll msvcp140.dll msvcp140_1.dll msvcp140_2.dll; do
       cp "$(find "$MSVC" -path "*/Scripts/$dll" | head -1)" "$PG_BIN/"

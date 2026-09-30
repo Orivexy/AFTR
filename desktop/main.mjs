@@ -3,13 +3,13 @@
  * (backend.mjs), opens the app in a window and offers a QR code so phones on
  * the same Wi-Fi can use this computer as their server.
  */
-import { app, BrowserWindow, Menu, Tray, dialog, nativeImage, shell } from "electron";
+import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, shell } from "electron";
 import path from "node:path";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import QRCode from "qrcode";
-import { startBackend } from "./backend.mjs";
+import { readApiKeys, startBackend, writeApiKeys } from "./backend.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const resourcesDir = app.isPackaged ? process.resourcesPath : path.join(here, "resources");
@@ -134,6 +134,37 @@ ${urls.length > 1 ? `<p>Otras direcciones: ${urls.slice(1).map((u) => `<code>${u
   );
 }
 
+let keysWindow = null;
+
+/** Menu → "Claves de API…": optional keys (Ticketmaster, Google, map style, email), stored locally. */
+function showApiKeys() {
+  if (keysWindow) return keysWindow.focus();
+  keysWindow = new BrowserWindow({
+    width: 560,
+    height: 760,
+    title: "Claves de API · ORIVEXY NIGHTS",
+    backgroundColor: "#07070b",
+    autoHideMenuBar: true,
+    icon: path.join(here, "build", "icon.png"),
+    webPreferences: { preload: path.join(here, "keys-preload.cjs"), contextIsolation: true, sandbox: true, nodeIntegration: false },
+  });
+  keysWindow.on("closed", () => (keysWindow = null));
+  keysWindow.loadFile(path.join(here, "keys.html"));
+}
+
+ipcMain.handle("api-keys:load", () => readApiKeys(dataDir));
+ipcMain.handle("api-keys:open", (_e, url) => {
+  if (typeof url === "string" && url.startsWith("https://")) shell.openExternal(url);
+});
+ipcMain.handle("api-keys:save", async (_e, values) => {
+  writeApiKeys(dataDir, values);
+  // The server reads the keys at start: restart the whole app (1–2 s).
+  quitting = true;
+  await backend?.stop();
+  app.relaunch({ args: process.argv.slice(1).filter((a) => a !== "--hidden") });
+  app.exit(0);
+});
+
 async function resetData() {
   const { response } = await dialog.showMessageBox({
     type: "warning",
@@ -163,6 +194,7 @@ function buildMenu() {
           ...(process.platform === "linux"
             ? []
             : [{ label: `Iniciar con ${process.platform === "darwin" ? "el Mac" : "Windows"} (abre al instante)`, type: "checkbox", checked: loginItem(), click: (item) => setOpenAtLogin(item.checked) }]),
+          { label: "Claves de API…", click: showApiKeys },
           { label: "Ver carpeta de datos", click: () => shell.openPath(dataDir) },
           { label: "Borrar datos locales…", click: resetData },
           { type: "separator" },

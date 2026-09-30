@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
   && groupadd --system orivexy && useradd --system --gid orivexy --home /app orivexy \
   && mkdir -p /app/storage && chown orivexy:orivexy /app/storage
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 \
-    STORAGE_LOCAL_DIR=/app/storage FFMPEG_PATH=/usr/bin/ffmpeg FFPROBE_PATH=/usr/bin/ffprobe
+    STORAGE_LOCAL_DIR=/app/storage FFMPEG_PATH=/usr/bin/ffmpeg
 COPY --from=builder --chown=orivexy:orivexy /app/.next/standalone ./
 COPY --from=builder --chown=orivexy:orivexy /app/.next/static ./.next/static
 COPY --from=builder --chown=orivexy:orivexy /app/public ./public

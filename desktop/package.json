@@ -33,6 +33,8 @@
       "main.mjs",
       "backend.mjs",
       "splash.html",
+      "keys-preload.cjs",
+      "keys.html",
       "package.json",
       "build/icon.png",
       "build/icon.ico",

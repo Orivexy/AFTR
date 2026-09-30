@@ -26,7 +26,6 @@ function binary(pkg: string): string | null {
 }
 
 export const ffmpegPath = () => process.env.FFMPEG_PATH || binary("@ffmpeg-installer/ffmpeg");
-export const ffprobePath = () => process.env.FFPROBE_PATH || binary("@ffprobe-installer/ffprobe");
 
 /** Container sniffing by magic bytes (MP4/MOV "ftyp" box, WebM/Matroska EBML). */
 export function sniffVideo(buf: Buffer): "mp4" | "webm" | null {
@@ -45,9 +44,41 @@ export interface StoredVideo {
   sizeBytes: number;
 }
 
-interface ProbeResult {
-  streams?: Array<{ codec_type?: string; width?: number; height?: number }>;
-  format?: { duration?: string };
+export interface ProbeResult {
+  hasVideo: boolean;
+  hasAudio: boolean;
+  durationSec: number | null;
+  width: number | null;
+  height: number | null;
+}
+
+/**
+ * Reads what `ffmpeg -i <file>` prints about the input (no ffprobe needed,
+ * which saves ~80 MB in the desktop apps):
+ *   Duration: 00:00:12.34, start: …
+ *   Stream #0:0[0x1](und): Video: h264 (High) (avc1 / …), yuv420p(tv, …), 1080x1920 [SAR 1:1 DAR 9:16], …
+ *   Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / …), 44100 Hz, stereo, …
+ */
+export function parseFfmpegInfo(stderr: string): ProbeResult {
+  const streams = stderr.split("\n").filter((l) => /^\s*Stream #\d+:\d+/.test(l));
+  const video = streams.find((l) => /: Video: /.test(l) && !/attached pic/.test(l));
+  const dims = video?.match(/, (\d{2,5})x(\d{2,5})[\s,]/);
+  const d = stderr.match(/Duration: (\d+):(\d{2}):(\d{2}(?:\.\d+)?)/);
+  return {
+    hasVideo: Boolean(video),
+    hasAudio: streams.some((l) => /: Audio: /.test(l)),
+    durationSec: d ? Number(d[1]) * 3600 + Number(d[2]) * 60 + Number(d[3]) : null,
+    width: dims ? Number(dims[1]) : null,
+    height: dims ? Number(dims[2]) : null,
+  };
+}
+
+async function probe(ffmpeg: string, file: string): Promise<ProbeResult> {
+  // `ffmpeg -i` without an output exits with code 1 after printing the input info.
+  const stderr = await new Promise<string>((resolve) => {
+    execFile(ffmpeg, ["-hide_banner", "-i", file], { timeout: 20_000, maxBuffer: 4 * 1024 * 1024 }, (_err, _out, err) => resolve(String(err ?? "")));
+  });
+  return parseFfmpegInfo(stderr);
 }
 
 /**
@@ -62,10 +93,9 @@ export async function processVideo(input: Buffer): Promise<StoredVideo> {
   if (!container) throw badRequest("Formato de vídeo no soportado. Usa MP4, MOV o WebM");
 
   const ffmpeg = ffmpegPath();
-  const ffprobe = ffprobePath();
   const key = newMediaKey("vid");
 
-  if (!ffmpeg || !ffprobe) {
+  if (!ffmpeg) {
     // No transcoder available: store the original (already validated container).
     const ext = container === "mp4" ? "mp4" : "webm";
     await storage.put(`${key}.${ext}`, input);
@@ -79,19 +109,12 @@ export async function processVideo(input: Buffer): Promise<StoredVideo> {
     const poster = path.join(dir, "poster.jpg");
     await writeFile(src, input);
 
-    let probe: ProbeResult;
-    try {
-      const { stdout } = await run(ffprobe, ["-v", "error", "-print_format", "json", "-show_streams", "-show_format", src], { timeout: 20_000 });
-      probe = JSON.parse(stdout) as ProbeResult;
-    } catch {
-      throw badRequest("No se ha podido leer el vídeo");
-    }
-    const videoStream = probe.streams?.find((s) => s.codec_type === "video");
-    if (!videoStream) throw badRequest("El archivo no contiene vídeo");
-    const duration = Number(probe.format?.duration ?? 0);
+    const info = await probe(ffmpeg, src);
+    if (!info.hasVideo) throw badRequest("No se ha podido leer el vídeo o no contiene imagen");
+    const duration = info.durationSec ?? 0;
     if (duration > MAX_VIDEO_SECONDS + 1) throw badRequest(`El vídeo puede durar como máximo ${MAX_VIDEO_SECONDS} s`);
 
-    const hasAudio = probe.streams?.some((s) => s.codec_type === "audio");
+    const hasAudio = info.hasAudio;
     await run(
       ffmpeg,
       [
@@ -108,8 +131,7 @@ export async function processVideo(input: Buffer): Promise<StoredVideo> {
     );
     await run(ffmpeg, ["-y", "-ss", String(Math.min(0.5, duration / 2)), "-i", out, "-frames:v", "1", "-q:v", "3", poster], { timeout: 30_000 });
 
-    const { stdout: outProbe } = await run(ffprobe, ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-print_format", "json", out]);
-    const dims = (JSON.parse(outProbe) as ProbeResult).streams?.[0];
+    const dims = await probe(ffmpeg, out);
     const posterImage = await processImage(await readFile(poster));
     const size = (await stat(out)).size;
     await storage.putFile(`${key}.mp4`, out);

@@ -8,12 +8,13 @@ import { env } from "../env";
  * once today's cap is reached (the sync then fails and backs off; the app
  * keeps serving what is already in the database).
  */
-export type ApiProvider = "overpass" | "google_places" | "ticketmaster";
+export type ApiProvider = "overpass" | "nominatim" | "google_places" | "ticketmaster";
 
 export class QuotaExceededError extends Error {}
 
 const LIMITS: Record<ApiProvider, () => number> = {
   overpass: () => env.OVERPASS_DAILY_LIMIT,
+  nominatim: () => env.NOMINATIM_DAILY_LIMIT,
   google_places: () => env.GOOGLE_PLACES_DAILY_LIMIT,
   ticketmaster: () => env.TICKETMASTER_DAILY_LIMIT,
 };

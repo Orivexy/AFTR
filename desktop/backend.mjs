@@ -160,6 +160,31 @@ async function preparePostgres({ resourcesDir, dataDir, pgDir, pgPort, pg_ctl, d
   }
 }
 
+/**
+ * API keys entered by the user (menu → "Claves de API…"). They live only in
+ * this computer's data folder and reach the server as environment variables:
+ * never in the browser, never in the repository.
+ */
+export const API_KEY_NAMES = ["TICKETMASTER_API_KEY", "GOOGLE_PLACES_API_KEY", "MAP_PROVIDER", "MAPTILER_KEY", "MAPBOX_TOKEN", "SMTP_URL", "EMAIL_FROM"];
+const apiKeysFile = (dataDir) => path.join(dataDir, "api-keys.json");
+
+export function readApiKeys(dataDir) {
+  try {
+    const raw = JSON.parse(readFileSync(apiKeysFile(dataDir), "utf8"));
+    return Object.fromEntries(API_KEY_NAMES.filter((k) => typeof raw[k] === "string" && raw[k].trim()).map((k) => [k, raw[k].trim()]));
+  } catch {
+    return {};
+  }
+}
+
+export function writeApiKeys(dataDir, values) {
+  const clean = Object.fromEntries(API_KEY_NAMES.map((k) => [k, typeof values?.[k] === "string" ? values[k].trim().slice(0, 500) : ""]).filter(([, v]) => v));
+  if (clean.MAP_PROVIDER && !["carto", "maptiler", "mapbox"].includes(clean.MAP_PROVIDER)) delete clean.MAP_PROVIDER;
+  mkdirSync(dataDir, { recursive: true });
+  writeFileSync(apiKeysFile(dataDir), JSON.stringify(clean, null, 2), { mode: 0o600 });
+  return clean;
+}
+
 function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databaseUrl, storageDir, cronSecret, logFile, log }) {
   const appDir = path.join(resourcesDir, "server");
   const bin = (name) => {
@@ -169,6 +194,7 @@ function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databas
   const env = {
     ...process.env,
     ...nodeEnv,
+    ...readApiKeys(dataDir),
     NODE_ENV: "production",
     // Node caches compiled JavaScript here: every launch after the first boots faster.
     NODE_COMPILE_CACHE: path.join(dataDir, "cache", "node-compile"),
@@ -179,11 +205,11 @@ function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databas
     STORAGE_DRIVER: "local",
     STORAGE_LOCAL_DIR: storageDir,
     FFMPEG_PATH: bin("ffmpeg"),
-    FFPROBE_PATH: bin("ffprobe"),
     CRON_SECRET: cronSecret,
     ENABLE_INPROCESS_JOBS: "true",
     // Local single-user install: the first account created becomes its administrator.
     FIRST_USER_IS_ADMIN: "true",
+    DESKTOP_APP: "true",
     EVENT_MODERATION: "off",
     RATE_LIMIT_SCALE: "20",
     NEXT_TELEMETRY_DISABLED: "1",

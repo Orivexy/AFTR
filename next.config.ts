@@ -45,7 +45,7 @@ const nextConfig: NextConfig = {
   agentRules: false,
   devIndicators: false,
   compress: true,
-  serverExternalPackages: ["sharp", "@ffmpeg-installer/ffmpeg", "@ffprobe-installer/ffprobe", "bcryptjs"],
+  serverExternalPackages: ["sharp", "@ffmpeg-installer/ffmpeg", "bcryptjs"],
   images: {
     // Uploaded media is pre-optimised into fixed variants at upload time;
     // see src/lib/media-loader.ts.

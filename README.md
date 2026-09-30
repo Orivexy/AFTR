@@ -27,6 +27,8 @@ Todo incluido (servidor y base de datos): descargar, abrir y listo. · [Todas la
 
 La primera cuenta que registres es la de administrador.
 
+**Sin configurar nada** funcionan el mapa, los locales y horarios de las 6 ciudades (OpenStreetMap) y la búsqueda de direcciones. Con claves opcionales (menú *ORIVEXY NIGHTS → Claves de API…*) se añaden eventos de Ticketmaster, vinculación con Google Places, estilos de mapa MapTiler/Mapbox y email para recuperar la contraseña.
+
 ---
 
 Plataforma social para descubrir qué pasa cada noche: fiestas, FM (fiestas mayores), discotecas, sesiones de DJ y planes, con un feed vertical de fotos y vídeos de la comunidad.
@@ -193,7 +195,7 @@ Lista completa y frecuencias: [docs/deployment.md](docs/deployment.md#6-tareas-p
 - OAuth con `state` + PKCE; enlace de cuentas solo con email verificado.
 - Autorización por recurso (solo el autor/organizador o moderadores editan/borran; las subidas solo las puede adjuntar su propietario).
 - Rate limiting por IP/usuario (login, registro, subidas, comentarios, reportes…), interfaz lista para Redis.
-- Subidas validadas por contenido real (se decodifica la imagen / se analiza el vídeo con ffprobe), límites de tamaño y duración, metadatos eliminados.
+- Subidas validadas por contenido real (se decodifica la imagen / se analiza el vídeo con ffmpeg), límites de tamaño y duración, metadatos eliminados.
 - Antispam: honeypot en registro, límite de enlaces y duplicados en comentarios.
 - Redirecciones solo relativas (sin open redirect). Secretos solo en variables de entorno del servidor.
 

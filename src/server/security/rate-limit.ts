@@ -58,6 +58,8 @@ export const RATE_LIMITS = {
   interaction: { limit: 300, windowMs: 10 * 60_000 },
   report: { limit: 20, windowMs: 60 * 60_000 },
   read: { limit: 600, windowMs: 60_000 },
+  /** Address search (Nominatim allows 1 req/s for the whole server). */
+  geocode: { limit: 20, windowMs: 60_000 },
 } satisfies Record<string, RateLimitRule>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

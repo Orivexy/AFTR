@@ -60,9 +60,12 @@ async function claim(sourceId: string, now: Date) {
 
 export type SyncMode = "full" | "hours";
 
-export async function syncSource(sourceId: string, opts: { mode?: SyncMode; job?: string } = {}): Promise<{ skipped: true } | { runId: string; counters: Counters; error?: string }> {
+export async function syncSource(sourceId: string, opts: { mode?: SyncMode; job?: string } = {}): Promise<{ skipped: true; reason?: string } | { runId: string; counters: Counters; error?: string }> {
   const mode = opts.mode ?? "full";
   const startedAt = new Date();
+  const pending = await db.discoverySource.findUnique({ where: { id: sourceId }, select: { type: true } });
+  const missing = pending && CONNECTORS[pending.type].missingConfig?.();
+  if (missing) return { skipped: true, reason: missing };
   if (!(await claim(sourceId, startedAt))) return { skipped: true };
 
   const source = await db.discoverySource.findUniqueOrThrow({ where: { id: sourceId }, include: { city: { include: { country: true } } } });
@@ -334,7 +337,10 @@ export async function runDueSources(kind: "events" | "venues", opts: { force?: b
       orderBy: { nextSyncAt: "asc" },
       take: 25,
     });
-    const due = candidates.filter((s) => sourceKind(s.type) === kind && (opts.mode !== "hours" || CONNECTORS[s.type].placeProvider?.refresh));
+    // Sources waiting for an API key are not due: they start on their own once it is set.
+    const due = candidates.filter(
+      (s) => sourceKind(s.type) === kind && !CONNECTORS[s.type].missingConfig?.() && (opts.mode !== "hours" || CONNECTORS[s.type].placeProvider?.refresh),
+    );
     for (const s of due) {
       const r = await syncSource(s.id, { mode: opts.mode, job: opts.job });
       if ("skipped" in r) continue;

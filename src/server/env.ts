@@ -43,12 +43,17 @@ const schema = z.object({
   VENUE_SYNC_INTERVAL: z.string().default("24h"),
   VENUE_HOURS_SYNC_INTERVAL: z.string().default("12h"),
   OVERPASS_API_URL: z.url().default("https://overpass-api.de/api/interpreter"),
+  // Address search (OpenStreetMap Nominatim, no key; max 1 request/second by policy).
+  NOMINATIM_URL: z.url().default("https://nominatim.openstreetmap.org"),
   // Daily request caps per provider (cost / fair-use protection).
   OVERPASS_DAILY_LIMIT: z.coerce.number().int().min(0).default(200),
+  NOMINATIM_DAILY_LIMIT: z.coerce.number().int().min(0).default(1000),
   GOOGLE_PLACES_DAILY_LIMIT: z.coerce.number().int().min(0).default(150),
   TICKETMASTER_DAILY_LIMIT: z.coerce.number().int().min(0).default(1000),
   // Optional: your contracted price per 1000 Google Places requests, to estimate cost in /admin.
   GOOGLE_PLACES_COST_PER_1000: z.preprocess((v) => (v === "" ? undefined : v), z.coerce.number().min(0).optional()),
+  // Set by the desktop app (Windows/Mac/Linux) for its local server.
+  DESKTOP_APP: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   // Desktop app only: the first registered account becomes ADMIN. Never enable on a public site.
   FIRST_USER_IS_ADMIN: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   ENABLE_INPROCESS_JOBS: z

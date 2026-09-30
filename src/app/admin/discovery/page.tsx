@@ -92,13 +92,13 @@ export default async function DiscoveryPage() {
                 </p>
                 {src.url && <p className="truncate text-[12px] text-faint">{src.url}</p>}
                 <p className="text-[12px]">
-                  <span className={cn("font-bold", !src.enabled ? "text-faint" : src.status === "ERROR" ? "text-danger" : src.status === "OK" ? "text-volt" : "text-muted")}>{src.enabled ? src.status : "DESACTIVADA"}</span>
+                  <span className={cn("font-bold", !src.enabled || src.needsKey ? "text-faint" : src.status === "ERROR" ? "text-danger" : src.status === "OK" ? "text-volt" : "text-muted")}>{!src.enabled ? "DESACTIVADA" : src.needsKey ? "ESPERANDO CLAVE" : src.status}</span>
                   <span className="ml-2 text-muted">{src.trust}{src.autoPublish ? " · auto-publica" : " · revisión manual"}{src.allowImages ? " · imágenes" : ""}</span>
                   <span className="ml-2 text-muted">cada {src.intervalMin} min</span>
                   <span className="ml-2 text-muted">última: {src.lastSyncAt ? timeAgo(src.lastSyncAt) : "nunca"}</span>
                   <span className="ml-2 text-muted">{src.eventsFound} encontrados · {src._count.eventRecords} registros</span>
                 </p>
-                {src.needsKey && <p className="text-[12px] text-warn">Falta la API key en las variables de entorno.</p>}
+                {src.needsKey && <p className="text-[12px] text-warn">Empezará sola cuando configures su clave de API (variables de entorno o, en la app de escritorio, menú ORIVEXY NIGHTS → Claves de API…).</p>}
                 {src.lastError && <p className="text-[12px] text-danger">{src.lastError}</p>}
               </div>
               {admin && (

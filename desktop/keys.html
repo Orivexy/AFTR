@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+    <title>Claves de API · ORIVEXY NIGHTS</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #07070b; color: #f4f4f6; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+      main { padding: 22px 24px 90px; }
+      h1 { margin: 0 0 4px; font-size: 20px; }
+      p.lead { margin: 0 0 18px; color: #a1a1b0; }
+      section { border: 1px solid #22222d; border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; background: #101017; }
+      h2 { margin: 0 0 2px; font-size: 15px; }
+      .hint { margin: 0 0 10px; color: #8a8a99; font-size: 12.5px; }
+      label { display: block; font-size: 12px; color: #a1a1b0; margin: 8px 0 4px; }
+      input, select { width: 100%; height: 38px; border-radius: 10px; border: 1px solid #2d2d3a; background: #181822; color: #fff; padding: 0 12px; font: inherit; }
+      input:focus, select:focus { outline: none; border-color: #d7ff3a; }
+      a { color: #d7ff3a; cursor: pointer; text-decoration: underline; }
+      .ok { color: #7dff8a; font-size: 12px; }
+      footer { position: fixed; inset: auto 0 0 0; display: flex; gap: 10px; justify-content: flex-end; align-items: center; padding: 14px 24px; background: #07070bf0; border-top: 1px solid #22222d; }
+      footer span { margin-right: auto; color: #8a8a99; font-size: 12px; }
+      button { height: 40px; border-radius: 999px; border: 0; padding: 0 20px; font: 600 14px system-ui, sans-serif; cursor: pointer; }
+      .primary { background: #d7ff3a; color: #0b0b10; }
+      .ghost { background: #1c1c26; color: #fff; }
+      #err { color: #ff6b8b; font-size: 12.5px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Claves de API</h1>
+      <p class="lead">Todas son opcionales. Sin ellas la app funciona: mapa, locales y horarios usan OpenStreetMap (gratis, sin clave). Las claves se guardan solo en este ordenador.</p>
+
+      <section>
+        <h2>Eventos de Ticketmaster</h2>
+        <p class="hint">Conciertos y fiestas de todas las ciudades. Clave gratuita en <a data-href="https://developer-acct.ticketmaster.com/user/register">developer.ticketmaster.com</a> (Consumer Key).</p>
+        <label for="TICKETMASTER_API_KEY">Consumer Key</label>
+        <input id="TICKETMASTER_API_KEY" type="password" autocomplete="off" spellcheck="false" />
+      </section>
+
+      <section>
+        <h2>Google Places</h2>
+        <p class="hint">Vincula los locales con Google y detecta los que han cerrado. <a data-href="https://console.cloud.google.com/apis/library/places.googleapis.com">Activa «Places API (New)»</a> y crea una clave.</p>
+        <label for="GOOGLE_PLACES_API_KEY">API key</label>
+        <input id="GOOGLE_PLACES_API_KEY" type="password" autocomplete="off" spellcheck="false" />
+      </section>
+
+      <section>
+        <h2>Estilo del mapa</h2>
+        <p class="hint">CARTO no necesita clave. <a data-href="https://cloud.maptiler.com/account/keys/">MapTiler</a> y <a data-href="https://account.mapbox.com/access-tokens/">Mapbox</a> tienen planes gratuitos.</p>
+        <label for="MAP_PROVIDER">Proveedor</label>
+        <select id="MAP_PROVIDER">
+          <option value="">CARTO (sin clave)</option>
+          <option value="maptiler">MapTiler</option>
+          <option value="mapbox">Mapbox</option>
+        </select>
+        <label for="MAPTILER_KEY">Clave de MapTiler</label>
+        <input id="MAPTILER_KEY" type="password" autocomplete="off" spellcheck="false" />
+        <label for="MAPBOX_TOKEN">Token de Mapbox</label>
+        <input id="MAPBOX_TOKEN" type="password" autocomplete="off" spellcheck="false" />
+      </section>
+
+      <section>
+        <h2>Email (recuperar contraseña)</h2>
+        <p class="hint">Servidor SMTP de tu correo, p. ej. <code>smtps://usuario:contraseña@smtp.gmail.com:465</code> (en Gmail usa una «contraseña de aplicación»).</p>
+        <label for="SMTP_URL">SMTP</label>
+        <input id="SMTP_URL" type="password" autocomplete="off" spellcheck="false" placeholder="smtps://usuario:contraseña@servidor:465" />
+        <label for="EMAIL_FROM">Remitente</label>
+        <input id="EMAIL_FROM" type="text" autocomplete="off" placeholder="ORIVEXY NIGHTS <tu@correo.com>" />
+      </section>
+      <p id="err"></p>
+    </main>
+    <footer>
+      <span>Al guardar, ORIVEXY NIGHTS se reinicia (1–2 s).</span>
+      <button class="ghost" id="cancel" type="button">Cancelar</button>
+      <button class="primary" id="save" type="button">Guardar</button>
+    </footer>
+    <script>
+      const ids = ["TICKETMASTER_API_KEY", "GOOGLE_PLACES_API_KEY", "MAP_PROVIDER", "MAPTILER_KEY", "MAPBOX_TOKEN", "SMTP_URL", "EMAIL_FROM"];
+      const $ = (id) => document.getElementById(id);
+      document.querySelectorAll("a[data-href]").forEach((a) => a.addEventListener("click", () => window.apiKeys.open(a.dataset.href)));
+      window.apiKeys.load().then((values) => ids.forEach((id) => ($(id).value = values[id] || "")));
+      $("cancel").onclick = () => window.close();
+      $("save").onclick = async () => {
+        $("err").textContent = "";
+        const values = Object.fromEntries(ids.map((id) => [id, $(id).value]));
+        if (values.MAP_PROVIDER === "maptiler" && !values.MAPTILER_KEY.trim()) return ($("err").textContent = "Para usar MapTiler escribe su clave (o elige CARTO).");
+        if (values.MAP_PROVIDER === "mapbox" && !values.MAPBOX_TOKEN.trim()) return ($("err").textContent = "Para usar Mapbox escribe su token (o elige CARTO).");
+        if (values.SMTP_URL.trim() && !/^smtps?:\/\//.test(values.SMTP_URL.trim())) return ($("err").textContent = "El SMTP debe empezar por smtp:// o smtps://");
+        if (values.SMTP_URL.trim() && !values.EMAIL_FROM.trim()) return ($("err").textContent = "Indica también el remitente del email.");
+        $("save").disabled = true;
+        $("save").textContent = "Guardando…";
+        await window.apiKeys.save(values);
+      };
+    </script>
+  </body>
+</html>

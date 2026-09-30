@@ -18,6 +18,7 @@ Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visua
   - Medido en Linux: primer arranque ~1,4 s, siguientes ~0,6 s hasta el servidor listo.
 - Cerrar la ventana deja ORIVEXY NIGHTS en la **bandeja del sistema**: volver a abrirlo es instantáneo. Para cerrarlo del todo: clic derecho en el icono de la bandeja → **Salir**.
 - Menú **ORIVEXY NIGHTS → Iniciar con Windows** arranca ORIVEXY NIGHTS oculto al encender el PC, para que esté listo al abrirlo.
+- Menú **ORIVEXY NIGHTS → Claves de API…**: claves opcionales (Ticketmaster, Google Places, estilo de mapa MapTiler/Mapbox, SMTP para recuperar contraseña). Se guardan solo en ese ordenador (`api-keys.json` en la carpeta de datos), llegan al servidor como variables de entorno y nunca al navegador. Al guardar, la app se reinicia y las fuentes que esperaban esa clave empiezan solas.
 - Menú **ORIVEXY NIGHTS → Borrar datos locales…** elimina la base de datos y los archivos de este ordenador y vuelve a empezar.
 - Sin SMTP configurado, la recuperación de contraseña indica que no está disponible: cambia la contraseña desde *Ajustes* mientras tengas sesión.
 - El `.exe` no está firmado: SmartScreen muestra "Windows protegió su PC" → *Más información* → *Ejecutar de todas formas*.

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/misc";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { MapView } from "@/components/map/map-view";
+import { AddressSearch } from "@/components/map/address-search";
 import { useLocation } from "@/components/providers/location-provider";
 import { useToast } from "@/components/providers/toast-provider";
 import { useUpload, type UploadedImage } from "@/hooks/use-upload";
@@ -211,6 +212,10 @@ export function EventForm({ mode, eventId, citySlug, cityName, venues, mapConfig
                 <Input id="addr" value={v.address} onChange={(e) => set("address", e.target.value)} maxLength={160} placeholder="Gràcia, Barcelona" />
               </Field>
             </div>
+            <AddressSearch
+              citySlug={citySlug}
+              onPick={(r) => setV((s) => ({ ...s, lat: r.lat, lng: r.lng, address: s.address || r.label.split(",").slice(0, 3).join(",").slice(0, 160) }))}
+            />
             <div className="overflow-hidden rounded-2xl border border-line">
               <div className="relative h-56">
                 <MapView

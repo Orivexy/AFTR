@@ -11,4 +11,5 @@ import type { Connector } from "../types";
 export const googlePlacesConnector: Connector = {
   label: "Google Places API (vincula IDs y detecta cierres)",
   placeProvider: googleProvider,
+  missingConfig: () => (googleProvider.configured() ? null : "Falta la clave GOOGLE_PLACES_API_KEY"),
 };

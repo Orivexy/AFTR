@@ -6,8 +6,8 @@
  *
  *  - countries, cities, categories and music genres (src/config)
  *  - business plan catalogue (inactive while monetization is off)
- *  - discovery sources: OpenStreetMap per city (enabled for Barcelona; no
- *    key needed), Ticketmaster and Google Places (disabled until keys exist)
+ *  - discovery sources per city: OpenStreetMap (no key needed), Ticketmaster
+ *    and Google Places (they wait until their API key is configured)
  *  - optional first admin: ADMIN_EMAIL + ADMIN_PASSWORD (+ ADMIN_USERNAME)
  */
 import { PrismaClient } from "@prisma/client";
@@ -19,8 +19,9 @@ import { buildSearchText } from "../../src/lib/text";
 const db = new PrismaClient();
 const log = (msg: string) => console.log(`  • ${msg}`);
 
-/** Cities where venue discovery starts enabled. */
-const ENABLED_CITIES = new Set((process.env.SEED_DISCOVERY_CITIES ?? "barcelona").split(",").map((s) => s.trim()).filter(Boolean));
+/** Cities where discovery starts enabled: "all" (default) or a comma-separated list of slugs. */
+const SEED_CITIES = (process.env.SEED_DISCOVERY_CITIES ?? "all").split(",").map((s) => s.trim()).filter(Boolean);
+const discoveryEnabledFor = (slug: string) => SEED_CITIES.includes("all") || SEED_CITIES.includes(slug);
 
 async function main() {
   console.log("🌙 ORIVEXY NIGHTS · datos base");
@@ -49,22 +50,27 @@ async function main() {
       where: { key: `osm-${city.slug}-nightlife` },
       create: {
         key: `osm-${city.slug}-nightlife`, name: `OpenStreetMap · ocio nocturno de ${city.name}`, type: "OSM_OVERPASS", cityId: city.id, trust: "IMPORTED",
-        enabled: ENABLED_CITIES.has(city.slug), autoPublish: true,
+        enabled: discoveryEnabledFor(city.slug), autoPublish: true,
         config: { categories: ["nightclub", "dance_club", "music_venue", "live_music_venue", "event_venue"], radiusKm: 12 },
       },
       update: {},
     });
-  }
-  const bcn = cities.find((c) => c.slug === "barcelona");
-  if (bcn) {
+    // Key-based sources: enabled, but they wait quietly until their API key is configured.
+    const short = city.slug === "barcelona" ? "bcn" : city.slug;
     await db.discoverySource.upsert({
-      where: { key: "ticketmaster-bcn-music" },
-      create: { key: "ticketmaster-bcn-music", name: "Ticketmaster · música en Barcelona", type: "TICKETMASTER", cityId: bcn.id, trust: "IMPORTED", enabled: Boolean(process.env.TICKETMASTER_API_KEY), autoPublish: true, config: { classificationName: "music", maxPages: 3 } },
+      where: { key: `ticketmaster-${short}-music` },
+      create: {
+        key: `ticketmaster-${short}-music`, name: `Ticketmaster · música en ${city.name}`, type: "TICKETMASTER", cityId: city.id, trust: "IMPORTED",
+        enabled: discoveryEnabledFor(city.slug), autoPublish: true, config: { classificationName: "music", maxPages: 3 },
+      },
       update: {},
     });
     await db.discoverySource.upsert({
-      where: { key: "google-places-bcn-clubs" },
-      create: { key: "google-places-bcn-clubs", name: "Google Places · vincular locales de Barcelona", type: "GOOGLE_PLACES", cityId: bcn.id, trust: "IMPORTED", enabled: Boolean(process.env.GOOGLE_PLACES_API_KEY), syncIntervalMin: 7 * 24 * 60, config: { categories: ["nightclub", "music_venue"], maxPages: 1 } },
+      where: { key: `google-places-${short}-clubs` },
+      create: {
+        key: `google-places-${short}-clubs`, name: `Google Places · vincular locales de ${city.name}`, type: "GOOGLE_PLACES", cityId: city.id, trust: "IMPORTED",
+        enabled: discoveryEnabledFor(city.slug), syncIntervalMin: 7 * 24 * 60, config: { categories: ["nightclub", "music_venue"], maxPages: 1 },
+      },
       update: {},
     });
   }
@@ -86,7 +92,7 @@ async function main() {
           email,
           passwordHash: await bcrypt.hash(password, 12),
           role: "ADMIN",
-          profile: { create: { username, displayName: "Admin", searchText: buildSearchText(username, "Admin"), cityId: bcn?.id } },
+          profile: { create: { username, displayName: "Admin", searchText: buildSearchText(username, "Admin"), cityId: cities.find((c) => c.slug === "barcelona")?.id } },
         },
       });
       log(`Administrador creado: ${email} (@${username})`);

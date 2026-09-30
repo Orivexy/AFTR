@@ -145,3 +145,11 @@ El catálogo Open Data BCN del Ayuntamiento publica agendas de actividades con l
 1. Descarga el recurso JSON del dataset.
 2. Escribe un parser con fixture y tests, como `connectors/ticketmaster.ts`.
 3. Muestra la atribución “Ajuntament de Barcelona” en los eventos.
+
+## Búsqueda de direcciones (Nominatim)
+
+Al crear un evento o corregir la ubicación de un local se puede buscar una dirección: `/api/geocode` (solo con sesión) consulta [Nominatim](https://nominatim.openstreetmap.org) de OpenStreetMap, sin clave. Se respeta su política de uso: una petición por segundo para todo el servidor, User-Agent propio, búsqueda solo al pulsar (no mientras se escribe), caché de 24 h y límite diario (`NOMINATIM_DAILY_LIMIT`, visible en *Map Data*). Si no responde, el formulario lo dice y se puede marcar el punto en el mapa. `NOMINATIM_URL` permite usar una instancia propia.
+
+## Fuentes con clave
+
+Cada ciudad tiene sus fuentes de Ticketmaster y Google Places activadas pero **en espera**: no se ejecutan ni cuentan como error hasta que existe su clave (`TICKETMASTER_API_KEY`, `GOOGLE_PLACES_API_KEY`, o el menú *Claves de API…* de la app de escritorio). En `/admin/discovery` aparecen como «ESPERANDO CLAVE».
