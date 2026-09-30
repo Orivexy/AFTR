@@ -8,6 +8,7 @@ on:
   push:
     branches: [main, claude/charming-lovelace-al31eg]
     tags: ["v*"]
+    paths-ignore: [".github/workflows/data-probe.yml"]
   workflow_dispatch:
 
 permissions:
