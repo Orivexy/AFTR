@@ -8,13 +8,13 @@
 
 ## ⬇️ Descargar
 
-<a href="https://github.com/Orivexy/AFTR/releases/latest/download/ORIVEXY-NIGHTS-Windows.exe"><img src="https://img.shields.io/badge/Windows-Descargar%20.exe-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar para Windows" height="44" /></a>
+<a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/ORIVEXY-NIGHTS-Windows.exe"><img src="https://img.shields.io/badge/Windows-Descargar%20.exe-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar para Windows" height="44" /></a>
 &nbsp;
-<a href="https://github.com/Orivexy/AFTR/releases/latest/download/ORIVEXY-NIGHTS-Mac.dmg"><img src="https://img.shields.io/badge/macOS-Descargar%20.dmg-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Descargar para Mac" height="44" /></a>
+<a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/ORIVEXY-NIGHTS-Mac.dmg"><img src="https://img.shields.io/badge/macOS-Descargar%20.dmg-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Descargar para Mac" height="44" /></a>
 &nbsp;
-<a href="https://github.com/Orivexy/AFTR/releases/latest/download/ORIVEXY-NIGHTS-Linux.AppImage"><img src="https://img.shields.io/badge/Linux-Descargar%20AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Descargar para Linux" height="44" /></a>
+<a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/ORIVEXY-NIGHTS-Linux.AppImage"><img src="https://img.shields.io/badge/Linux-Descargar%20AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Descargar para Linux" height="44" /></a>
 
-Todo incluido (servidor y base de datos): descargar, abrir y listo. · [Todas las versiones](https://github.com/Orivexy/AFTR/releases)
+Todo incluido (servidor y base de datos): descargar, abrir y listo. · [Todas las versiones](https://github.com/Orivexy/ORIVEXY-Nights/releases)
 
 </div>
 
