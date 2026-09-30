@@ -43,11 +43,8 @@ export const PRICE_OPTIONS: Array<{ value: PriceFilter; label: string }> = [
 ];
 
 export const TYPE_OPTIONS: Array<{ value: TypeFilter; label: string }> = [
-  { value: "club", label: "Discoteca" },
-  { value: "fiesta", label: "Fiesta" },
-  { value: "festival", label: "Festival" },
-  { value: "concierto", label: "Concierto" },
-  { value: "evento", label: "Evento" },
+  { value: "club", label: "Discotecas" },
+  { value: "fiesta", label: "Fiestas" },
 ];
 
 /** Event category → filter type. */

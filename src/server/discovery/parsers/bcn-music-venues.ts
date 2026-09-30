@@ -27,13 +27,11 @@ export interface BcnRow {
 export const BCN_MUSIC_VENUES_RESOURCE = "062da2e7-ddc9-4659-807a-2c1c5918b73c";
 export const BCN_DATASET_URL = "https://opendata-ajuntament.barcelona.cat/data/es/dataset/culturailleure-espaismusicacopes";
 
-/** Only clubs and music bars; restaurants, cocktail/champagne bars and flamenco dinner shows are left out. */
+/** Only discotecas (clubs, party halls, dance halls); bars, karaokes, restaurants, cocktail bars and flamenco shows are left out. */
 const TYPE_BY_FILTER: Record<string, string> = {
   Discoteques: "nightclub",
   "Sales de festes": "nightclub",
   "Salons de ball": "dance_club",
-  "Bars i pubs musicals": "music_bar",
-  Karaokes: "music_bar",
 };
 /** Most specific first: a club that is also listed as a bar stays a club. */
 const TYPE_RANK = ["nightclub", "dance_club", "live_music_venue", "music_bar"];

@@ -88,8 +88,9 @@ describe("Barcelona · espais de música i copes", () => {
       { ...base, secondary_filters_name: "Discoteques", values_category: "Telèfons", values_attribute_name: "Tel.", values_value: "658 253 842" },
       { ...base, secondary_filters_name: "Bars i pubs musicals", values_category: "Telèfons", values_attribute_name: "Tel.", values_value: "658 253 842" },
       { register_id: "2", name: "Restaurant", secondary_filters_name: "Restaurants", geo_epgs_4326_lat: "41.39", geo_epgs_4326_lon: "2.15" },
+      { register_id: "3", name: "Pub musical", secondary_filters_name: "Bars i pubs musicals", geo_epgs_4326_lat: "41.39", geo_epgs_4326_lon: "2.15" },
     ]);
-    expect(skipped).toBe(1);
+    expect(skipped).toBe(2);
     expect(venues).toEqual([
       expect.objectContaining({
         externalId: "bcn-99400328185",

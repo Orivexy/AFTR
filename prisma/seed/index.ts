@@ -51,7 +51,7 @@ async function main() {
       create: {
         key: `osm-${city.slug}-nightlife`, name: `OpenStreetMap · ocio nocturno de ${city.name}`, type: "OSM_OVERPASS", cityId: city.id, trust: "IMPORTED",
         enabled: discoveryEnabledFor(city.slug), autoPublish: true,
-        config: { categories: ["nightclub", "dance_club", "music_venue", "live_music_venue", "event_venue"], radiusKm: 12 },
+        config: { categories: ["nightclub", "dance_club"], radiusKm: 12 },
       },
       update: {},
     });
@@ -80,8 +80,8 @@ async function main() {
         where: { key: "catalonia-agenda-bcn" },
         create: {
           key: "catalonia-agenda-bcn", name: "Agenda cultural de Catalunya · conciertos, festivales y fiestas de Barcelona", type: "CATALONIA_AGENDA", cityId: city.id, trust: "IMPORTED",
-          // Official photos of the public agenda; only events at discotecas.
-          enabled: discoveryEnabledFor(city.slug), autoPublish: true, allowImages: true, syncIntervalMin: 6 * 60, config: { nightlifeOnly: true },
+          // Cultural agenda (concerts, opera, festivals…): off, the app shows only discotecas. Kept for admins.
+          enabled: false, autoPublish: true, allowImages: true, syncIntervalMin: 6 * 60, config: { nightlifeOnly: true },
         },
         update: {},
       });
@@ -100,7 +100,7 @@ async function main() {
       where: { key: `google-places-${short}-clubs` },
       create: {
         key: `google-places-${short}-clubs`, name: `Google Places · vincular locales de ${city.name}`, type: "GOOGLE_PLACES", cityId: city.id, trust: "IMPORTED",
-        enabled: discoveryEnabledFor(city.slug), syncIntervalMin: 7 * 24 * 60, config: { categories: ["nightclub", "music_venue"], maxPages: 1 },
+        enabled: discoveryEnabledFor(city.slug), syncIntervalMin: 7 * 24 * 60, config: { categories: ["nightclub"], maxPages: 1 },
       },
       update: {},
     });

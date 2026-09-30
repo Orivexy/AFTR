@@ -33,7 +33,9 @@ Cada fuente tiene: nombre, tipo, activada, ciudad, local propietario, confianza 
 
 **Google**: no existe una API pública de eventos de Google y no se hace scraping de sus resultados. Places solo se usa para vincular locales (place ID) y detectar cierres, porque sus condiciones no permiten guardar ni mostrar su contenido en un mapa que no sea de Google. Los locales, sus datos y sus horarios vienen de OpenStreetMap. Detalles en [places-and-map.md](places-and-map.md).
 
-`config.nightlifeOnly` (agenda de Catalunya, Ticketmaster): solo eventos en discotecas (local de tipo CLUB o nombre de club conocido); fuera conciertos en auditorios, festivales, fiestas populares, ópera, teatro y restaurantes.
+**Solo discotecas (por ahora):** el mapa muestra solo discotecas (OSM `nightclub`/`dance_club`, lista del Ayuntamiento: discotecas, salas de fiestas y de baile) y sus eventos. La agenda cultural de Catalunya está desactivada.
+
+`config.nightlifeOnly` (Ticketmaster): solo eventos en discotecas (local de tipo CLUB o nombre de club conocido); fuera conciertos en auditorios, festivales, fiestas populares, ópera, teatro y restaurantes.
 
 **Xceed** (`JSON_LD_PAGE`, clave `xceed-barcelona-clubs`): lee la agenda pública de Barcelona y cada página de evento enlazada (`config.followLinks`), con los datos schema.org que Xceed publica para buscadores; respeta robots.txt, va despacio, se identifica y enlaza a Xceed para comprar. `config.nightClubsOnly` deja solo los eventos cuyo lugar es una `NightClub`. Fourvenues bloquea a los bots (HTTP 403), así que no se usa. `config.authoritative` (lista del Ayuntamiento): los locales que salen de la lista (o del filtro de ocio nocturno) se retiran del mapa. Las fotos de los eventos son las oficiales de la fuente (`allowImages`); si no hay, se muestra una portada ilustrada por categoría (nunca una foto inventada).
 
