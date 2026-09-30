@@ -25,11 +25,18 @@ export const OSM_FILTERS: Record<NightlifeCategory, string[]> = {
   music_bar: [],
 };
 
-/** Overpass QL for every category around a point (nodes, ways and relations, with centres). */
+/**
+ * Overpass QL for every category in the city's box (nodes, ways and
+ * relations, with centres). A global bounding box is much cheaper for the
+ * server than one `around` filter per category, so it answers even when busy.
+ */
 export function buildDiscoveryQuery(area: PlaceArea, categories: readonly NightlifeCategory[]): string {
-  const around = `(around:${Math.round(Math.min(area.radiusKm, 50) * 1000)},${area.lat.toFixed(5)},${area.lng.toFixed(5)})`;
-  const parts = categories.flatMap((c) => OSM_FILTERS[c]).map((f) => `  nwr${f}["name"]${around};`);
-  return `[out:json][timeout:90];\n(\n${parts.join("\n")}\n);\nout center tags;`;
+  const r = Math.min(area.radiusKm, 50);
+  const dLat = r / 111.32;
+  const dLng = r / (111.32 * Math.cos((area.lat * Math.PI) / 180));
+  const bbox = [area.lat - dLat, area.lng - dLng, area.lat + dLat, area.lng + dLng].map((v) => v.toFixed(5)).join(",");
+  const parts = categories.flatMap((c) => OSM_FILTERS[c]).map((f) => `  nwr${f}["name"];`);
+  return `[out:json][timeout:180][bbox:${bbox}];\n(\n${parts.join("\n")}\n);\nout center tags;`;
 }
 
 /** Overpass QL that re-reads elements by id ("node/1", "way/2"). */

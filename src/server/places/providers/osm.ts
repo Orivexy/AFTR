@@ -31,7 +31,7 @@ async function overpass(query: string) {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({ data: query }).toString(),
-          timeoutMs: 120_000,
+          timeoutMs: 190_000, // the query itself may run up to 180 s on a busy server
           maxBytes: 25 * 1024 * 1024,
         }),
       );

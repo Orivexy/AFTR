@@ -55,9 +55,10 @@ describe("OpenStreetMap parsing", () => {
 });
 
 describe("Overpass queries", () => {
-  it("searches every category around the city", () => {
+  it("searches every category in the city's box", () => {
     const q = buildDiscoveryQuery({ name: "Barcelona", lat: 41.3874, lng: 2.1686, radiusKm: 12 }, ["nightclub", "music_venue"]);
-    expect(q).toContain('nwr["amenity"="nightclub"]["name"](around:12000,41.38740,2.16860);');
+    expect(q).toMatch(/^\[out:json\]\[timeout:180\]\[bbox:41\.279\d\d,2\.024\d\d,41\.495\d\d,2\.312\d\d\];/);
+    expect(q).toContain('nwr["amenity"="nightclub"]["name"];');
     expect(q).toContain('nwr["amenity"="music_venue"]');
     expect(q).toContain("out center tags;");
   });
