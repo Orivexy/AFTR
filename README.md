@@ -18,9 +18,19 @@ Todo incluido (servidor y base de datos): descargar, abrir y listo. · [Todas la
 
 </div>
 
+### 🪟 Windows sin avisos (recomendado)
+
+Pulsa <kbd>Win</kbd>, escribe **PowerShell**, ábrelo y pega esta línea:
+
+```powershell
+irm https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/install.ps1 | iex
+```
+
+Descarga la última versión, la instala y la abre. No aparece la ventana azul de SmartScreen; Windows solo pide confirmar el permiso de administrador (como cualquier programa que va a *Archivos de programa*).
+
 | Sistema | Cómo abrirlo la primera vez |
 | --- | --- |
-| 🪟 Windows 10/11 (64 bits) | Abre el `.exe` → si aparece SmartScreen: *Más información* → *Ejecutar de todas formas*. |
+| 🪟 Windows 10/11 (64 bits) | Con la línea de PowerShell de arriba, o abre el `.exe` → si aparece SmartScreen: *Más información* → *Ejecutar de todas formas*. |
 | 🍎 macOS (Apple Silicon, M1 o posterior) | Abre el `.dmg`, arrastra la app a *Aplicaciones* → clic derecho sobre ella → *Abrir* → *Abrir*. |
 | 🐧 Linux (x64) | `chmod +x ORIVEXY-NIGHTS-Linux.AppImage` y ábrelo con doble clic. |
 | 📱 Móvil | Con la app abierta en el ordenador: menú *ORIVEXY NIGHTS → Abrir en el móvil…*, escanea el QR y añádela a la pantalla de inicio. |

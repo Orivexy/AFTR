@@ -122,13 +122,45 @@ jobs:
           name: app-mac
           path: dist-desktop/ORIVEXY-NIGHTS-Mac.dmg
 
+  # Installs the new .exe on a real Windows machine with the one-line
+  # installer (silent, no SmartScreen) and checks the app starts.
+  windows-test:
+    needs: windows
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: app-windows, path: dist }
+      - name: Install with scripts/install-windows.ps1
+        shell: powershell
+        env:
+          ORIVEXY_INSTALLER: dist/ORIVEXY-NIGHTS-Windows.exe
+          ORIVEXY_NO_LAUNCH: "1"
+        run: |
+          $env:ORIVEXY_INSTALLER = (Resolve-Path $env:ORIVEXY_INSTALLER).Path
+          .\scripts\install-windows.ps1
+      - name: The installed app starts
+        shell: powershell
+        run: |
+          $exe = Join-Path $env:ProgramFiles 'ORIVEXY NIGHTS\ORIVEXY NIGHTS.exe'
+          if (-not (Test-Path $exe)) { Get-ChildItem $env:ProgramFiles; throw "No instalado en $exe" }
+          Start-Process -FilePath $exe
+          for ($i = 0; $i -lt 150; $i++) {
+            try { $r = Invoke-WebRequest -Uri 'http://localhost:3000/api/health' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -eq 200) { Write-Host "App started after $i s"; exit 0 } } catch {}
+            Start-Sleep -Seconds 1
+          }
+          Get-ChildItem -Recurse -Filter 'orivexy-nights.log' $env:APPDATA, $env:ProgramData -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 60 }
+          throw 'La app no arranco en 150 s'
+
   release:
-    needs: [windows, linux, mac]
+    needs: [windows, windows-test, linux, mac]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { pattern: app-*, path: dist, merge-multiple: true }
+      - run: cp scripts/install-windows.ps1 dist/install.ps1
       - name: Version
         id: v
         run: echo "version=$(node -p "require('./desktop/package.json').version")" >> "$GITHUB_OUTPUT"
@@ -145,6 +177,7 @@ jobs:
             dist/ORIVEXY-NIGHTS-Windows.exe
             dist/ORIVEXY-NIGHTS-Linux.AppImage
             dist/ORIVEXY-NIGHTS-Mac.dmg
+            dist/install.ps1
           body: |
             ## Descargar ORIVEXY NIGHTS
 
@@ -156,7 +189,10 @@ jobs:
 
             Todo incluido: servidor, base de datos PostgreSQL y ffmpeg. No hace falta instalar nada más.
 
-            **Windows:** abre el `.exe`. SmartScreen (app sin firmar): *Más información* → *Ejecutar de todas formas*.
+            **Windows sin avisos:** abre *PowerShell* y pega
+            `irm https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/install.ps1 | iex`
+            (descarga, instala y abre la app; solo pide confirmar el permiso de administrador).
+            O abre el `.exe`: si aparece SmartScreen, *Más información* → *Ejecutar de todas formas*.
             **Linux:** `chmod +x ORIVEXY-NIGHTS-Linux.AppImage` y ábrelo (doble clic o `./ORIVEXY-NIGHTS-Linux.AppImage`).
             **Mac:** abre el `.dmg` y arrastra la app a *Aplicaciones*. La primera vez: clic derecho sobre la app → *Abrir* → *Abrir*
             (o *Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente*).
