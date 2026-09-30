@@ -13,7 +13,7 @@ import { buildSearchText } from "@/lib/text";
 export async function ensureBootstrapAdmin() {
   const email = env.ADMIN_BOOTSTRAP_EMAIL.trim().toLowerCase();
   const password = env.ADMIN_BOOTSTRAP_PASSWORD;
-  if (!email || password.length < 10) return { skipped: "sin credenciales" };
+  if (!email || password.length < 4) return { skipped: "sin credenciales" };
 
   const existing = await db.user.findUnique({ where: { email }, select: { id: true, role: true } });
   if (existing) {
@@ -32,4 +32,16 @@ export async function ensureBootstrapAdmin() {
     },
   });
   return { created: true, email, username };
+}
+
+/** Sets the administrator's password chosen by the owner in the desktop app (creating the account if needed). */
+export async function setBootstrapAdminPassword(password: string) {
+  const email = env.ADMIN_BOOTSTRAP_EMAIL.trim().toLowerCase();
+  if (!email) throw new Error("Sin cuenta de administrador de escritorio");
+  const user = await db.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) {
+    await ensureBootstrapAdmin();
+  }
+  await db.user.update({ where: { email }, data: { passwordHash: await hashPassword(password), role: "ADMIN", status: "ACTIVE" } });
+  return { ok: true, email };
 }

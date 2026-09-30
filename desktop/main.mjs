@@ -204,6 +204,33 @@ ipcMain.handle("window:toggle-fullscreen", () => mainWindow?.setFullScreen(!main
 ipcMain.handle("window:close", () => mainWindow?.close());
 ipcMain.handle("window:state", () => ({ fullscreen: Boolean(mainWindow?.isFullScreen()), maximized: Boolean(mainWindow?.isMaximized()), platform: process.platform }));
 
+let adminWindow = null;
+function showAdminPassword() {
+  if (adminWindow) return adminWindow.focus();
+  adminWindow = new BrowserWindow({
+    width: 460,
+    height: 440,
+    title: "Contraseña de administrador · ORIVEXY NIGHTS",
+    backgroundColor: "#07070b",
+    autoHideMenuBar: true,
+    resizable: false,
+    parent: mainWindow ?? undefined,
+    icon: path.join(here, "build", "icon.png"),
+    webPreferences: { preload: path.join(here, "admin-preload.cjs"), contextIsolation: true, sandbox: true, nodeIntegration: false },
+  });
+  adminWindow.on("closed", () => (adminWindow = null));
+  adminWindow.loadFile(path.join(here, "admin.html"));
+}
+ipcMain.handle("admin:load", () => ({ email: backend?.admin?.email ?? "" }));
+ipcMain.handle("admin:save", async (_e, password) => {
+  if (!backend || typeof password !== "string" || password.length < 4 || password.length > 128) return { ok: false, error: "Mínimo 4 caracteres" };
+  try {
+    return await backend.setAdminPassword(password);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "No se pudo guardar" };
+  }
+});
+
 /** Administrator of this installation (generated on first launch, kept only on this computer). */
 async function showAdminCredentials() {
   if (!backend?.admin) return;
@@ -212,11 +239,12 @@ async function showAdminCredentials() {
     type: "info",
     title: "Cuenta de administrador",
     message: "Tu cuenta de administrador de ORIVEXY NIGHTS",
-    detail: `Email: ${email}\nContraseña: ${password}\n\nEntra con ella en «Entrar». Puedes cambiar la contraseña en Ajustes. Siempre la tienes en el menú ORIVEXY NIGHTS → Credenciales de administrador.`,
-    buttons: ["Copiar contraseña", "Aceptar"],
-    defaultId: 1,
+    detail: `Email: ${email}\nContraseña: ${password}\n\nEntra con ella en «Entrar». Puedes elegir otra en el menú ORIVEXY NIGHTS → Cambiar contraseña de administrador.`,
+    buttons: ["Elegir mi contraseña", "Copiar contraseña", "Aceptar"],
+    defaultId: 2,
   });
-  if (response === 0) clipboard.writeText(password);
+  if (response === 0) showAdminPassword();
+  if (response === 1) clipboard.writeText(password);
   backend.markAdminShown();
 }
 
@@ -234,6 +262,7 @@ function buildMenu() {
             ? []
             : [{ label: `Iniciar con ${process.platform === "darwin" ? "el Mac" : "Windows"} (abre al instante)`, type: "checkbox", checked: loginItem(), click: (item) => setOpenAtLogin(item.checked) }]),
           { label: "Credenciales de administrador…", click: showAdminCredentials },
+          { label: "Cambiar contraseña de administrador…", click: showAdminPassword },
           { label: "Claves de API…", click: showApiKeys },
           { label: "Ver carpeta de datos", click: () => shell.openPath(dataDir) },
           { label: "Borrar datos locales…", click: resetData },

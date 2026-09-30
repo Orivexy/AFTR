@@ -56,7 +56,7 @@ bash scripts/build-desktop.sh --resources-only --keep-host-natives   # solo recu
 
 ### Cuenta de administrador
 
-En el primer arranque la app genera una cuenta de administrador propia de ese ordenador (`admin@orivexy.local` y una contraseña aleatoria), la crea y la muestra en un aviso; siempre se puede consultar en el menú *ORIVEXY NIGHTS → Credenciales de administrador…*. Se guarda solo en `state.json` de la carpeta de datos, nunca en el repositorio.
+En el primer arranque la app genera una cuenta de administrador propia de ese ordenador (`admin@orivexy.local` y una contraseña aleatoria), la crea y la muestra en un aviso; siempre se puede consultar en el menú *ORIVEXY NIGHTS → Credenciales de administrador…*. El dueño puede elegir su propia contraseña en *Cambiar contraseña de administrador…* (mínimo 4 caracteres; ruta local `/api/desktop/admin-password`, solo en la app de escritorio y con el secreto de la instalación). Se guarda solo en `state.json` de la carpeta de datos, nunca en el repositorio.
 
 ### Ventana estilo macOS y pantalla completa
 

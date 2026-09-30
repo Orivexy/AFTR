@@ -35,6 +35,8 @@
       "splash.html",
       "keys-preload.cjs",
       "app-preload.cjs",
+      "admin-preload.cjs",
+      "admin.html",
       "keys.html",
       "package.json",
       "build/icon.png",

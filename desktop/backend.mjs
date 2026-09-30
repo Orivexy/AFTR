@@ -352,6 +352,21 @@ export async function startBackend(opts) {
     url,
     port,
     admin: { ...state.admin, firstTime: !state.adminShown },
+    /** The owner picks the admin password (kept only in this computer's state.json). */
+    async setAdminPassword(password) {
+      const res = await fetch(`${url}/api/desktop/admin-password`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${state.cronSecret}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: body.error ?? `Error ${res.status}` };
+      state.admin.password = password;
+      state.adminCreated = true;
+      saveState();
+      this.admin.password = password;
+      return { ok: true };
+    },
     markAdminShown() {
       state.adminShown = true;
       saveState();
