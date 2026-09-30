@@ -55,6 +55,18 @@ async function main() {
       },
       update: {},
     });
+    if (city.slug === "madrid") {
+      // City council open data (no key, updated daily): concerts, fiestas and dance.
+      await db.discoverySource.upsert({
+        where: { key: "madrid-open-data-agenda" },
+        create: {
+          key: "madrid-open-data-agenda", name: "Ayuntamiento de Madrid · agenda de música y fiestas", type: "MADRID_AGENDA", cityId: city.id, trust: "IMPORTED",
+          enabled: discoveryEnabledFor(city.slug), autoPublish: true, syncIntervalMin: 12 * 60, config: {},
+          url: "https://datos.madrid.es/egob/catalogo/206974-0-agenda-eventos-culturales-100.json",
+        },
+        update: {},
+      });
+    }
     // Key-based sources: enabled, but they wait quietly until their API key is configured.
     const short = city.slug === "barcelona" ? "bcn" : city.slug;
     await db.discoverySource.upsert({

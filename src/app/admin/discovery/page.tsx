@@ -16,6 +16,7 @@ const TYPE_OPTIONS = [
   { value: "PARTNER_FEED", label: "Feed de partner ORIVEXY NIGHTS (JSON)" },
   { value: "TICKETMASTER", label: "Ticketmaster Discovery API" },
   { value: "OSM_OVERPASS", label: "OpenStreetMap · Overpass (locales y horarios)" },
+  { value: "MADRID_AGENDA", label: "Datos abiertos de Madrid (agenda de ocio)" },
   { value: "GOOGLE_PLACES", label: "Google Places (solo vincula IDs)" },
 ];
 

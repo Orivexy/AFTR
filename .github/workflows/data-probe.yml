@@ -23,25 +23,31 @@ jobs:
           print(json.dumps(g[:2], ensure_ascii=False, indent=1)[:4000])
           print("types:", collections.Counter(i.get("@type", "") for i in g).most_common(40))
           EOF
-      - name: Barcelona · catalogue
+      - name: Barcelona · agenda CSV sample
         run: |
-          for u in "https://opendata-ajuntament.barcelona.cat/data/api/3/action/package_show?id=agenda-diaria" \
-                   "https://opendata-ajuntament.barcelona.cat/data/api/action/package_show?id=agenda-diaria" \
-                   "https://opendata-ajuntament.barcelona.cat/data/api/3/action/package_search?q=agenda&rows=5"; do
-            echo "== $u"
-            curl -sSL --max-time 60 -A "Mozilla/5.0 OrivexyNightsBot/1.0" "$u" -o out.txt -w "HTTP %{http_code} %{content_type} %{size_download}\n"
-            head -c 1500 out.txt; echo
-            python3 - <<'PY' || true
-          import json
-          d = json.load(open("out.txt"))["result"]
-          pkgs = d.get("results", [d])
-          for p in pkgs:
-              print("PKG", p.get("name"), p.get("license_title"))
-              for r in p.get("resources", []):
-                  print("  ", r.get("format"), r.get("name"), r.get("url"), r.get("size"))
+          curl -sSL --max-time 120 "https://opendata-ajuntament.barcelona.cat/data/dataset/a25e60cd-3083-4252-9fce-81f733871cb1/resource/877ccf66-9106-4ae2-be51-95a9f6469e4c/download" -o bcn.csv -w "HTTP %{http_code} %{content_type} %{size_download}\n"
+          file bcn.csv; head -c 300 bcn.csv | xxd | head -5
+          python3 - <<'PY'
+          import csv, io, collections
+          raw = open("bcn.csv", "rb").read()
+          for enc in ("utf-8-sig", "utf-16", "latin-1"):
+              try:
+                  text = raw.decode(enc); break
+              except Exception: pass
+          dialect = csv.Sniffer().sniff(text[:5000], delimiters=",;\t")
+          rows = list(csv.DictReader(io.StringIO(text), dialect=dialect))
+          print("encoding", enc, "delimiter", repr(dialect.delimiter), "rows", len(rows))
+          print("columns", list(rows[0].keys()))
+          for r in rows[:3]: print(dict(r))
+          for col in rows[0].keys():
+              if "classif" in col.lower() or "categ" in col.lower() or "tipus" in col.lower():
+                  print(col, collections.Counter(r[col] for r in rows).most_common(50))
           PY
-          done
-      - name: Overpass reachability and a Barcelona nightlife count
+      - name: Overpass mirrors
         run: |
-          Q='[out:json][timeout:60];nwr["amenity"="nightclub"](41.30,2.05,41.48,2.25);out tags center 3;'
-          curl -sS --max-time 90 -A "OrivexyNightsBot/1.0" --data-urlencode "data=$Q" https://overpass-api.de/api/interpreter -w "\nHTTP %{http_code} %{time_total}s\n" | tail -c 3000
+          Q='[out:json][timeout:60];nwr["amenity"="nightclub"](41.30,2.05,41.48,2.25);out tags center 2;'
+          for u in https://overpass-api.de/api/interpreter https://overpass.kumi.systems/api/interpreter https://overpass.private.coffee/api/interpreter https://maps.mail.ru/osm/tools/overpass/api/interpreter; do
+            echo "== $u"
+            curl -sS --max-time 90 -A "OrivexyNightsBot/1.0" --data-urlencode "data=$Q" "$u" -o o.json -w "HTTP %{http_code} %{time_total}s %{size_download}\n" || true
+            head -c 400 o.json; echo
+          done

@@ -7,6 +7,7 @@ import { partnerFeedConnector } from "./partner-feed";
 import { ticketmasterConnector } from "./ticketmaster";
 import { googlePlacesConnector } from "./google-places";
 import { osmConnector } from "./osm";
+import { madridAgendaConnector } from "./madrid-agenda";
 
 /** Registry: add a DiscoverySourceType + a Connector here to support a new source. */
 export const CONNECTORS: Record<DiscoverySourceType, Connector> = {
@@ -16,4 +17,5 @@ export const CONNECTORS: Record<DiscoverySourceType, Connector> = {
   TICKETMASTER: ticketmasterConnector,
   GOOGLE_PLACES: googlePlacesConnector,
   OSM_OVERPASS: osmConnector,
+  MADRID_AGENDA: madridAgendaConnector,
 };

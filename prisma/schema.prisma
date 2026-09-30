@@ -1262,6 +1262,7 @@ enum DiscoverySourceType {
   TICKETMASTER
   GOOGLE_PLACES
   OSM_OVERPASS
+  MADRID_AGENDA
 }
 
 enum DiscoverySyncStatus {
