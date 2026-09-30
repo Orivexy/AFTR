@@ -5,10 +5,11 @@
  */
 import { app, BrowserWindow, Menu, Tray, clipboard, dialog, ipcMain, nativeImage, shell } from "electron";
 import path from "node:path";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import QRCode from "qrcode";
+import electronUpdater from "electron-updater";
 import { readApiKeys, startBackend, writeApiKeys } from "./backend.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -261,6 +262,7 @@ function buildMenu() {
           ...(process.platform === "linux"
             ? []
             : [{ label: `Iniciar con ${process.platform === "darwin" ? "el Mac" : "Windows"} (abre al instante)`, type: "checkbox", checked: loginItem(), click: (item) => setOpenAtLogin(item.checked) }]),
+          { label: "Buscar actualizaciones", click: checkForUpdatesNow },
           { label: "Credenciales de administrador…", click: showAdminCredentials },
           { label: "Cambiar contraseña de administrador…", click: showAdminPassword },
           { label: "Claves de API…", click: showApiKeys },
@@ -358,6 +360,7 @@ app.whenReady().then(async () => {
     }
   });
   createTray();
+  setupAutoUpdates();
   await mainWindow.loadURL(backend.url);
 });
 
@@ -366,8 +369,67 @@ app.on("before-quit", async (e) => {
   e.preventDefault();
   quitting = true;
   await backend.stop();
+  // A downloaded update installs on the way out (silently) and the app reopens.
+  if (updateReady) return electronUpdater.autoUpdater.quitAndInstall(true, true);
   app.exit(0);
 });
+
+// ─── Automatic updates ─────────────────────────────────────────────────────
+// Every build published on GitHub reaches installed apps: they check at start
+// and every 30 minutes, download in the background and install on restart.
+// (Windows and Linux AppImage; unsigned Mac builds cannot self-update.)
+let updateReady = false;
+let manualCheck = false;
+function checkForUpdatesNow() {
+  if (!app.isPackaged || process.platform === "darwin") {
+    void shell.openExternal("https://github.com/Orivexy/ORIVEXY-Nights/releases/latest");
+    return;
+  }
+  manualCheck = true;
+  electronUpdater.autoUpdater.checkForUpdates().catch((err) => {
+    manualCheck = false;
+    void dialog.showMessageBox(mainWindow ?? undefined, { type: "warning", message: "No se pudo buscar actualizaciones", detail: String(err?.message ?? err), buttons: ["Aceptar"] });
+  });
+}
+function setupAutoUpdates() {
+  if (!app.isPackaged || process.platform === "darwin") return;
+  if (process.platform === "linux" && !process.env.APPIMAGE) return;
+  const { autoUpdater } = electronUpdater;
+  const log = (m) => {
+    try {
+      appendFileSync(path.join(dataDir, "orivexy-nights.log"), `[${new Date().toISOString()}] Actualizaciones: ${m}\n`);
+    } catch {
+      /* not critical */
+    }
+  };
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = false; // installed from before-quit, after PostgreSQL has stopped
+  autoUpdater.on("update-available", (i) => log(`versión ${i.version} disponible, descargando`));
+  autoUpdater.on("update-not-available", () => {
+    log("al día");
+    if (manualCheck) void dialog.showMessageBox(mainWindow ?? undefined, { type: "info", message: "ORIVEXY NIGHTS está al día", detail: `Versión ${app.getVersion()}`, buttons: ["Aceptar"] });
+    manualCheck = false;
+  });
+  autoUpdater.on("update-available", () => (manualCheck = false));
+  autoUpdater.on("error", (err) => log(`error: ${err?.message ?? err}`));
+  autoUpdater.on("update-downloaded", async (info) => {
+    updateReady = true;
+    log(`versión ${info.version} descargada`);
+    tray?.setToolTip(`ORIVEXY NIGHTS · nueva versión ${info.version} lista`);
+    const { response } = await dialog.showMessageBox(mainWindow ?? undefined, {
+      type: "info",
+      title: "Nueva versión",
+      message: `Hay una versión nueva de ORIVEXY NIGHTS (${info.version})`,
+      detail: "Se instala en unos segundos y la app se vuelve a abrir. Si eliges «Más tarde», se instalará al salir.",
+      buttons: ["Actualizar ahora", "Más tarde"],
+      defaultId: 0,
+    });
+    if (response === 0) app.quit();
+  });
+  const check = () => autoUpdater.checkForUpdates().catch((err) => log(`sin conexión: ${err?.message ?? err}`));
+  setTimeout(check, 15_000);
+  setInterval(check, 30 * 60_000).unref();
+}
 
 let trayHintShown = false;
 let hidingFromFullScreen = false;

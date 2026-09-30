@@ -11,6 +11,7 @@
     "build:win": "bash ../scripts/build-desktop.sh"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "embedded-postgres": "^16.14.0-beta.17",
     "pg": "^8.23.0",
     "qrcode": "^1.5.4"
@@ -87,7 +88,12 @@
       "uninstallerSidebar": "build/uninstallerSidebar.bmp",
       "installerHeader": "build/installerHeader.bmp"
     },
-    "publish": null,
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download"
+      }
+    ],
     "linux": {
       "target": [
         {

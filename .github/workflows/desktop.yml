@@ -14,6 +14,10 @@ on:
 permissions:
   contents: write
 
+# Every build gets a higher version, so installed apps update themselves to it.
+env:
+  APP_VERSION: 0.1.${{ github.run_number }}
+
 concurrency:
   group: desktop-${{ github.ref }}
   cancel-in-progress: true
@@ -80,13 +84,18 @@ jobs:
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with: { name: snapshot, path: snapshot }
+      - name: Version
+        run: cd desktop && npm version "$APP_VERSION" --no-git-tag-version --allow-same-version
       - run: bash scripts/build-desktop.sh --platform win --base-data base/base-data.sql --snapshot snapshot
       - name: Fix ownership of files written by Docker
         run: sudo chown -R "$(id -u):$(id -g)" dist-desktop desktop
       - uses: actions/upload-artifact@v4
         with:
           name: app-windows
-          path: dist-desktop/ORIVEXY-NIGHTS-Windows.exe
+          path: |
+            dist-desktop/ORIVEXY-NIGHTS-Windows.exe
+            dist-desktop/ORIVEXY-NIGHTS-Windows.exe.blockmap
+            dist-desktop/latest.yml
 
   linux:
     needs: base-data
@@ -104,6 +113,8 @@ jobs:
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with: { name: snapshot, path: snapshot }
+      - name: Version
+        run: cd desktop && npm version "$APP_VERSION" --no-git-tag-version --allow-same-version
       - run: bash scripts/build-desktop.sh --platform linux --base-data base/base-data.sql --snapshot snapshot
       # The packaged app (Electron main process + PostgreSQL + server) must start;
       # a failure blocks the release for every platform.
@@ -135,6 +146,7 @@ jobs:
           name: app-linux
           path: |
             dist-desktop/ORIVEXY-NIGHTS-Linux.AppImage
+            dist-desktop/latest-linux.yml
             dist-desktop/screenshots/*.png
 
   mac:
@@ -153,6 +165,8 @@ jobs:
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with: { name: snapshot, path: snapshot }
+      - name: Version
+        run: cd desktop && npm version "$APP_VERSION" --no-git-tag-version --allow-same-version
       - run: bash scripts/build-desktop.sh --platform mac --base-data base/base-data.sql --snapshot snapshot
       - uses: actions/upload-artifact@v4
         with:
@@ -227,7 +241,7 @@ jobs:
       - run: cp scripts/install-windows.ps1 dist/install.ps1
       - name: Version
         id: v
-        run: echo "version=$(node -p "require('./desktop/package.json').version")" >> "$GITHUB_OUTPUT"
+        run: echo "version=$APP_VERSION" >> "$GITHUB_OUTPUT"
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
@@ -243,6 +257,9 @@ jobs:
             dist/ORIVEXY-NIGHTS-Mac.dmg
             dist/install.ps1
             dist/screenshots/screenshot-*.png
+            dist/latest.yml
+            dist/latest-linux.yml
+            dist/ORIVEXY-NIGHTS-Windows.exe.blockmap
           body: |
             ## Descargar ORIVEXY NIGHTS
 

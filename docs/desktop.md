@@ -54,6 +54,10 @@ bash scripts/build-desktop.sh --platform mac      # en un Mac Apple Silicon → 
 bash scripts/build-desktop.sh --resources-only --keep-host-natives   # solo recursos (pruebas en Linux)
 ```
 
+### Actualizaciones automáticas
+
+Cada compilación de la rama principal publica una versión nueva (`0.1.<número de build>`) con `latest.yml` / `latest-linux.yml`. La app instalada (Windows y Linux AppImage) usa `electron-updater` con el feed `releases/latest/download`: comprueba al arrancar y cada 30 minutos, descarga en segundo plano y ofrece «Actualizar ahora» o instala al salir (después de parar PostgreSQL). Menú *Buscar actualizaciones*. El Mac sin firma no puede actualizarse solo: el menú abre la página de descarga.
+
 ### Cuenta de administrador
 
 En el primer arranque la app genera una cuenta de administrador propia de ese ordenador (`admin@orivexy.local` y una contraseña aleatoria), la crea y la muestra en un aviso; siempre se puede consultar en el menú *ORIVEXY NIGHTS → Credenciales de administrador…*. El dueño puede elegir su propia contraseña en *Cambiar contraseña de administrador…* (mínimo 4 caracteres; ruta local `/api/desktop/admin-password`, solo en la app de escritorio y con el secreto de la instalación). Se guarda solo en `state.json` de la carpeta de datos, nunca en el repositorio.
