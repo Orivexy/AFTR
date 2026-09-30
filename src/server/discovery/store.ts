@@ -66,10 +66,15 @@ export interface VenueCandidate {
  * theatres or restaurants.
  */
 export const NIGHTLIFE_VENUE_TYPES = ["CLUB", "BAR", "CONCERT_HALL"];
-export function isNightlifeEvent(n: Pick<NormalizedEvent, "category" | "venueId">, venues: VenueCandidate[]): boolean {
+/** Club and live-music room names ("Sala Apolo", "Razzmatazz", "Jamboree"…) when the place is not on the map yet. */
+const NIGHTLIFE_PLACE = /\b(sala|club|disco|discoteca|razzmatazz|apolo|bikini|jamboree|sidecar|upload|input|pacha|opium|sh[oô]ko|macarena|moog|marula|laut|luz de gas|paral·lel 62|garaje beat|wolf|salamandra|vol|meteoro|heliogàbal|begood|siroco)\b/i;
+const NOT_A_CLUB = /\b(teatre|teatro|auditori|palau|museu|museo|biblioteca|església|iglesia|bas[ií]lica|centre c[ií]vic|casal)\b/i;
+export function isNightlifeEvent(n: Pick<NormalizedEvent, "category" | "venueId"> & Partial<Pick<NormalizedEvent, "venueName" | "locationName">>, venues: VenueCandidate[]): boolean {
   if (["fm", "fiesta", "dj", "discoteca"].includes(n.category)) return true;
   const venue = n.venueId ? venues.find((v) => v.id === n.venueId) : null;
-  return Boolean(venue?.type && NIGHTLIFE_VENUE_TYPES.includes(venue.type));
+  if (venue?.type && NIGHTLIFE_VENUE_TYPES.includes(venue.type)) return true;
+  const place = n.venueName ?? n.locationName ?? "";
+  return NIGHTLIFE_PLACE.test(place) && !NOT_A_CLUB.test(place);
 }
 
 export function loadCityVenues(cityId: string): Promise<VenueCandidate[]> {

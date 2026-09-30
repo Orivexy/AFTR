@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 process.env.DATABASE_URL ??= "postgresql://test@localhost:5432/test"; // env is validated on import; nothing connects
+const { isNightlifeEvent } = await import("@/server/discovery/store");
 import { parseCataloniaAgenda, parseStartTime } from "@/server/discovery/parsers/catalonia-agenda";
 import { parseBcnMusicVenues, parseBcnTimetable, parseCatalanDays } from "@/server/discovery/parsers/bcn-music-venues";
 
@@ -104,12 +105,13 @@ describe("Barcelona · espais de música i copes", () => {
 });
 
 describe("nightlife-only filter", () => {
-  it("keeps parties always and concerts only at clubs", async () => {
-    const { isNightlifeEvent } = await import("@/server/discovery/store");
+  it("keeps parties always and concerts only at clubs", () => {
     const venues = [{ id: "club", name: "Apolo", address: "", lat: 0, lng: 0, type: "CLUB" }, { id: "hall", name: "Palau", address: "", lat: 0, lng: 0, type: "OTHER" }];
     expect(isNightlifeEvent({ category: "fm", venueId: null }, venues)).toBe(true);
     expect(isNightlifeEvent({ category: "concierto", venueId: "club" }, venues)).toBe(true);
     expect(isNightlifeEvent({ category: "concierto", venueId: "hall" }, venues)).toBe(false);
     expect(isNightlifeEvent({ category: "festival", venueId: null }, venues)).toBe(false);
+    expect(isNightlifeEvent({ category: "concierto", venueId: null, venueName: "Sala Apolo" }, venues)).toBe(true);
+    expect(isNightlifeEvent({ category: "concierto", venueId: null, venueName: "Sala Gran del Teatre Nacional" }, venues)).toBe(false);
   });
 });
