@@ -127,7 +127,7 @@ export async function getMapPlaces(city: CityData, now = new Date()): Promise<Ma
       where: { cityId: city.id, isActive: true },
       select: {
         id: true, slug: true, name: true, lat: true, lng: true, coverKey: true, address: true, neighborhood: true, type: true,
-        ratingAvg: true, ratingCount: true, priceMin: true, priceMax: true, openingHours: true,
+        ratingAvg: true, ratingCount: true, priceMin: true, priceMax: true, openingHours: true, isFeatured: true,
         genres: { select: { genre: { select: { slug: true } } } },
         primarySource: { select: { type: true } },
         events: { where: upcoming, orderBy: { startsAt: "asc" }, take: 8, select: mapEventSelect },
@@ -144,14 +144,14 @@ export async function getMapPlaces(city: CityData, now = new Date()): Promise<Ma
   return [
     ...venues.map<MapPlace>((v) => ({
       kind: "venue", id: v.id, slug: v.slug, name: v.name, lat: v.lat, lng: v.lng, coverKey: v.coverKey, address: v.address,
-      neighborhood: v.neighborhood, venueType: v.type, genres: v.genres.map((g) => g.genre.slug),
+      neighborhood: v.neighborhood, venueType: v.type, featured: v.isFeatured, genres: v.genres.map((g) => g.genre.slug),
       ratingAvg: v.ratingCount > 0 ? v.ratingAvg : null, ratingCount: v.ratingCount > 0 ? v.ratingCount : null,
       priceMin: v.priceMin, priceMax: v.priceMax, currency: city.currency, timezone: city.timezone,
       openingHours: sanitizeHours(v.openingHours), events: v.events.map(toMapEvent), attribution: attributionFor(v.primarySource?.type),
     })),
     ...events.map<MapPlace>((e) => ({
       kind: "event", id: e.id, slug: e.slug, name: e.title, lat: e.lat, lng: e.lng, coverKey: e.coverKey,
-      address: e.address ?? e.locationName, neighborhood: null, venueType: null, genres: e.genres.map((g) => g.genre.slug),
+      address: e.address ?? e.locationName, neighborhood: null, venueType: null, featured: false, genres: e.genres.map((g) => g.genre.slug),
       ratingAvg: null, ratingCount: null, priceMin: e.priceMin, priceMax: e.priceMax, currency: city.currency, timezone: city.timezone,
       openingHours: null, events: [toMapEvent(e)], attribution: null,
     })),

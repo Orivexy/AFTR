@@ -41,6 +41,7 @@ Cada fuente tiene: nombre, tipo, activada, ciudad, local propietario, confianza 
 - **Instagram, horario y precio**: los que publique la web oficial (enlace a Instagram, `openingHoursSpecification`, `priceRange`). Si no los publica, la ficha dice «no verificado» o muestra el precio más bajo de sus próximos eventos.
 - **Eventos**: los schema.org de su web oficial, más Xceed y Ticketmaster. Todas estas fuentes tienen `config.listedVenuesOnly`: solo entran eventos en un lugar del listado (por nombre, alias como «Pacha» → Ku Barcelona, o coordenadas), de cualquier tipo: fiestas, conciertos, sesiones DJ, festivales, eventos especiales y noches temáticas.
 - Los locales que no están en el listado se retiran del mapa.
+- **Locales principales** (`MAIN_VENUES`, elegidos por el propietario): se marcan como destacados y salen siempre primero en la lista de ocio nocturno, en el inicio y en el mapa.
 
 `config.nightlifeOnly` (Ticketmaster): solo eventos en discotecas (local de tipo CLUB o nombre de club conocido); fuera conciertos en auditorios, festivales, fiestas populares, ópera, teatro y restaurantes.
 

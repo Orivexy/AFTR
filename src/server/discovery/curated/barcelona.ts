@@ -515,6 +515,17 @@ export const BARCELONA_VENUES: CuratedVenue[] = [
   },
 ];
 
+/**
+ * The main places of the app (chosen by the owner): always first in lists,
+ * on the home page and on the map, in this order.
+ */
+export const MAIN_VENUES = [
+  "razzmatazz", "opium-barcelona", "shoko-barcelona", "sutton-barcelona", "moog", "sala-apolo", "la-2-de-apolo", "nitsa-club",
+  "city-hall-barcelona", "otto-zutz", "macarena-club", "hyde-club", "bling-bling-barcelona", "ku-barcelona", "cdlc-barcelona",
+  "sala-plataforma", "m7-club", "draco-disco-club", "la-biblio", "input-barcelona", "laut", "jamboree", "club-sauvage",
+  "arena-xperience", "sala-upload", "wolf-barcelona",
+];
+
 /** Checked and left out, with the reason (shown to staff, never on the map). */
 export const EXCLUDED: Array<{ name: string; reason: string; sources: string[] }> = [
   { name: "Pacha Barcelona", reason: "Ahora se llama Ku Barcelona (mismo local).", sources: ["https://youbarcelona.com/es/blog/pacha-barcelona-ahora-es-ku-barcelona"] },

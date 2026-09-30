@@ -8,7 +8,7 @@ import { fetchBytes, fetchJson, fetchText } from "../fetcher";
 import { extractJsonLdBlocks, flattenNodes, jsonLdToEvents } from "../parsers/jsonld";
 import { officialSiteInfo, pagePhotos, type OfficialSiteInfo } from "../parsers/official-site";
 import { discoveryUserId } from "../store";
-import { BARCELONA_VENUES, type CuratedVenue } from "../curated/barcelona";
+import { BARCELONA_VENUES, MAIN_VENUES, type CuratedVenue } from "../curated/barcelona";
 import type { Connector, ExternalEvent, SourceContext, VenueSyncCounters } from "../types";
 
 /**
@@ -191,6 +191,8 @@ export async function syncCuratedVenues(source: DiscoverySource, ctx: SourceCont
         ...(site.hours ? { hoursSource: "official", hoursUpdatedAt: now } : {}),
         priceMin: site.priceMin ?? existing?.priceMin ?? null,
         priceMax: site.priceMax ?? existing?.priceMax ?? null,
+        // Main places: always first (lists, home, map).
+        isFeatured: MAIN_VENUES.includes(v.key),
         trust: "VERIFIED" as const,
         primarySourceId: source.id,
         sourceUrl: v.website ?? v.sources[0] ?? null,

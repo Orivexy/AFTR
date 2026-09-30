@@ -49,12 +49,15 @@ export async function listVenues(q: VenueQuery): Promise<Page<VenueCardData>> {
     where.lat = { gte: bb.minLat, lte: bb.maxLat };
     where.lng = { gte: bb.minLng, lte: bb.maxLng };
   }
-  const orderBy: Prisma.VenueOrderByWithRelationInput[] =
-    q.sort === "rating"
-      ? [{ ratingAvg: "desc" }, { ratingCount: "desc" }]
+  // Main places (isFeatured) always come first.
+  const orderBy: Prisma.VenueOrderByWithRelationInput[] = [
+    { isFeatured: "desc" },
+    ...(q.sort === "rating"
+      ? [{ ratingAvg: "desc" as const }, { ratingCount: "desc" as const }]
       : q.sort === "name"
-        ? [{ name: "asc" }]
-        : [{ followerCount: "desc" }, { ratingCount: "desc" }];
+        ? [{ name: "asc" as const }]
+        : [{ followerCount: "desc" as const }, { ratingCount: "desc" as const }, { name: "asc" as const }]),
+  ];
 
   const rows = await db.venue.findMany({ where, orderBy, select: venueCardSelect, skip: offset, take: limit + 1 });
   let items = rows.slice(0, limit).map(toVenueCard);

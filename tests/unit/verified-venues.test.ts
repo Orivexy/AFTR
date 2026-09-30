@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 process.env.DATABASE_URL ??= "postgresql://test@localhost:5432/test"; // env is validated on import; nothing connects
 const { matchVenue } = await import("@/server/discovery/store");
-import { BARCELONA_VENUES, EXCLUDED } from "@/server/discovery/curated/barcelona";
+import { BARCELONA_VENUES, EXCLUDED, MAIN_VENUES } from "@/server/discovery/curated/barcelona";
 import { instagramHandle, officialSiteInfo, pagePhotos, structuredHours } from "@/server/discovery/parsers/official-site";
 import { detectCategory } from "@/server/discovery/normalize";
 import { DEFAULT_FILTERS, filterPlaces, placeType } from "@/lib/map-filters";
@@ -37,6 +37,21 @@ describe("Listado verificado de Barcelona", () => {
     for (const n of ["Razzmatazz", "Opium Barcelona", "Shôko Barcelona", "Sutton Barcelona", "Moog", "Sala Apolo", "City Hall Barcelona", "Otto Zutz", "Macarena Club", "Hyde Club", "Bling Bling Barcelona", "Pacha Barcelona", "CDLC Barcelona", "Sala Plataforma", "M7 Club", "Draco Disco Club", "La Biblio", "INPUT", "LAUT", "Nitsa Club", "Jamboree", "Sidecar Factory Club", "Arena Classic", "Sala Upload", "Wolf Barcelona", "Palau Sant Jordi", "Parc del Fòrum", "Poble Espanyol", "Fira Gran Via", "Sant Jordi Club", "Paral·lel 62", "La 2 de Apolo"]) {
       expect(names.has(n), n).toBe(true);
     }
+  });
+});
+
+describe("Locales principales", () => {
+  it("are the 26 chosen places, all in the list", () => {
+    expect(MAIN_VENUES).toHaveLength(26);
+    expect(new Set(MAIN_VENUES).size).toBe(26);
+    const keys = BARCELONA_VENUES.map((v) => v.key);
+    for (const k of MAIN_VENUES) expect(keys, k).toContain(k);
+  });
+
+  it("come first on the map", () => {
+    const base = { kind: "venue", lat: 41.38, lng: 2.17, coverKey: null, address: "", neighborhood: null, venueType: "DISCO", genres: [], ratingAvg: null, ratingCount: null, priceMin: null, priceMax: null, currency: "EUR", timezone: "Europe/Madrid", openingHours: null, events: [], attribution: null };
+    const places = [{ ...base, id: "a", slug: "a", name: "Aaa" }, { ...base, id: "z", slug: "z", name: "Zzz", featured: true }] as unknown as MapPlace[];
+    expect(filterPlaces(places, DEFAULT_FILTERS).map((r) => r.place.id)).toEqual(["z", "a"]);
   });
 });
 

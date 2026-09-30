@@ -250,6 +250,8 @@ export interface MapPlace {
   neighborhood: string | null;
   /** Venue type (CLUB, BAR, CONCERT_HALL…) or null for standalone events. */
   venueType: string | null;
+  /** Main place (always listed first). */
+  featured?: boolean;
   genres: string[];
   /** ORIVEXY NIGHTS community rating (never a third-party rating we may not store). */
   ratingAvg: number | null;

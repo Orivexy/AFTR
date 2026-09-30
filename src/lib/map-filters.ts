@@ -174,7 +174,8 @@ export function filterPlaces(places: MapPlace[], f: MapFilters, opts: { now?: Da
   if (opts.sortByDistance && opts.coords) out.sort((a, b) => a.distanceKm! - b.distanceKm!);
   else {
     const next = (x: FilteredPlace) => x.events[0]?.startsAt.getTime() ?? Number.POSITIVE_INFINITY;
-    out.sort((a, b) => Number(b.live) - Number(a.live) || next(a) - next(b) || Number(b.open === true) - Number(a.open === true) || a.place.name.localeCompare(b.place.name, "es"));
+    // Main places first, then what's on now, then the soonest.
+    out.sort((a, b) => Number(Boolean(b.place.featured)) - Number(Boolean(a.place.featured)) || Number(b.live) - Number(a.live) || next(a) - next(b) || Number(b.open === true) - Number(a.open === true) || a.place.name.localeCompare(b.place.name, "es"));
   }
   return out;
 }
