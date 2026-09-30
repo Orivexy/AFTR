@@ -87,6 +87,17 @@ jobs:
         with: { name: base-data, path: base }
       - run: npm ci
       - run: bash scripts/build-desktop.sh --platform linux --base-data base/base-data.sql
+      # The packaged app (Electron main process + PostgreSQL + server) must start;
+      # a failure blocks the release for every platform.
+      - name: Smoke test the packaged app
+        run: |
+          sudo apt-get install -y -qq xvfb >/dev/null
+          xvfb-run -a dist-desktop/linux-unpacked/orivexy-nights-desktop --no-sandbox > app.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -sf http://localhost:3000/api/health; then echo " app started"; exit 0; fi
+            sleep 1
+          done
+          cat app.log; find ~/.config -name "orivexy-nights.log" -exec tail -50 {} \; ; exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: app-linux

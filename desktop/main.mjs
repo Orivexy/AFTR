@@ -13,11 +13,10 @@ import { startBackend } from "./backend.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const resourcesDir = app.isPackaged ? process.resourcesPath : path.join(here, "resources");
-const dataDir = pickDataDir();
-
 /** Folder name used before the app was renamed: its data is kept on upgrade. */
 const LEGACY_FOLDER = "NIVEX";
 const DATA_FOLDER = "ORIVEXY-NIGHTS";
+const dataDir = pickDataDir();
 
 /**
  * PostgreSQL for Windows cannot handle non-ASCII paths (e.g. a user folder
