@@ -4,7 +4,7 @@
  *   node backend.mjs <resourcesDir> <dataDir>
  */
 import { execFile, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { networkInterfaces } from "node:os";
 import path from "node:path";
@@ -50,6 +50,33 @@ async function waitForHttp(url, timeoutMs, isAlive) {
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error("El servidor tardó demasiado en arrancar");
+}
+
+/**
+ * `pg_ctl start`: resolves when pg_ctl exits. Its output goes straight to the
+ * log file, so no pipe is left open — on Windows the PostgreSQL server it
+ * launches inherits pg_ctl's handles, and waiting for piped output to close
+ * blocked every first launch until a 120 s timeout.
+ */
+function runPgCtlStart(file, args, logFile, timeoutMs = 90_000) {
+  return new Promise((resolve, reject) => {
+    const fd = openSync(logFile, "a");
+    const child = spawn(file, args, { windowsHide: true, stdio: ["ignore", fd, fd] });
+    closeSync(fd);
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error("pg_ctl no respondió a tiempo"));
+    }, timeoutMs);
+    child.once("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      if (code === 0) resolve();
+      else reject(new Error(`pg_ctl terminó con código ${code}`));
+    });
+  });
 }
 
 function run(file, args, logFile) {
@@ -139,7 +166,7 @@ async function preparePostgres({ resourcesDir, dataDir, pgDir, pgPort, pg_ctl, d
   try {
     // synchronous_commit=off: commits don't wait for the disk (a crash can lose the last
     // second of changes, never corrupt data) — much snappier on a laptop.
-    await run(pg_ctl, ["start", "-D", pgDir, "-w", "-t", "90", "-l", pgLog, "-o", `-p ${pgPort} -c listen_addresses=localhost -c synchronous_commit=off`], logFile);
+    await runPgCtlStart(pg_ctl, ["start", "-D", pgDir, "-w", "-t", "90", "-l", pgLog, "-o", `-p ${pgPort} -c listen_addresses=localhost -c synchronous_commit=off`], logFile);
   } catch (err) {
     throw new Error(`PostgreSQL no pudo arrancar: ${err.message}\n${tail(pgLog)}`);
   }
