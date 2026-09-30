@@ -54,6 +54,16 @@ export default async function VenuePage({ params }: Props) {
   const status = openingStatus(venue.openingHours, venue.timezone);
   const TRUST_LABEL: Record<string, string> = { COMMUNITY: "Comunidad", IMPORTED: "Importado", OFFICIAL: "Oficial", VERIFIED: "Verificado por ORIVEXY NIGHTS" };
   const official = events.items.filter((e) => e.venue?.id === venue.id);
+  // The venue's own price, else the cheapest published price of its upcoming events (never guessed).
+  const eventPrices = events.items.map((e) => e.priceMin).filter((p): p is number => p != null);
+  const venuePrice =
+    venue.priceMin != null
+      ? formatPrice(venue.priceMin, venue.priceMax, venue.currency)
+      : eventPrices.length
+        ? Math.min(...eventPrices) === 0
+          ? "Hay eventos gratis"
+          : `Desde ${formatPrice(Math.min(...eventPrices), null, venue.currency)}`
+        : "No disponible";
 
   return (
     <article className="mx-auto max-w-6xl md:px-6 md:pt-6">
@@ -103,7 +113,7 @@ export default async function VenuePage({ params }: Props) {
 
           <div className="grid gap-3 sm:grid-cols-3">
             <Info icon={<Music2 className="size-4" />} label="Música" value={venue.genres.map((g) => g.name).join(" · ") || "No disponible"} />
-            <Info icon={<Wallet className="size-4" />} label="Precio habitual" value={formatPrice(venue.priceMin, venue.priceMax, venue.currency)} />
+            <Info icon={<Wallet className="size-4" />} label={venue.priceMin != null ? "Precio habitual" : "Entradas"} value={venuePrice} />
             <Info icon={<Users className="size-4" />} label="Edad mínima" value={venue.minAge ? `+${venue.minAge}` : "No disponible"} />
           </div>
 

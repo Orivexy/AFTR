@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, Map as MapIcon, Search, Sparkles } from "lucide-react";
+import { ArrowRight, Search, Sparkles } from "lucide-react";
 import { EventCard, EventRow } from "@/components/events/event-card";
 import { VenueCard } from "@/components/venues/venue-card";
 import { PostGrid } from "@/components/feed/post-grid";
+import { HomeMap } from "@/components/map/home-map";
+import { getMapConfig, getMapPlaces } from "@/server/services/map";
 import { Rail } from "@/components/ui/rail";
 import { EmptyState, SectionHeader } from "@/components/ui/misc";
 import { buttonClass } from "@/components/ui/button";
@@ -41,7 +43,7 @@ export default async function HomePage() {
 
   // Priority: today → tomorrow → next 7 days → following weeks (nights run 06:00 → 06:00).
   const night = (offset: number) => nightWindow(city.timezone, offset).from;
-  const [featured, today, tomorrow, week, fm, upcoming, venues, feed] = await Promise.all([
+  const [featured, today, tomorrow, week, fm, upcoming, venues, feed, places] = await Promise.all([
     listEvents({ ...base, when: "upcoming", featured: true, limit: 6 }),
     listEvents({ ...base, when: "today", limit: 8 }),
     listEvents({ ...base, when: "tomorrow", sort: "soonest", limit: 10 }),
@@ -50,6 +52,7 @@ export default async function HomePage() {
     listEvents({ ...base, window: { from: night(7), to: night(120) }, limit: 10 }),
     listVenues({ cityId: city.id, sort: "popular", limit: 10 }),
     getFeed({ mode: "foryou", viewerId: user?.id, cityId: city.id, limit: 9 }),
+    getMapPlaces(city),
   ]);
   const hero = featured.items[0] ?? week.items[0] ?? upcoming.items[0];
 
@@ -78,6 +81,8 @@ export default async function HomePage() {
 
       <div className="grid gap-10 md:grid-cols-[1fr_380px] md:gap-10">
         <div className="min-w-0 space-y-10">
+          <HomeMap config={getMapConfig()} places={places} center={{ lat: city.lat, lng: city.lng }} cityName={city.name} />
+
           {hero && (
             <section>
               <EventCard event={hero} size="lg" priority />
@@ -162,19 +167,6 @@ export default async function HomePage() {
 
         {/* Social column (sidebar on desktop, section on mobile) */}
         <aside className="space-y-6 md:sticky md:top-24 md:self-start">
-          <Link href="/map" className="group pressable relative block overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface p-5">
-            <div aria-hidden className="absolute inset-0 opacity-60 [background:radial-gradient(circle_at_80%_20%,rgb(215_255_58/0.25),transparent_40%),repeating-linear-gradient(0deg,transparent_0_23px,rgb(255_255_255/0.05)_23px_24px),repeating-linear-gradient(90deg,transparent_0_23px,rgb(255_255_255/0.05)_23px_24px)]" />
-            <div className="relative flex items-center gap-4">
-              <span className="grid size-12 place-items-center rounded-2xl bg-volt text-on-volt">
-                <MapIcon className="size-6" />
-              </span>
-              <div className="flex-1">
-                <p className="font-display font-semibold">Mapa de la noche</p>
-                <p className="text-sm text-muted">Discotecas, FM y fiestas a tu alrededor</p>
-              </div>
-              <ArrowRight className="size-5 text-muted transition-transform group-hover:translate-x-1" />
-            </div>
-          </Link>
           <section>
             <SectionHeader eyebrow="Social" title="Lo que se está viviendo" action={<Link href="/social" className="text-sm font-semibold text-muted hover:text-fg">Abrir</Link>} />
             {feed.items.length ? <PostGrid posts={feed.items} /> : <EmptyState title="Aún no hay publicaciones" />}

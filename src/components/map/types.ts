@@ -36,6 +36,8 @@ export interface MapProviderProps {
   /** Tap on empty map (used by the location picker). */
   onMapClick?: (latlng: { lat: number; lng: number }) => void;
   interactive?: boolean;
+  /** Mouse-wheel zoom (off for maps embedded in a scrolling page). Defaults to `interactive`. */
+  wheelZoom?: boolean;
   /** Group nearby markers into count bubbles. */
   cluster?: boolean;
   /** Show +/- buttons (desktop). */

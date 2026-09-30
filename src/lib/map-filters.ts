@@ -173,3 +173,22 @@ export function directionsUrl(to: LatLng & { name?: string }, userAgent = ""): s
   if (/Android/.test(userAgent)) return `geo:${ll}?q=${ll}${to.name ? `(${encodeURIComponent(to.name)})` : ""}`;
   return `https://www.google.com/maps/dir/?api=1&destination=${ll}`;
 }
+
+/**
+ * Cheapest known entry for a place: from its upcoming events' published
+ * prices, else the venue's own usual price. Null when nobody published one
+ * (shown as nothing, never guessed).
+ */
+export function lowestPrice(place: Pick<MapPlace, "priceMin">, events: Array<Pick<MapEvent, "priceMin">>): number | null {
+  const known = events.map((e) => e.priceMin).filter((p): p is number => p != null);
+  if (known.length) return Math.min(...known);
+  return place.priceMin ?? null;
+}
+
+/** Best link to buy or check tickets for the next event (as published by its source). */
+export function ticketLink(events: Array<Pick<MapEvent, "ticketUrl" | "officialUrl">>): { href: string; buy: boolean } | null {
+  const withTickets = events.find((e) => e.ticketUrl);
+  if (withTickets?.ticketUrl) return { href: withTickets.ticketUrl, buy: true };
+  const official = events.find((e) => e.officialUrl);
+  return official?.officialUrl ? { href: official.officialUrl, buy: false } : null;
+}

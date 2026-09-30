@@ -38,7 +38,7 @@ function clusterHtml(count: number, live: boolean) {
 }
 
 export default function LeafletMap({
-  config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, cluster = false, zoomControls = false, user, recenterKey = 0, className,
+  config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, wheelZoom, cluster = false, zoomControls = false, user, recenterKey = 0, className,
 }: MapProviderProps) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
@@ -113,7 +113,7 @@ export default function LeafletMap({
         zoomControl: false,
         attributionControl: true,
         dragging: interactive,
-        scrollWheelZoom: interactive,
+        scrollWheelZoom: interactive && wheelZoom !== false,
         doubleClickZoom: interactive,
         touchZoom: interactive,
         keyboard: interactive,

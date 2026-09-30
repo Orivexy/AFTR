@@ -8,7 +8,7 @@ const TZ = "Europe/Madrid";
 const NOW = new Date("2026-09-25T18:00:00Z"); // Friday 20:00 in Barcelona
 
 const ev = (id: string, startIso: string, extra: Partial<MapEvent> = {}): MapEvent => ({
-  id, slug: id, title: id, startsAt: new Date(startIso), endsAt: null, priceMin: null, priceMax: null, category: "fiesta", genres: [], coverKey: null, ...extra,
+  id, slug: id, title: id, startsAt: new Date(startIso), endsAt: null, priceMin: null, priceMax: null, category: "fiesta", genres: [], coverKey: null, ticketUrl: null, officialUrl: null, ...extra,
 });
 
 const place = (id: string, extra: Partial<MapPlace> = {}): MapPlace => ({
@@ -130,5 +130,21 @@ describe("search intent", () => {
   it("names stay as text", () => {
     expect(parseSearchIntent("Razzmatazz", cities)).toMatchObject({ text: "razzmatazz", when: null, types: [] });
     expect(parseSearchIntent("house gratis este finde en Barcelona", cities)).toMatchObject({ genres: ["house"], free: true, when: "weekend", city: "barcelona", text: "" });
+  });
+});
+
+describe("prices and tickets on the map", () => {
+  it("uses the cheapest published event price, else the venue's own, else nothing", async () => {
+    const { lowestPrice } = await import("@/lib/map-filters");
+    expect(lowestPrice({ priceMin: 2000 }, [{ priceMin: null }, { priceMin: 1500 }, { priceMin: 1200 }])).toBe(1200);
+    expect(lowestPrice({ priceMin: 2000 }, [{ priceMin: null }])).toBe(2000);
+    expect(lowestPrice({ priceMin: null }, [])).toBeNull();
+  });
+
+  it("links tickets first, then the official page, never a guessed URL", async () => {
+    const { ticketLink } = await import("@/lib/map-filters");
+    expect(ticketLink([{ ticketUrl: null, officialUrl: "https://a" }, { ticketUrl: "https://t", officialUrl: null }])).toEqual({ href: "https://t", buy: true });
+    expect(ticketLink([{ ticketUrl: null, officialUrl: "https://a" }])).toEqual({ href: "https://a", buy: false });
+    expect(ticketLink([{ ticketUrl: null, officialUrl: null }])).toBeNull();
   });
 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ChevronUp, Clock, List, LocateFixed, MapPin, Navigation, Search, SlidersHorizontal, Star, X } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronUp, Clock, List, LocateFixed, MapPin, Navigation, Search, SlidersHorizontal, Star, Ticket, X } from "lucide-react";
 import { MapView } from "./map-view";
 import type { MapMarker } from "./types";
 import { Cover } from "@/components/ui/cover";
@@ -15,7 +15,7 @@ import { formatPrice } from "@/lib/money";
 import { formatRelativeDay, formatTime } from "@/lib/time";
 import { openingStatus } from "@/lib/hours";
 import {
-  DEFAULT_FILTERS, PRICE_OPTIONS, TYPE_OPTIONS, WHEN_OPTIONS, activeFilterCount, directionsUrl, filterPlaces, isLive,
+  DEFAULT_FILTERS, PRICE_OPTIONS, TYPE_OPTIONS, WHEN_OPTIONS, activeFilterCount, directionsUrl, filterPlaces, isLive, lowestPrice, ticketLink,
   type FilteredPlace, type MapFilters, type TypeFilter, type WhenFilter,
 } from "@/lib/map-filters";
 import { parseSearchIntent } from "@/lib/search-intent";
@@ -26,6 +26,12 @@ import type { MapEvent, MapPlace } from "@/lib/types";
 const TYPE_LABEL: Record<string, string> = { CLUB: "Discoteca", BAR: "Bar musical", CONCERT_HALL: "Sala de conciertos", OPEN_AIR: "Open air", OTHER: "Local" };
 const CATEGORY_LABEL: Record<string, string> = { fm: "FM", fiesta: "Fiesta", discoteca: "Discoteca", concierto: "Concierto", dj: "DJ", festival: "Festival", otro: "Evento" };
 const genreName = (slug: string) => GENRES.find((g) => g.slug === slug)?.name ?? slug;
+/** "Gratis" / "Desde 12 €", or null when no price was published. */
+function priceFromLabel(r: FilteredPlace): string | null {
+  const min = lowestPrice(r.place, r.events);
+  if (min == null) return null;
+  return min === 0 ? "Gratis" : `Desde ${formatPrice(min, null, r.place.currency)}`;
+}
 
 interface Props {
   config: MapConfig;
@@ -239,6 +245,7 @@ function statusLine(r: FilteredPlace): { text: string; tone: "live" | "open" | "
 function ResultRow({ r, active, onClick }: { r: FilteredPlace; active: boolean; onClick: () => void }) {
   const p = r.place;
   const st = statusLine(r);
+  const price = priceFromLabel(r);
   return (
     <button onClick={onClick} className={cn("flex w-full items-center gap-3 rounded-2xl p-2 text-left transition-colors hover:bg-surface", active && "bg-surface")}>
       <Cover imageKey={p.coverKey ?? r.events[0]?.coverKey ?? null} alt="" sizes="56px" className="size-14 shrink-0 rounded-xl" />
@@ -249,6 +256,7 @@ function ResultRow({ r, active, onClick }: { r: FilteredPlace; active: boolean; 
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
         {r.live && <LiveDot />}
+        {price && <span className={cn("rounded-full px-2 py-0.5 text-[12px] font-bold", price === "Gratis" ? "bg-emerald-400/15 text-emerald-300" : "bg-volt/15 text-volt")}>{price}</span>}
         {r.distanceKm != null && <span className="text-[12px] font-semibold text-muted">{formatDistance(r.distanceKm)}</span>}
       </div>
     </button>
@@ -335,6 +343,8 @@ function PlaceSheet({ r, onClose }: { r: FilteredPlace; onClose: () => void }) {
   const next: MapEvent | undefined = r.events[0];
   const liveNow = next && isLive(next);
   const href = p.kind === "venue" ? `/venues/${p.slug}` : `/events/${p.slug}`;
+  const price = priceFromLabel(r);
+  const tickets = ticketLink(r.events);
 
   return (
     <div className="animate-sheet-up absolute inset-x-0 bottom-0 z-[600] max-h-[80%] overflow-y-auto rounded-t-[1.75rem] border-t border-line-strong bg-ink/95 shadow-2xl backdrop-blur-xl md:inset-x-auto md:bottom-6 md:left-6 md:w-[400px] md:rounded-[1.75rem] md:border">
@@ -366,6 +376,7 @@ function PlaceSheet({ r, onClose }: { r: FilteredPlace; onClose: () => void }) {
               <MapPin className="size-3.5" /> {formatDistance(r.distanceKm)}
             </span>
           )}
+          {price && <span className={cn("rounded-full px-2.5 py-0.5 font-bold", price === "Gratis" ? "bg-emerald-400/15 text-emerald-300" : "bg-volt/15 text-volt")}>{price}</span>}
           {status ? (
             <span className="flex items-center gap-1.5">
               <span className={cn("size-2 rounded-full", status.open ? "bg-emerald-400" : "bg-faint")} />
@@ -407,8 +418,13 @@ function PlaceSheet({ r, onClose }: { r: FilteredPlace; onClose: () => void }) {
           p.kind === "venue" && <p className="text-[13px] text-muted">Sin eventos anunciados{p.address ? ` · ${p.address}` : ""}</p>
         )}
 
+        {tickets && (
+          <a href={tickets.href} target="_blank" rel="noopener noreferrer nofollow" className={buttonClass(tickets.buy ? "primary" : "secondary", "lg", "w-full")}>
+            <Ticket className="size-4" /> {tickets.buy ? "Comprar entradas" : "Entradas e info oficial"}
+          </a>
+        )}
         <div className="grid grid-cols-3 gap-2">
-          <Link href={href} className={buttonClass("primary", "md", "col-span-3 sm:col-span-1")}>
+          <Link href={href} className={buttonClass(tickets?.buy ? "secondary" : "primary", "md", "col-span-3 sm:col-span-1")}>
             {p.kind === "venue" ? "Ver perfil" : "Ver evento"} <ArrowRight className="size-4" />
           </Link>
           <a href={directionsUrl({ lat: p.lat, lng: p.lng, name: p.name }, ua)} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary", "md", "col-span-3 min-[380px]:col-span-2 sm:col-span-1 sm:px-3")}>

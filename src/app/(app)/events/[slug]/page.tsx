@@ -129,10 +129,16 @@ export default async function EventPage({ params }: Props) {
               disabled={event.status !== "PUBLISHED" || ended}
               initial={{ ...event.viewer, interestedCount: event.interestedCount, goingCount: event.goingCount }}
             />
-            {event.ticketUrl && (
-              <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer nofollow" className={buttonClass("outline", "md", "mt-3 w-full")}>
-                <Ticket className="size-4" /> Comprar entradas
+            {event.ticketUrl ? (
+              <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer nofollow" className={buttonClass("primary", "lg", "mt-3 w-full")}>
+                <Ticket className="size-4" /> Comprar entradas{event.priceMin != null && ` · ${formatPrice(event.priceMin, event.priceMax, event.currency)}`}
               </a>
+            ) : (
+              event.officialUrl && (
+                <a href={event.officialUrl} target="_blank" rel="noopener noreferrer nofollow" className={buttonClass("outline", "md", "mt-3 w-full")}>
+                  <Ticket className="size-4" /> Entradas e info oficial
+                </a>
+              )
             )}
             {event.attendeesPreview.length > 0 && (
               <div className="mt-4 flex items-center gap-3 border-t border-line pt-4">

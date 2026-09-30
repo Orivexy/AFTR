@@ -222,6 +222,9 @@ export interface MapEvent {
   category: string; // fm | fiesta | discoteca | concierto | dj | festival | otro
   genres: string[];
   coverKey: string | null;
+  /** Where to buy tickets / official page, as published by the source (never guessed). */
+  ticketUrl: string | null;
+  officialUrl: string | null;
 }
 
 export interface MapPlace {
