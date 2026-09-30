@@ -121,7 +121,9 @@ async function preparePostgres({ resourcesDir, dataDir, pgDir, pgPort, pg_ctl, d
       onLog: (m) => appendFileSync(logFile, `[pg] ${m}\n`),
       onError: (m) => appendFileSync(logFile, `[pg:err] ${m instanceof Error ? m.stack : m}\n`),
     });
+    const t = Date.now();
     await pgServer.initialise();
+    log(`initdb: ${Date.now() - t} ms`);
     state.pgInitialized = true;
     saveState();
   }
@@ -133,6 +135,7 @@ async function preparePostgres({ resourcesDir, dataDir, pgDir, pgPort, pg_ctl, d
     await run(pg_ctl, ["stop", "-D", pgDir, "-m", "fast", "-w"], logFile).catch(() => {});
   }
   log(`Arrancando PostgreSQL en el puerto ${pgPort}`);
+  const tStart = Date.now();
   try {
     // synchronous_commit=off: commits don't wait for the disk (a crash can lose the last
     // second of changes, never corrupt data) — much snappier on a laptop.
@@ -140,7 +143,7 @@ async function preparePostgres({ resourcesDir, dataDir, pgDir, pgPort, pg_ctl, d
   } catch (err) {
     throw new Error(`PostgreSQL no pudo arrancar: ${err.message}\n${tail(pgLog)}`);
   }
-  log(`PostgreSQL listo (${Date.now() - since} ms)`);
+  log(`PostgreSQL listo (${Date.now() - since} ms desde el inicio; pg_ctl start ${Date.now() - tStart} ms)`);
 
   const admin = new pg.Client({ connectionString: databaseUrl.replace(/\/[^/]+$/, "/postgres") });
   await admin.connect();
