@@ -17,6 +17,8 @@ const TYPE_OPTIONS = [
   { value: "TICKETMASTER", label: "Ticketmaster Discovery API" },
   { value: "OSM_OVERPASS", label: "OpenStreetMap · Overpass (locales y horarios)" },
   { value: "MADRID_AGENDA", label: "Datos abiertos de Madrid (agenda de ocio)" },
+  { value: "CATALONIA_AGENDA", label: "Agenda cultural de Catalunya (Generalitat, datos abiertos)" },
+  { value: "BCN_MUSIC_VENUES", label: "Ayuntamiento de Barcelona · espacios de música y copas" },
   { value: "GOOGLE_PLACES", label: "Google Places (solo vincula IDs)" },
 ];
 

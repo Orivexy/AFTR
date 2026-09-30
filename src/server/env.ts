@@ -26,7 +26,9 @@ const schema = z.object({
   S3_PUBLIC_URL: z.string().optional().default(""),
   MAX_IMAGE_MB: z.coerce.number().positive().default(12),
   MAX_VIDEO_MB: z.coerce.number().positive().default(80),
-  MAP_PROVIDER: z.enum(["carto", "mapbox", "maptiler"]).default("carto"),
+  MAP_PROVIDER: z.enum(["openfreemap", "carto", "mapbox", "maptiler"]).default("openfreemap"),
+  // Vector style for the MapLibre map (OpenFreeMap: free, no key). Recolored to the night look client-side.
+  MAP_STYLE_URL: z.url().default("https://tiles.openfreemap.org/styles/liberty"),
   MAPBOX_TOKEN: z.string().optional().default(""),
   MAPTILER_KEY: z.string().optional().default(""),
   CRON_SECRET: z.string().optional().default(""),

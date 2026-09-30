@@ -20,6 +20,11 @@ describe("discovery snapshot replay", () => {
     expect(json["@graph"]).toHaveLength(1);
   });
 
+  it("falls back to the only recording of the same path when the query changes daily", async () => {
+    const json = await withSnapshotReplay(dir, () => fetchJson<{ "@graph": unknown[] }>(`${url}?from=2026-10-05`));
+    expect(json["@graph"]).toHaveLength(1);
+  });
+
   it("fails clearly for requests that were not recorded (never invents data)", async () => {
     await expect(withSnapshotReplay(dir, () => fetchJson("https://datos.example.org/otra.json"))).rejects.toThrow(/Sin copia guardada/);
     const body = "data=[out:json];node(1);out;";

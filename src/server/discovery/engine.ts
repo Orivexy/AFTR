@@ -13,7 +13,7 @@ import {
   type VenueCandidate,
 } from "./store";
 import type { ExternalVenue, NormalizedVenue, SourceContext } from "./types";
-import { NIGHTLIFE_CATEGORIES, type NightlifeCategory, type ProviderPlace } from "../places/types";
+import { ALL_PLACE_CATEGORIES, NIGHTLIFE_CATEGORIES, type NightlifeCategory, type ProviderPlace } from "../places/types";
 import { OWN_SOURCE_POLICY, linkEventsToVenues, refreshHours, syncPlaces } from "../places/sync";
 import { backoffMinutes } from "../places/rules";
 
@@ -106,7 +106,7 @@ export async function syncSource(sourceId: string, opts: { mode?: SyncMode; job?
     } else if (connector.fetchVenues && mode === "full") {
       const items = await connector.fetchVenues(ctx);
       log(`${items.length} locales recibidos`);
-      await syncPlaces(source, OWN_SOURCE_POLICY, items.map((i) => toPlace(normalizeVenue(i), i.externalId)), c, log, {
+      await syncPlaces(source, OWN_SOURCE_POLICY, items.map((i) => toPlace(normalizeVenue(i), i.externalId, i.types)), c, log, {
         runStart: startedAt,
         nextSyncAt: new Date(Date.now() + interval * 60_000),
         detectMissing: false,
@@ -300,10 +300,11 @@ export function normalizeVenue(v: ExternalVenue): NormalizedVenue {
 }
 
 /** Official-page venue → provider-neutral place (nightclub unless the page says otherwise). */
-function toPlace(n: NormalizedVenue, externalId: string): ProviderPlace {
+function toPlace(n: NormalizedVenue, externalId: string, types: string[] = []): ProviderPlace {
+  const categories = types.filter((t): t is NightlifeCategory => (ALL_PLACE_CATEGORIES as readonly string[]).includes(t));
   return {
     providerId: externalId.slice(0, 300), name: n.name, address: n.address, neighborhood: null, lat: n.lat, lng: n.lng, phone: n.phone,
-    website: n.website, instagram: n.instagram, categories: ["nightclub"], hours: n.openingHours, businessStatus: null, rating: null, ratingCount: null,
+    website: n.website, instagram: n.instagram, categories: categories.length ? categories : ["nightclub"], hours: n.openingHours, businessStatus: null, rating: null, ratingCount: null,
     sourceUrl: n.sourceUrl,
   };
 }

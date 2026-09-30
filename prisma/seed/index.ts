@@ -44,7 +44,7 @@ async function main() {
   for (const p of plans) await db.plan.upsert({ where: { code: p.code }, create: p, update: {} });
 
   // Discovery sources (created once; staff manage them in /admin/discovery afterwards).
-  const cities = await db.city.findMany({ select: { id: true, slug: true, name: true } });
+  const cities = await db.city.findMany({ where: { isActive: true }, select: { id: true, slug: true, name: true } });
   for (const city of cities) {
     await db.discoverySource.upsert({
       where: { key: `osm-${city.slug}-nightlife` },
@@ -55,14 +55,21 @@ async function main() {
       },
       update: {},
     });
-    if (city.slug === "madrid") {
-      // City council open data (no key, updated daily): concerts, fiestas and dance.
+    if (city.slug === "barcelona") {
+      // Official open data, no key: city council venues (weekly) and the Generalitat agenda (daily).
       await db.discoverySource.upsert({
-        where: { key: "madrid-open-data-agenda" },
+        where: { key: "bcn-open-data-music-venues" },
         create: {
-          key: "madrid-open-data-agenda", name: "Ayuntamiento de Madrid · agenda de música y fiestas", type: "MADRID_AGENDA", cityId: city.id, trust: "IMPORTED",
-          enabled: discoveryEnabledFor(city.slug), autoPublish: true, syncIntervalMin: 12 * 60, config: {},
-          url: "https://datos.madrid.es/egob/catalogo/206974-0-agenda-eventos-culturales-100.json",
+          key: "bcn-open-data-music-venues", name: "Ayuntamiento de Barcelona · espacios de música y copas", type: "BCN_MUSIC_VENUES", cityId: city.id, trust: "IMPORTED",
+          enabled: discoveryEnabledFor(city.slug), autoPublish: true, syncIntervalMin: 24 * 60, config: {},
+        },
+        update: {},
+      });
+      await db.discoverySource.upsert({
+        where: { key: "catalonia-agenda-bcn" },
+        create: {
+          key: "catalonia-agenda-bcn", name: "Agenda cultural de Catalunya · conciertos, festivales y fiestas de Barcelona", type: "CATALONIA_AGENDA", cityId: city.id, trust: "IMPORTED",
+          enabled: discoveryEnabledFor(city.slug), autoPublish: true, syncIntervalMin: 6 * 60, config: {},
         },
         update: {},
       });

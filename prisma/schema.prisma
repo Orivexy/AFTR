@@ -1263,6 +1263,8 @@ enum DiscoverySourceType {
   GOOGLE_PLACES
   OSM_OVERPASS
   MADRID_AGENDA
+  CATALONIA_AGENDA
+  BCN_MUSIC_VENUES
 }
 
 enum DiscoverySyncStatus {

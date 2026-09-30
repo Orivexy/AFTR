@@ -13,6 +13,7 @@ const loading = () => <div className="skeleton size-full" />;
 
 const RENDERERS: Record<string, ComponentType<MapProviderProps>> = {
   leaflet: dynamic<MapProviderProps>(() => import("./providers/leaflet-map"), { ssr: false, loading }),
+  maplibre: dynamic<MapProviderProps>(() => import("./providers/maplibre-map"), { ssr: false, loading }),
 };
 
 export function MapView(props: MapProviderProps) {

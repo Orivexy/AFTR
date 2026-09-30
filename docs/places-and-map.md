@@ -107,7 +107,9 @@ Se trabaja con fechas locales concretas, así que los cambios de hora se calcula
 
 ## Mapa (`src/components/map`)
 
-- **MapProvider.** `types.ts` define el contrato (`MapProviderProps`) y `map-view.tsx` elige el renderer según `MapConfig.renderer`. Hoy hay un renderer, Leaflet (`providers/leaflet-map.tsx`), con teselas de CARTO (sin clave), Mapbox o MapTiler (`MAP_PROVIDER`; los tokens pasan por el servidor). Para añadir Mapbox GL o Google Maps se crea `providers/<nombre>-map.tsx` y se registra. Nada más de la app importa librerías de mapas.
+- **MapProvider.** `types.ts` define el contrato (`MapProviderProps`) y `map-view.tsx` elige el renderer según `MapConfig.renderer`.
+  - **MapLibre GL** (por defecto, `MAP_PROVIDER=openfreemap`): mapa vectorial fluido estilo Apple Maps (zoom continuo, rotación, inclinación y edificios 3D, botón 2D/3D). Teselas de OpenFreeMap (gratis, sin clave ni límites) con el estilo `liberty` recoloreado de noche en `night-style.ts`. Sin WebGL, o si el estilo no carga, cae a Leaflet automáticamente.
+  - **Leaflet** (`providers/leaflet-map.tsx`): teselas raster de CARTO (sin clave), Mapbox o MapTiler (los tokens pasan por el servidor). Para añadir Mapbox GL o Google Maps se crea `providers/<nombre>-map.tsx` y se registra. Nada más de la app importa librerías de mapas.
 - **Clustering.** `clusters.ts` usa `supercluster`, independiente del proveedor. Muestra burbujas con el número (“24”) que se abren al hacer zoom. El marcador seleccionado nunca queda escondido en un grupo.
 - **Marcadores propios.**
   - Locales: círculo con ecualizador, verde neón si está abierto ahora.

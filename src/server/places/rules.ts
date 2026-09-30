@@ -10,6 +10,7 @@ export type VenueTypeValue = "CLUB" | "BAR" | "CONCERT_HALL" | "OPEN_AIR" | "OTH
 export function venueTypeFor(categories: readonly string[]): VenueTypeValue {
   if (categories.includes("nightclub") || categories.includes("dance_club")) return "CLUB";
   if (categories.includes("music_venue") || categories.includes("live_music_venue")) return "CONCERT_HALL";
+  if (categories.includes("music_bar")) return "BAR";
   return "OTHER";
 }
 
@@ -19,6 +20,7 @@ export const CATEGORY_LABELS: Record<NightlifeCategory, string> = {
   music_venue: "Sala de conciertos",
   live_music_venue: "Música en directo",
   event_venue: "Sala de eventos",
+  music_bar: "Bar musical",
 };
 
 export interface OwnershipInput {

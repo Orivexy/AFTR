@@ -8,6 +8,8 @@ import { ticketmasterConnector } from "./ticketmaster";
 import { googlePlacesConnector } from "./google-places";
 import { osmConnector } from "./osm";
 import { madridAgendaConnector } from "./madrid-agenda";
+import { cataloniaAgendaConnector } from "./catalonia-agenda";
+import { bcnMusicVenuesConnector } from "./bcn-music-venues";
 
 /** Registry: add a DiscoverySourceType + a Connector here to support a new source. */
 export const CONNECTORS: Record<DiscoverySourceType, Connector> = {
@@ -18,4 +20,6 @@ export const CONNECTORS: Record<DiscoverySourceType, Connector> = {
   GOOGLE_PLACES: googlePlacesConnector,
   OSM_OVERPASS: osmConnector,
   MADRID_AGENDA: madridAgendaConnector,
+  CATALONIA_AGENDA: cataloniaAgendaConnector,
+  BCN_MUSIC_VENUES: bcnMusicVenuesConnector,
 };

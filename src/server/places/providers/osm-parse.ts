@@ -22,6 +22,7 @@ export const OSM_FILTERS: Record<NightlifeCategory, string[]> = {
   music_venue: ['["amenity"="music_venue"]'],
   live_music_venue: ['["amenity"="bar"]["live_music"="yes"]', '["amenity"="pub"]["live_music"="yes"]'],
   event_venue: ['["amenity"="events_venue"]'],
+  music_bar: [],
 };
 
 /** Overpass QL for every category around a point (nodes, ways and relations, with centres). */

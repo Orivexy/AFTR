@@ -25,6 +25,8 @@ Código: `src/server/discovery/` · Panel: `/admin/discovery`.
 | `TICKETMASTER` | Ticketmaster Discovery API | `TICKETMASTER_API_KEY`, `config.classificationName`, `config.keyword` |
 | `OSM_OVERPASS` | Locales, direcciones y horarios de OpenStreetMap (ODbL) | sin clave; `config.categories`, `config.radiusKm` |
 | `MADRID_AGENDA` | Agenda de datos abiertos del Ayuntamiento de Madrid (conciertos, fiestas, baile, ferias; se actualiza a diario) | sin clave; `url` (por defecto el JSON oficial) |
+| `CATALONIA_AGENDA` | Agenda cultural de Catalunya (Generalitat, Socrata): conciertos, festivales, fiestas y festes majors de Barcelona, con precio, horario, lugar y enlace de compra; diaria | sin clave; `config.municipality` (por defecto Barcelona) |
+| `BCN_MUSIC_VENUES` | Ayuntamiento de Barcelona · espacios de música y copas: discotecas, bares musicales, cocteleras… con dirección, teléfono y horario oficial; semanal | sin clave (CKAN datastore, CC BY 4.0) |
 | `GOOGLE_PLACES` | Vincula place IDs de Google y detecta cierres (Places API New) | `GOOGLE_PLACES_API_KEY`, `config.categories` |
 
 Cada fuente tiene: nombre, tipo, activada, ciudad, local propietario, confianza (`IMPORTED`/`OFFICIAL`), publicación automática, permiso de imágenes, intervalo, estado, último error, última sincronización y eventos encontrados. Cada sincronización queda en `SyncRun` con sus contadores y un registro.

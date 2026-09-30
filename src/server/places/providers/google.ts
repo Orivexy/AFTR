@@ -25,6 +25,7 @@ const QUERIES: Record<NightlifeCategory, { textQuery: string; includedType?: str
   music_venue: { textQuery: "sala de conciertos" },
   live_music_venue: { textQuery: "música en directo" },
   event_venue: { textQuery: "sala de eventos", includedType: "event_venue" },
+  music_bar: { textQuery: "bar musical", includedType: "bar" },
 };
 
 interface GPlace {

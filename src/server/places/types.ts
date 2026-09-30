@@ -8,7 +8,9 @@ import type { OpeningHours } from "@/lib/types";
 
 /** Nightlife categories ORIVEXY NIGHTS searches for (provider-neutral). */
 export const NIGHTLIFE_CATEGORIES = ["nightclub", "dance_club", "music_venue", "live_music_venue", "event_venue"] as const;
-export type NightlifeCategory = (typeof NIGHTLIFE_CATEGORIES)[number];
+/** "music_bar" (bars and pubs with music, cocktail bars) comes from official city data, never searched by default. */
+export type NightlifeCategory = (typeof NIGHTLIFE_CATEGORIES)[number] | "music_bar";
+export const ALL_PLACE_CATEGORIES: readonly NightlifeCategory[] = [...NIGHTLIFE_CATEGORIES, "music_bar"];
 
 /**
  * What the provider's terms allow us to do with its data. The sync enforces

@@ -1,7 +1,7 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import path from "node:path";
@@ -82,29 +82,52 @@ export function withSnapshotReplay<T>(dir: string, fn: () => Promise<T>): Promis
   return replayContext.run(dir, fn);
 }
 
-function recordSnapshot(key: string, url: string, contentType: string, body: Buffer) {
+function recordSnapshot(key: string, method: string, url: string, contentType: string, body: Buffer) {
   const dir = process.env.DISCOVERY_SNAPSHOT_RECORD;
   if (!dir) return;
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, `${key}.gz`), gzipSync(body));
-  writeFileSync(path.join(dir, `${key}.json`), JSON.stringify({ url, contentType, recordedAt: new Date().toISOString() }));
+  writeFileSync(path.join(dir, `${key}.json`), JSON.stringify({ method, url, contentType, recordedAt: new Date().toISOString() }));
 }
 
-function replaySnapshot(dir: string, key: string, rawUrl: string) {
+type SnapshotMeta = { method?: string; url: string; contentType: string };
+const samePath = (a: string, b: string) => {
+  const x = new URL(a);
+  const y = new URL(b);
+  return x.origin === y.origin && x.pathname === y.pathname;
+};
+
+/**
+ * Exact request first. A GET whose query changes from day to day (e.g. a
+ * "from today" filter) falls back to the only recording of the same path;
+ * with several recordings of that path nothing is guessed.
+ */
+function replaySnapshot(dir: string, key: string, method: string, rawUrl: string) {
+  const load = (k: string) => {
+    const meta = JSON.parse(readFileSync(path.join(dir, `${k}.json`), "utf8")) as SnapshotMeta;
+    return { body: gunzipSync(readFileSync(path.join(dir, `${k}.gz`))), contentType: meta.contentType, url: meta.url };
+  };
   try {
-    const meta = JSON.parse(readFileSync(path.join(dir, `${key}.json`), "utf8")) as { url: string; contentType: string };
-    return { body: gunzipSync(readFileSync(path.join(dir, `${key}.gz`))), contentType: meta.contentType, url: meta.url };
+    return load(key);
   } catch {
+    if (method === "GET") {
+      const candidates = readdirSync(dir)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => ({ k: f.slice(0, -5), meta: JSON.parse(readFileSync(path.join(dir, f), "utf8")) as SnapshotMeta }))
+        .filter(({ meta }) => (meta.method ?? "GET") === "GET" && samePath(meta.url, rawUrl));
+      if (candidates.length === 1) return load(candidates[0]!.k);
+    }
     throw new FetchError(`Sin copia guardada de ${new URL(rawUrl).host}`);
   }
 }
 
 export async function fetchBytes(rawUrl: string, opts: FetchOptions = {}): Promise<{ body: Buffer; contentType: string; url: string }> {
-  const key = snapshotKey(opts.method ?? "GET", rawUrl, opts.body);
+  const method = opts.method ?? "GET";
+  const key = snapshotKey(method, rawUrl, opts.body);
   const replayDir = replayContext.getStore();
-  if (replayDir) return replaySnapshot(replayDir, key, rawUrl);
+  if (replayDir) return replaySnapshot(replayDir, key, method, rawUrl);
   const result = await fetchLive(rawUrl, opts);
-  recordSnapshot(key, result.url, result.contentType, result.body);
+  recordSnapshot(key, method, result.url, result.contentType, result.body);
   return result;
 }
 

@@ -41,7 +41,7 @@ export function parsePriceText(text: string | undefined): { min: number | null; 
   const cents = (v: string) => Math.round(Number(v.replace(",", ".")) * 100);
   const nums = [...clean.matchAll(/(\d+(?:[.,]\d{1,2})?)\s*(?:€|euros?|eur\b)/gi)].map((m) => cents(m[1]!));
   // Ranges written once: "de 12 a 18 €", "12-18 €".
-  for (const m of clean.matchAll(/(\d+(?:[.,]\d{1,2})?)\s*(?:a|-|–|y)\s*\d+(?:[.,]\d{1,2})?\s*(?:€|euros?|eur\b)/gi)) nums.push(cents(m[1]!));
+  for (const m of clean.matchAll(/(\d+(?:[.,]\d{1,2})?)\s*(?:a|-|–|y|i|o)\s*\d+(?:[.,]\d{1,2})?\s*(?:€|euros?|eur\b)/gi)) nums.push(cents(m[1]!));
   const valid = nums.filter((n) => n >= 0 && n <= 100_000);
   if (!valid.length) return { min: null, max: null };
   return { min: Math.min(...valid), max: Math.max(...valid) };

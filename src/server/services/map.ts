@@ -14,12 +14,18 @@ import type { CityData } from "./cities";
  */
 export interface MapConfig {
   /** Rendering engine (MapProvider implementation) — see src/components/map/providers. */
-  renderer: "leaflet";
-  provider: "carto" | "mapbox" | "maptiler";
+  renderer: "leaflet" | "maplibre";
+  provider: "openfreemap" | "carto" | "mapbox" | "maptiler";
+  /** Raster tiles (Leaflet, and the fallback when WebGL is not available). */
   tileUrl: string;
+  /** Vector style (MapLibre). */
+  styleUrl?: string;
   attribution: string;
   maxZoom: number;
 }
+
+const CARTO_DARK = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const CARTO_ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>';
 
 export function getMapConfig(): MapConfig {
   switch (env.MAP_PROVIDER) {
@@ -39,14 +45,23 @@ export function getMapConfig(): MapConfig {
         attribution: '© <a href="https://www.maptiler.com/copyright/">MapTiler</a> © OpenStreetMap',
         maxZoom: 19,
       };
-    default:
+    case "carto":
       return {
         renderer: "leaflet",
         provider: "carto",
-        tileUrl: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        attribution:
-          '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+        tileUrl: CARTO_DARK,
+        attribution: CARTO_ATTRIBUTION,
         maxZoom: 19,
+      };
+    default:
+      // Vector map (MapLibre + OpenFreeMap: no key, no request limits), raster CARTO as fallback.
+      return {
+        renderer: "maplibre",
+        provider: "openfreemap",
+        styleUrl: env.MAP_STYLE_URL,
+        tileUrl: CARTO_DARK,
+        attribution: CARTO_ATTRIBUTION,
+        maxZoom: 20,
       };
   }
 }

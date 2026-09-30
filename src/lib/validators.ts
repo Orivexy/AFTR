@@ -311,7 +311,7 @@ export const refundRequestSchema = z.object({
 export const discoverySourceSchema = z.object({
   name: text(80).pipe(z.string().min(2)),
   key: z.string().trim().toLowerCase().regex(/^[a-z0-9-]{3,40}$/, "Solo minúsculas, números y guiones"),
-  type: z.enum(["ICS_FEED", "JSON_LD_PAGE", "PARTNER_FEED", "TICKETMASTER", "GOOGLE_PLACES", "OSM_OVERPASS", "MADRID_AGENDA"]),
+  type: z.enum(["ICS_FEED", "JSON_LD_PAGE", "PARTNER_FEED", "TICKETMASTER", "GOOGLE_PLACES", "OSM_OVERPASS", "MADRID_AGENDA", "CATALONIA_AGENDA", "BCN_MUSIC_VENUES"]),
   url: z.url({ protocol: /^https?$/ }).max(500).nullable().optional().or(z.literal("").transform(() => null)),
   citySlug: z.string().max(40),
   venueSlug: z.string().max(80).nullable().optional().or(z.literal("").transform(() => null)),

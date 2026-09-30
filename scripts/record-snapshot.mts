@@ -22,16 +22,27 @@ const sources = (await db.discoverySource.findMany({ where: { enabled: true }, s
   .filter((s) => !CONNECTORS[s.type].missingConfig?.())
   .sort((a, b) => (sourceKind(a.type) === "venues" ? 0 : 1) - (sourceKind(b.type) === "venues" ? 0 : 1));
 let ok = 0;
-for (const s of sources) {
+const failed: typeof sources = [];
+async function run(s: (typeof sources)[number], attempt: number) {
   const t = Date.now();
   const r = await syncSource(s.id, { job: "SNAPSHOT" });
   const secs = ((Date.now() - t) / 1000).toFixed(1);
   if ("skipped" in r) console.log(`  – ${s.name}: omitida (${r.reason ?? "ocupada"})`);
-  else if (r.error) console.error(`  ✗ ${s.name} (${secs} s): ${r.error}`);
-  else {
+  else if (r.error) {
+    console.error(`  ✗ ${s.name} (${secs} s, intento ${attempt}): ${r.error}`);
+    return false;
+  } else {
     ok++;
     console.log(`  ✓ ${s.name} (${secs} s): ${r.counters.found} encontrados, ${r.counters.created} nuevos`);
   }
+  return true;
+}
+for (const s of sources) if (!(await run(s, 1))) failed.push(s);
+// Public servers (Overpass) are sometimes saturated for a minute: one more try later.
+if (failed.length) {
+  console.log(`Reintentando ${failed.length} fuente(s) en 60 s…`);
+  await new Promise((r) => setTimeout(r, 60_000));
+  for (const s of failed) await run(s, 2);
 }
 const [v, ev] = await Promise.all([db.venue.count(), db.event.count({ where: { status: "PUBLISHED" } })]);
 const files = readdirSync(dir).filter((f) => f.endsWith(".gz")).length;
