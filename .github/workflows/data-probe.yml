@@ -9,37 +9,36 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Xceed · terms and structured events
+      - name: Xceed · legal links and terms text
         continue-on-error: true
         run: |
           UA="OrivexyNightsBot/1.0 (+https://github.com/Orivexy/ORIVEXY-Nights)"
-          for u in https://xceed.me/es/terms https://xceed.me/en/terms https://xceed.me/terms-and-conditions https://xceed.me/es/legal/terms; do
-            code=$(curl -sL --max-time 30 -A "$UA" -o terms.html -w "%{http_code}" "$u"); echo "== $code $u $(wc -c < terms.html)"
+          curl -sL --max-time 30 -A "$UA" https://xceed.me/es/barcelona/events -o home.html
+          grep -oiE 'href="[^"]*(legal|terms|condicion|conditions|privacy|aviso)[^"]*"' home.html | sort -u | head -20
+          for path in $(grep -oiE 'href="[^"]*(legal|terms|condicion|conditions)[^"]*"' home.html | sed 's/href="//; s/"$//' | sort -u | head -6); do
+            case "$path" in http*) u="$path";; *) u="https://xceed.me$path";; esac
+            code=$(curl -sL --max-time 30 -A "$UA" -o t.html -w "%{http_code}" "$u"); echo "== $code $u"
             python3 - <<'PY' || true
           import re,html
-          t=open("terms.html",encoding="utf-8",errors="ignore").read()
+          t=open("t.html",encoding="utf-8",errors="ignore").read()
           t=html.unescape(re.sub(r"<script[\s\S]*?</script>|<style[\s\S]*?</style>"," ",t)); t=re.sub(r"<[^>]+>"," ",t); t=re.sub(r"\s+"," ",t)
-          for k in ["scrap","robot","crawl","spider","automated","automatiz","data mining","extract"]:
+          hits=0
+          for k in ["scrap","robot","crawl","spider","automated","automatiz","data mining","extract","reproduc","copy","API"]:
               for m in re.finditer(k,t,re.I):
-                  print("  [%s] …%s" % (k, t[max(0,m.start()-220):m.start()+220])); break
+                  print("  [%s] …%s" % (k, t[max(0,m.start()-250):m.start()+250])); hits+=1; break
+          print("  chars:",len(t),"hits:",hits)
           PY
           done
-          for u in https://xceed.me/es/barcelona/events https://xceed.me/es/barcelona/events/all/page-2 https://xceed.me/es/barcelona/club/opium-barcelona https://xceed.me/es/barcelona/clubs; do
-            code=$(curl -sL --max-time 30 -A "$UA" -o p.html -w "%{http_code}" "$u")
-            echo "== $code $u"
-            python3 - <<'PY' || true
+      - name: Xceed · one event page
+        continue-on-error: true
+        run: |
+          curl -sL --max-time 30 -A "OrivexyNightsBot/1.0" https://xceed.me/es/barcelona/event/humanos-x-nom-pres-mariano-mellino/243900 -o e.html
+          python3 - <<'PY'
           import re,json
-          h=open("p.html",encoding="utf-8",errors="ignore").read()
-          blocks=re.findall(r'<script[^>]*application/ld\+json[^>]*>([\s\S]*?)</script>',h)
-          n=0
-          for b in blocks:
+          h=open("e.html",encoding="utf-8",errors="ignore").read()
+          for b in re.findall(r'<script[^>]*application/ld\+json[^>]*>([\s\S]*?)</script>',h):
               try: d=json.loads(b)
               except Exception: continue
-              items=d if isinstance(d,list) else d.get("@graph",[d]) if isinstance(d,dict) else []
-              for it in items:
-                  if isinstance(it,dict) and "Event" in str(it.get("@type","")):
-                      n+=1
-                      if n<=2: print(json.dumps(it,ensure_ascii=False)[:1500])
-          print("events in JSON-LD:",n, "| links:", len(set(re.findall(r'href="(/es/barcelona/event/[^"]+)"',h))))
+              if "Event" in str(d.get("@type","")) if isinstance(d,dict) else False:
+                  d.pop("performer",None); print(json.dumps(d,ensure_ascii=False)[:2500])
           PY
-          done
