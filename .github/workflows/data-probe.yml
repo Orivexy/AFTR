@@ -1,0 +1,38 @@
+name: Data sources probe
+# Temporary: checks public sources (format, licence, reachability) from CI.
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/data-probe.yml"]
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fourvenues · robots, terms, structured data
+        continue-on-error: true
+        run: |
+          UA="OrivexyNightsBot/1.0 (+https://github.com/Orivexy/ORIVEXY-Nights)"
+          echo "== robots.txt"; curl -sL --max-time 30 -A "$UA" https://www.fourvenues.com/robots.txt | head -60
+          for u in https://www.fourvenues.com/es/terminos-y-condiciones https://www.fourvenues.com/es/legal https://www.fourvenues.com/es/aviso-legal https://www.fourvenues.com/legal/terms; do
+            code=$(curl -sL --max-time 30 -A "$UA" -o terms.html -w "%{http_code}" "$u"); echo "== $code $u"
+            python3 - <<'PY' || true
+          import re,html
+          t=open("terms.html",encoding="utf-8",errors="ignore").read()
+          t=html.unescape(re.sub(r"<[^>]+>"," ",t)); t=re.sub(r"\s+"," ",t)
+          for k in ["scrap","robot","automatiz","extracci","crawler","araña","spider","reproduc","API"]:
+              for m in re.finditer(k,t,re.I):
+                  print("  …",t[max(0,m.start()-160):m.start()+200]); break
+          PY
+          done
+          for u in https://www.fourvenues.com/es/discotecas/barcelona https://www.fourvenues.com/es/barcelona https://www.fourvenues.com/es/opium-barcelona https://www.fourvenues.com/es/pacha-barcelona https://www.fourvenues.com/es/shoko-barcelona; do
+            code=$(curl -sL --max-time 30 -A "$UA" -o p.html -w "%{http_code}" "$u")
+            ld=$(grep -o 'application/ld+json' p.html | wc -l); ev=$(grep -oE '"@type" *: *"(Music|Dance|Social)?Event"' p.html | wc -l)
+            echo "$code ld=$ld events=$ev $u"; grep -oE 'href="/es/[a-z0-9-]+/events/[^"]+"' p.html | head -3
+          done
+      - name: Xceed · robots and structured data
+        continue-on-error: true
+        run: |
+          UA="OrivexyNightsBot/1.0"
+          curl -sL --max-time 30 -A "$UA" https://xceed.me/robots.txt | head -30
+          code=$(curl -sL --max-time 30 -A "$UA" -o x.html -w "%{http_code}" https://xceed.me/es/barcelona/events); echo "$code ld=$(grep -o 'application/ld+json' x.html | wc -l) events=$(grep -oE '"@type" *: *"(Music|Dance)?Event"' x.html | wc -l)"
