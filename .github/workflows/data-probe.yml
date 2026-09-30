@@ -7,23 +7,16 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-      - name: Barcelona · espais de música i copes (structure)
+      - name: Satellite tiles (ICGC orthophoto, Barcelona z16)
         continue-on-error: true
         run: |
-          A="https://opendata-ajuntament.barcelona.cat/data/api/action"
-          R=062da2e7-ddc9-4659-807a-2c1c5918b73c
-          q() { curl -sSG --max-time 90 -A "OrivexyNightsBot/1.0" "$A/datastore_search_sql" --data-urlencode "sql=$1" | python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('result',{}).get('records'); print(json.dumps(r if r is not None else d, ensure_ascii=False)[:7000])"; echo; }
-          q "SELECT count(*) AS rows, count(distinct register_id) AS places FROM \"$R\""
-          q "SELECT secondary_filters_name, secondary_filters_fullpath, count(distinct register_id) n FROM \"$R\" GROUP BY 1,2 ORDER BY 3 DESC LIMIT 40"
-          q "SELECT values_category, values_attribute_name, count(*) n FROM \"$R\" GROUP BY 1,2 ORDER BY 3 DESC LIMIT 30"
-          q "SELECT * FROM \"$R\" WHERE register_id = (SELECT register_id FROM \"$R\" WHERE secondary_filters_name ILIKE '%discot%' LIMIT 1)"
-      - name: Generalitat · categories in Barcelona city
-        continue-on-error: true
-        run: |
-          B="https://analisi.transparenciacatalunya.cat/resource/rhpv-yr4f.json"
-          curl -sSG --max-time 60 "$B" --data-urlencode '$select=tags_categor_es, tags_mbits, count(*)' --data-urlencode "\$where=comarca_i_municipi = 'agenda:ubicacions/barcelona/barcelones/barcelona' AND data_fi >= '2026-09-30T00:00:00'" --data-urlencode '$group=tags_categor_es, tags_mbits' --data-urlencode '$order=count(*) DESC' --data-urlencode '$limit=60'; echo
-          curl -sSG --max-time 60 "$B" --data-urlencode '$select=gratuita, count(*)' --data-urlencode "\$where=comarca_i_municipi = 'agenda:ubicacions/barcelona/barcelones/barcelona' AND data_fi >= '2026-09-30T00:00:00'" --data-urlencode '$group=gratuita'; echo
-          curl -sSG --max-time 60 "$B" --data-urlencode '$select=denominaci, data_inici, data_fi, horari, entrades, tags_categor_es' --data-urlencode "\$where=comarca_i_municipi = 'agenda:ubicacions/barcelona/barcelones/barcelona' AND data_fi >= '2026-09-30T00:00:00' AND (tags_categor_es like '%festes%' OR denominaci like '%Festa Major%')" --data-urlencode '$limit=8'; echo
-          curl -sSI --max-time 30 "https://agenda.cultura.gencat.cat/content/dam/agenda/ca/activitats/2026/07/22/000/06/annexos/THE%20TUTSIES.jpg" | head -4
+          # Barcelona centre at z16: x=32919, y=24442 (XYZ)
+          for u in "https://geoserveis.icgc.cat/icc_mapesmultibase/noutm/wmts/orto/GRID3857/16/32919/24442.jpeg" \
+                   "https://geoserveis.icgc.cat/servei/catalunya/mapa-base/wmts/orto/MON3857NW/16/32919/24442.png" \
+                   "https://geoserveis.icgc.cat/icc_mapesmultibase/noutm/wmts/orto/GRID3857/19/263357/195540.jpeg" \
+                   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/16/24442/32919"; do
+            curl -s --max-time 30 -o t.bin -D h.txt -w "%{http_code} %{content_type} %{size_download} $u\n" "$u"
+            grep -i "access-control-allow-origin" h.txt || echo "  (no CORS header)"
+          done
