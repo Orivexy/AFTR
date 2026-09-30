@@ -23,31 +23,24 @@ jobs:
           print(json.dumps(g[:2], ensure_ascii=False, indent=1)[:4000])
           print("types:", collections.Counter(i.get("@type", "") for i in g).most_common(40))
           EOF
-      - name: Barcelona · CKAN package info
+      - name: Barcelona · catalogue
         run: |
-          for id in agenda-diaria agenda-cultural; do
-            echo "== $id"
-            curl -sSL --max-time 60 "https://opendata-ajuntament.barcelona.cat/data/api/3/action/package_show?id=$id" | python3 -c "import json,sys; d=json.load(sys.stdin)['result']; print(d.get('license_title')); [print(r.get('format'), r.get('name'), r.get('url'), r.get('size')) for r in d['resources']]"
+          for u in "https://opendata-ajuntament.barcelona.cat/data/api/3/action/package_show?id=agenda-diaria" \
+                   "https://opendata-ajuntament.barcelona.cat/data/api/action/package_show?id=agenda-diaria" \
+                   "https://opendata-ajuntament.barcelona.cat/data/api/3/action/package_search?q=agenda&rows=5"; do
+            echo "== $u"
+            curl -sSL --max-time 60 -A "Mozilla/5.0 OrivexyNightsBot/1.0" "$u" -o out.txt -w "HTTP %{http_code} %{content_type} %{size_download}\n"
+            head -c 1500 out.txt; echo
+            python3 - <<'PY' || true
+          import json
+          d = json.load(open("out.txt"))["result"]
+          pkgs = d.get("results", [d])
+          for p in pkgs:
+              print("PKG", p.get("name"), p.get("license_title"))
+              for r in p.get("resources", []):
+                  print("  ", r.get("format"), r.get("name"), r.get("url"), r.get("size"))
+          PY
           done
-      - name: Barcelona · agenda JSON sample
-        run: |
-          URL=$(curl -sSL --max-time 60 "https://opendata-ajuntament.barcelona.cat/data/api/3/action/package_show?id=agenda-diaria" | python3 -c "import json,sys; rs=json.load(sys.stdin)['result']['resources']; print(next((r['url'] for r in rs if r.get('format','').upper()=='JSON'), ''))")
-          echo "URL: $URL"
-          curl -sSL --max-time 120 "$URL" -o bcn.json -w "HTTP %{http_code} %{size_download} bytes\n"
-          python3 - <<'EOF'
-          import json, collections
-          d = json.load(open("bcn.json"))
-          items = d if isinstance(d, list) else d.get("result", d)
-          print(type(d).__name__, (list(d.keys())[:20] if isinstance(d, dict) else len(d)))
-          if isinstance(items, dict): items = items.get("records") or items.get("items") or []
-          print("items:", len(items))
-          print(json.dumps(items[:2], ensure_ascii=False, indent=1)[:6000])
-          cats = collections.Counter()
-          for it in items:
-              for c in (it.get("classifications_data") or []):
-                  cats[c.get("name")] += 1
-          print("classifications:", cats.most_common(60))
-          EOF
       - name: Overpass reachability and a Barcelona nightlife count
         run: |
           Q='[out:json][timeout:60];nwr["amenity"="nightclub"](41.30,2.05,41.48,2.25);out tags center 3;'
