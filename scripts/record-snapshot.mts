@@ -13,15 +13,29 @@ const dir = process.argv[2];
 if (!dir) throw new Error("Uso: record-snapshot.mts DIR");
 process.env.DISCOVERY_SNAPSHOT_RECORD = dir;
 
-const { runDueSources } = await import("../src/server/discovery/engine");
+const { syncSource, sourceKind } = await import("../src/server/discovery/engine");
+const { CONNECTORS } = await import("../src/server/discovery/connectors");
 const { db } = await import("../src/server/db");
 
-const venues = await runDueSources("venues", { force: true, job: "SNAPSHOT" });
-const events = await runDueSources("events", { force: true, job: "SNAPSHOT" });
-for (const e of [...venues.errors, ...events.errors]) console.error(`  ✗ ${e}`);
+// Same selection as the scheduler (enabled, not waiting for a key), venues first.
+const sources = (await db.discoverySource.findMany({ where: { enabled: true }, select: { id: true, type: true, name: true } }))
+  .filter((s) => !CONNECTORS[s.type].missingConfig?.())
+  .sort((a, b) => (sourceKind(a.type) === "venues" ? 0 : 1) - (sourceKind(b.type) === "venues" ? 0 : 1));
+let ok = 0;
+for (const s of sources) {
+  const t = Date.now();
+  const r = await syncSource(s.id, { job: "SNAPSHOT" });
+  const secs = ((Date.now() - t) / 1000).toFixed(1);
+  if ("skipped" in r) console.log(`  – ${s.name}: omitida (${r.reason ?? "ocupada"})`);
+  else if (r.error) console.error(`  ✗ ${s.name} (${secs} s): ${r.error}`);
+  else {
+    ok++;
+    console.log(`  ✓ ${s.name} (${secs} s): ${r.counters.found} encontrados, ${r.counters.created} nuevos`);
+  }
+}
 const [v, ev] = await Promise.all([db.venue.count(), db.event.count({ where: { status: "PUBLISHED" } })]);
 const files = readdirSync(dir).filter((f) => f.endsWith(".gz")).length;
-console.log(`Instantánea: ${files} respuestas · ${v} locales · ${ev} eventos publicados (${venues.ok + events.ok} fuentes OK, ${venues.failed + events.failed} con error)`);
+console.log(`Instantánea: ${files} respuestas · ${v} locales · ${ev} eventos publicados (${ok}/${sources.length} fuentes OK)`);
 await db.$disconnect();
 // The app must not ship without the map: no venues means no snapshot.
 if (v === 0) process.exit(1);

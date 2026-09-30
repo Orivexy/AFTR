@@ -53,6 +53,7 @@ jobs:
       # bundled so the map is full on first launch. Never blocks a release.
       - name: Initial data snapshot from public sources
         continue-on-error: true
+        timeout-minutes: 25
         run: npx tsx --conditions=react-server scripts/record-snapshot.mts snapshot
       - uses: actions/upload-artifact@v4
         with:
