@@ -93,7 +93,7 @@ export function EventRow({ event, showDay }: { event: EventCardData; showDay?: b
   const free = event.priceMin === 0 && !event.priceMax;
   return (
     <Link href={`/events/${event.slug}`} className="group pressable flex items-center gap-3.5 rounded-2xl p-2 -mx-2 hover:bg-surface">
-      <Cover imageKey={event.coverKey} art={event.category.slug} alt="" sizes="80px" className="size-[72px] shrink-0 rounded-2xl" />
+      <Cover imageKey={event.coverKey} art={event.category.slug} alt={event.title} sizes="112px" className="size-[84px] shrink-0 rounded-2xl md:size-[96px]" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-[12px] font-bold tracking-wide uppercase">
           {live ? (

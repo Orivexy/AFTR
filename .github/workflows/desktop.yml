@@ -126,10 +126,16 @@ jobs:
             done
           fi
           find ~/.config -name "orivexy-nights.log" -exec grep -h "Datos iniciales\|Listo en" {} \;
+      # Real screenshots of the running app (first launch data, live map) for the README and the release.
+      - name: Screenshots
+        continue-on-error: true
+        run: node scripts/screenshots.mjs http://localhost:3000 dist-desktop/screenshots
       - uses: actions/upload-artifact@v4
         with:
           name: app-linux
-          path: dist-desktop/ORIVEXY-NIGHTS-Linux.AppImage
+          path: |
+            dist-desktop/ORIVEXY-NIGHTS-Linux.AppImage
+            dist-desktop/screenshots/*.png
 
   mac:
     needs: base-data
@@ -236,27 +242,10 @@ jobs:
             dist/ORIVEXY-NIGHTS-Linux.AppImage
             dist/ORIVEXY-NIGHTS-Mac.dmg
             dist/install.ps1
+            dist/screenshots/screenshot-*.png
           body: |
             ## Descargar ORIVEXY NIGHTS
 
-            | Sistema | Archivo |
-            | --- | --- |
-            | 🪟 **Windows 10/11** (64 bits) | `ORIVEXY-NIGHTS-Windows.exe` |
-            | 🐧 **Linux** (x64) | `ORIVEXY-NIGHTS-Linux.AppImage` |
-            | 🍎 **macOS** (Apple Silicon, M1 o posterior) | `ORIVEXY-NIGHTS-Mac.dmg` |
+            Elige tu sistema en **Assets** (abajo): **Windows** (`.exe`), **Mac** (`.dmg`) o **Linux** (`.AppImage`). Ábrelo y listo.
 
-            Todo incluido: servidor, base de datos PostgreSQL y ffmpeg. No hace falta instalar nada más.
-
-            **Windows sin avisos:** abre *PowerShell* y pega
-            `irm https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/install.ps1 | iex`
-            (descarga, instala y abre la app; solo pide confirmar el permiso de administrador).
-            O abre el `.exe`: si aparece SmartScreen, *Más información* → *Ejecutar de todas formas*.
-            **Linux:** `chmod +x ORIVEXY-NIGHTS-Linux.AppImage` y ábrelo (doble clic o `./ORIVEXY-NIGHTS-Linux.AppImage`).
-            **Mac:** abre el `.dmg` y arrastra la app a *Aplicaciones*. La primera vez: clic derecho sobre la app → *Abrir* → *Abrir*
-            (o *Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente*).
-
-            La primera cuenta que registres es la de administrador. Con Internet, los locales reales se descargan de
-            OpenStreetMap al arrancar; no hay datos inventados.
-
-            **Móvil:** con el ordenador y el móvil en la misma Wi‑Fi, menú *ORIVEXY NIGHTS → Abrir en el móvil…* (Ctrl/Cmd+M),
-            escanea el QR y añádela a la pantalla de inicio.
+            ![ORIVEXY NIGHTS](https://github.com/Orivexy/ORIVEXY-Nights/releases/download/${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('desktop-v{0}-{1}', steps.v.outputs.version, github.run_number) }}/screenshot-home.png)

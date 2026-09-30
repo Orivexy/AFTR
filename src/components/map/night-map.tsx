@@ -410,7 +410,10 @@ function PlaceSheet({ r, onClose }: { r: FilteredPlace; onClose: () => void }) {
 
         {next ? (
           <Link href={`/events/${next.slug}`} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 hover:bg-surface-2">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-2">{liveNow ? <LiveDot /> : <CalendarDays className="size-4 text-volt" />}</span>
+            <span className="relative shrink-0">
+              <Cover imageKey={next.coverKey} art={next.category} alt="" sizes="64px" className="size-14 rounded-xl" />
+              {liveNow && <LiveDot className="absolute top-1 right-1" />}
+            </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[11px] font-bold tracking-wider text-faint uppercase">{liveNow ? "Ahora" : p.kind === "venue" ? "Próximo evento" : "Cuándo"}</span>
               <span className="block truncate text-[14px] font-semibold">{p.kind === "venue" ? next.title : `${formatRelativeDay(next.startsAt, p.timezone)} · ${formatTime(next.startsAt, p.timezone)}`}</span>
