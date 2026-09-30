@@ -145,9 +145,19 @@ jobs:
         run: |
           $exe = Join-Path $env:ProgramFiles 'ORIVEXY NIGHTS\ORIVEXY NIGHTS.exe'
           if (-not (Test-Path $exe)) { Get-ChildItem $env:ProgramFiles; throw "No instalado en $exe" }
-          Start-Process -FilePath $exe
+          # Own output files: the app must not keep the step's console pipes open.
+          $app = Start-Process -FilePath $exe -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\app.out" -RedirectStandardError "$env:RUNNER_TEMP\app.err"
           for ($i = 0; $i -lt 150; $i++) {
-            try { $r = Invoke-WebRequest -Uri 'http://localhost:3000/api/health' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -eq 200) { Write-Host "App started after $i s"; exit 0 } } catch {}
+            try {
+              $r = Invoke-WebRequest -Uri 'http://localhost:3000/api/health' -UseBasicParsing -TimeoutSec 2
+              if ($r.StatusCode -eq 200) {
+                Write-Host "App started after $i s"
+                $home_ = Invoke-WebRequest -Uri 'http://localhost:3000/' -UseBasicParsing -TimeoutSec 30
+                Write-Host "Home page: $($home_.StatusCode)"
+                Get-Process | Where-Object { $_.Path -like "$env:ProgramFiles\ORIVEXY NIGHTS\*" -or $_.ProcessName -like 'postgres*' } | Stop-Process -Force -ErrorAction SilentlyContinue
+                exit 0
+              }
+            } catch {}
             Start-Sleep -Seconds 1
           }
           Get-ChildItem -Recurse -Filter 'orivexy-nights.log' $env:APPDATA, $env:ProgramData -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 60 }

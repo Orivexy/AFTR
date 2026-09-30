@@ -113,6 +113,8 @@ rm -f "$NM/@prisma/client/runtime/"*wasm* "$NM/@prisma/client/runtime/"edge* "$N
 rm -rf "$NM/@img/sharp-linuxmusl"* "$NM/@img/sharp-libvips-linuxmusl"* "$NM/@img/sharp-wasm32"
 # Source maps, type declarations and changelogs (licences are kept).
 find "$NM" \( -name "*.map" -o -name "*.d.ts" -o -iname "CHANGELOG*" -o -iname "README*" \) -type f -delete 2>/dev/null || true
+# Build traces and source maps of the app itself are not read at runtime.
+find "$RES/server/.next" \( -name "*.nft.json" -o -name "*.map" \) -type f -delete 2>/dev/null || true
 du -sh "$RES"/* | sed 's/^/   /'
 
 # PostgreSQL: server, initdb and pg_ctl are enough — no pgAdmin GUI libraries,
@@ -121,6 +123,8 @@ prune_postgres() {
   local pg="$1"
   [ -d "$pg" ] || return 0
   rm -rf "$pg/share/locale" "$pg/include" "$pg/share/doc" "$pg/share/man"
+  # Only the built-in PL/pgSQL extension is used (initdb installs it).
+  find "$pg/share/extension" -type f ! -name "plpgsql*" -delete 2>/dev/null || true
   rm -f "$pg"/bin/wx*.dll "$pg"/bin/testplug.dll "$pg"/bin/libecpg*.dll "$pg"/bin/libpgtypes.dll "$pg"/lib/*.lib "$pg"/lib/*.a "$pg"/lib/libecpg* "$pg"/lib/libpgtypes*
 }
 
