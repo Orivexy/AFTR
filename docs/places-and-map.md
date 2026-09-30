@@ -34,6 +34,7 @@ Límites y costes (también en `.env.example`): `OVERPASS_DAILY_LIMIT` (200), `G
 - Guarda: nombre, dirección (solo de las etiquetas `addr:*`; si no hay calle queda **vacía** y se muestra “Dirección no disponible”), barrio, coordenadas, teléfono, web, Instagram, categorías, horarios (`opening_hours`) y el id del objeto OSM como `sourceUrl`.
 - OSM no tiene valoraciones ni fotos: quedan vacías. La valoración que ve el usuario es siempre la de las reseñas de ORIVEXY NIGHTS.
 - Uso justo de la instancia pública: unas 10 000 peticiones y 1 GB al día. ORIVEXY NIGHTS hace muy pocas, con un tope configurable.
+- Si la instancia principal está saturada (429/504), se prueba cada espejo público de `OVERPASS_MIRRORS`, en orden.
 
 ### Google Places API (New): solo para vincular
 

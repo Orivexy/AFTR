@@ -5,6 +5,7 @@
 #   scripts/build-desktop.sh --platform linux    # on Linux x64 → dist-desktop/ORIVEXY-NIGHTS-Linux.AppImage
 #   scripts/build-desktop.sh --platform mac      # on an Apple Silicon Mac → dist-desktop/ORIVEXY-NIGHTS-Mac.dmg
 #   scripts/build-desktop.sh --base-data FILE    # reuse a base-data.sql (no PostgreSQL needed)
+#   scripts/build-desktop.sh --snapshot DIR      # bundle public source data (scripts/record-snapshot.mts)
 #   scripts/build-desktop.sh --resources-only [--keep-host-natives]
 #
 # Requires: Node 20+, a local PostgreSQL (to build the base configuration,
@@ -22,12 +23,14 @@ RESOURCES_ONLY=false
 KEEP_HOST=false
 PLATFORM=win
 BASE_DATA=""
+SNAPSHOT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --resources-only) RESOURCES_ONLY=true ;;
     --keep-host-natives) KEEP_HOST=true ;;
     --platform) PLATFORM="$2"; shift ;;
     --base-data) BASE_DATA="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift ;;
+    --snapshot) SNAPSHOT="$2"; shift ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
   shift
@@ -69,6 +72,12 @@ rm -rf "$RES/server/src" "$RES/server/prisma" "$RES/server/tests" "$RES/server/d
 # Schema (applied by the app on start, like `prisma migrate deploy`) and base configuration.
 mkdir -p "$RES/migrations" && cp -r prisma/migrations/2* "$RES/migrations/"
 cp "$BASE/base-data.sql" "$RES/"
+if [ -n "$SNAPSHOT" ] && [ -d "$SNAPSHOT" ] && ls "$SNAPSHOT"/*.gz >/dev/null 2>&1; then
+  cp -r "$SNAPSHOT" "$RES/snapshot"
+  echo "   datos iniciales: $(ls "$RES/snapshot"/*.gz | wc -l) respuestas, $(du -sh "$RES/snapshot" | cut -f1)"
+else
+  echo "   (sin datos iniciales: el mapa se llenará con la primera sincronización)"
+fi
 
 echo "▸ 4/5 Native binaries ($PLATFORM)"
 PACKS="$WORK/packs" && rm -rf "$PACKS" && mkdir -p "$PACKS"

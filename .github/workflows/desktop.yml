@@ -20,7 +20,7 @@ concurrency:
 jobs:
   base-data:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     services:
       postgres:
         image: postgres:16
@@ -49,6 +49,16 @@ jobs:
         with:
           name: base-data
           path: base/base-data.sql
+      # Real clubs (OpenStreetMap) and events (city open data) as of today,
+      # bundled so the map is full on first launch. Never blocks a release.
+      - name: Initial data snapshot from public sources
+        continue-on-error: true
+        run: npx tsx --conditions=react-server scripts/record-snapshot.mts snapshot
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snapshot
+          path: snapshot
+          if-no-files-found: warn
 
   windows:
     needs: base-data
@@ -65,7 +75,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with: { name: base-data, path: base }
       - run: npm ci
-      - run: bash scripts/build-desktop.sh --platform win --base-data base/base-data.sql
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { name: snapshot, path: snapshot }
+      - run: bash scripts/build-desktop.sh --platform win --base-data base/base-data.sql --snapshot snapshot
       - name: Fix ownership of files written by Docker
         run: sudo chown -R "$(id -u):$(id -g)" dist-desktop desktop
       - uses: actions/upload-artifact@v4
@@ -86,7 +99,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with: { name: base-data, path: base }
       - run: npm ci
-      - run: bash scripts/build-desktop.sh --platform linux --base-data base/base-data.sql
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { name: snapshot, path: snapshot }
+      - run: bash scripts/build-desktop.sh --platform linux --base-data base/base-data.sql --snapshot snapshot
       # The packaged app (Electron main process + PostgreSQL + server) must start;
       # a failure blocks the release for every platform.
       - name: Smoke test the packaged app
@@ -94,10 +110,20 @@ jobs:
           sudo apt-get install -y -qq xvfb >/dev/null
           xvfb-run -a dist-desktop/linux-unpacked/orivexy-nights-desktop --no-sandbox > app.log 2>&1 &
           for i in $(seq 1 120); do
-            if curl -sf http://localhost:3000/api/health; then echo " app started"; exit 0; fi
+            if curl -sf http://localhost:3000/api/health; then echo " app started"; break; fi
+            [ "$i" = 120 ] && { cat app.log; find ~/.config -name "orivexy-nights.log" -exec tail -50 {} \; ; exit 1; }
             sleep 1
           done
-          cat app.log; find ~/.config -name "orivexy-nights.log" -exec tail -50 {} \; ; exit 1
+          # With bundled data, the map must show clubs on first launch.
+          if [ -d dist-desktop/linux-unpacked/resources/snapshot ]; then
+            for i in $(seq 1 90); do
+              n=$(curl -s http://localhost:3000/api/map/places | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('places') or []))" 2>/dev/null || echo 0)
+              if [ "${n:-0}" -gt 0 ]; then echo "map: $n places on first launch"; break; fi
+              [ "$i" = 90 ] && { find ~/.config -name "orivexy-nights.log" -exec tail -50 {} \; ; echo "map empty on first launch"; exit 1; }
+              sleep 1
+            done
+          fi
+          find ~/.config -name "orivexy-nights.log" -exec grep -h "Datos iniciales\|Listo en" {} \;
       - uses: actions/upload-artifact@v4
         with:
           name: app-linux
@@ -116,7 +142,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with: { name: base-data, path: base }
       - run: npm ci
-      - run: bash scripts/build-desktop.sh --platform mac --base-data base/base-data.sql
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { name: snapshot, path: snapshot }
+      - run: bash scripts/build-desktop.sh --platform mac --base-data base/base-data.sql --snapshot snapshot
       - uses: actions/upload-artifact@v4
         with:
           name: app-mac
@@ -165,6 +194,16 @@ jobs:
             Show-Log; throw "${label} - la app no arranco en ${limit} s"
           }
           Start-AndWait 'first launch' 240
+          # With bundled data, the map must show clubs on first launch.
+          if (Test-Path "$env:ProgramFiles\ORIVEXY NIGHTS\resources\snapshot") {
+            $n = 0
+            for ($i = 0; $i -lt 90 -and $n -eq 0; $i++) {
+              try { $n = @((Invoke-RestMethod -Uri 'http://127.0.0.1:3000/api/map/places' -TimeoutSec 30).places).Count } catch {}
+              if ($n -eq 0) { Start-Sleep -Seconds 1 }
+            }
+            if ($n -eq 0) { Show-Log; throw "mapa vacio en el primer arranque" }
+            Write-Host "map: $n places on first launch"
+          }
           Stop-App
           Start-AndWait 'second launch' 60
           Show-Log

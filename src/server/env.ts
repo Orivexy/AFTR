@@ -43,6 +43,10 @@ const schema = z.object({
   VENUE_SYNC_INTERVAL: z.string().default("24h"),
   VENUE_HOURS_SYNC_INTERVAL: z.string().default("12h"),
   OVERPASS_API_URL: z.url().default("https://overpass-api.de/api/interpreter"),
+  // Folder with the snapshot of public source responses shipped with the desktop app.
+  DISCOVERY_SNAPSHOT_DIR: z.string().optional().default(""),
+  // Public mirrors tried in order when the main instance is busy (comma separated).
+  OVERPASS_MIRRORS: z.string().default("https://overpass.kumi.systems/api/interpreter,https://overpass.private.coffee/api/interpreter"),
   // Address search (OpenStreetMap Nominatim, no key; max 1 request/second by policy).
   NOMINATIM_URL: z.url().default("https://nominatim.openstreetmap.org"),
   // Daily request caps per provider (cost / fair-use protection).

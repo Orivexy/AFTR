@@ -240,6 +240,8 @@ function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databas
     // Local single-user install: the first account created becomes its administrator.
     FIRST_USER_IS_ADMIN: "true",
     DESKTOP_APP: "true",
+    // Public source responses recorded when the app was built (see scripts/record-snapshot.mts).
+    DISCOVERY_SNAPSHOT_DIR: existsSync(path.join(resourcesDir, "snapshot")) ? path.join(resourcesDir, "snapshot") : "",
     EVENT_MODERATION: "off",
     RATE_LIMIT_SCALE: "20",
     NEXT_TELEMETRY_DISABLED: "1",
@@ -256,6 +258,22 @@ function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databas
   // /api/health answers without touching the database.
   const ready = waitForHttp(`http://localhost:${port}/api/health`, 90_000, () => alive);
   return { ready, alive: () => alive, kill: () => child.kill() };
+}
+
+/**
+ * First launch: fill the empty database with the clubs and events bundled
+ * with the app, so the map is full at once. Bounded wait: if it takes longer
+ * the import finishes in the background.
+ */
+async function importSnapshot(url, cronSecret, log) {
+  const started = Date.now();
+  const request = fetch(`${url}/api/cron/snapshot-import`, { method: "POST", headers: { Authorization: `Bearer ${cronSecret}` } })
+    .then(async (res) => {
+      const body = await res.json().catch(() => ({}));
+      log(`Datos iniciales (${res.status}) en ${Date.now() - started} ms: ${JSON.stringify(body.result ?? body)}`);
+    })
+    .catch((err) => log(`Datos iniciales no importados: ${err.message}`));
+  await Promise.race([request, new Promise((r) => setTimeout(r, 60_000))]);
 }
 
 /**
@@ -299,8 +317,12 @@ export async function startBackend(opts) {
     await stopPostgres();
     throw err;
   }
-  saveState();
   const url = `http://localhost:${port}`;
+  if (!state.snapshotImported && existsSync(path.join(resourcesDir, "snapshot"))) {
+    await importSnapshot(url, state.cronSecret, log);
+    state.snapshotImported = true;
+  }
+  saveState();
   log(`Listo en ${Date.now() - t0} ms: ${url}`);
   // Warm up the main sections in the background so the first clicks are instant.
   for (const p of ["/", "/map", "/discover"]) fetch(`${url}${p}`).catch(() => {});

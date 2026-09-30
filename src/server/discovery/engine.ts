@@ -335,7 +335,7 @@ export async function runDueSources(kind: "events" | "venues", opts: { force?: b
       where: { enabled: true, ...(opts.force || opts.mode === "hours" ? {} : { OR: [{ nextSyncAt: null }, { nextSyncAt: { lte: now } }] }) },
       select: { id: true, type: true, name: true },
       orderBy: { nextSyncAt: "asc" },
-      take: 25,
+      take: 100,
     });
     // Sources waiting for an API key are not due: they start on their own once it is set.
     const due = candidates.filter(

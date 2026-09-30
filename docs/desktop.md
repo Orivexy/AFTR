@@ -54,6 +54,10 @@ bash scripts/build-desktop.sh --platform mac      # en un Mac Apple Silicon → 
 bash scripts/build-desktop.sh --resources-only --keep-host-natives   # solo recursos (pruebas en Linux)
 ```
 
+### Datos iniciales (mapa lleno al abrir)
+
+CI ejecuta las sincronizaciones reales de las fuentes sin clave (OpenStreetMap y la agenda abierta de Madrid) con `scripts/record-snapshot.mts` y guarda sus respuestas en `resources/snapshot` (`--snapshot DIR`). En el primer arranque la app las importa (`/api/cron/snapshot-import`) antes de abrir la ventana, así que el mapa ya tiene discotecas y eventos aunque no haya Internet. Dos minutos después empiezan las sincronizaciones en vivo, que lo actualizan cada día. Son los datos que publicaron las fuentes el día de la compilación; no se inventa nada. Si esas fuentes fallan en CI, la app se publica igual y el mapa se llena con la primera sincronización.
+
 Logo e iconos: `node scripts/generate-icons.mjs` genera, desde `scripts/logo.mjs`, los iconos web/PWA, el `.ico` de Windows (incrustado en `ORIVEXY NIGHTS.exe`, accesos directos e instalador) y las imágenes del asistente de instalación.
 
 Estructura: `desktop/main.mjs` (Electron), `desktop/backend.mjs` (arranca PostgreSQL y `server.js`, ejecutable en Node puro: `node desktop/backend.mjs <resources> <data>`), `desktop/resources/server` (build *standalone* de Next).

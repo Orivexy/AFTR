@@ -4,6 +4,7 @@ import { cleanupOrphanUploads, sweepOrphanFiles } from "../services/uploads";
 import { endExpiredPromotions } from "../monetization/promotions";
 import { purgeExpiredSourceData } from "../discovery/engine";
 import { runSyncJob } from "../sync/jobs";
+import { importSnapshotIfEmpty } from "../discovery/snapshot";
 
 /**
  * Periodic jobs. Run in-process (see src/instrumentation.ts) for a single
@@ -19,6 +20,8 @@ export const JOBS = {
   "event-sync": { everyMs: 60_000, run: () => runSyncJob("EVENT_SYNC") },
   "venue-hours-sync": { everyMs: 60_000, run: () => runSyncJob("VENUE_HOURS_SYNC") },
   "discovery-maintenance": { everyMs: 24 * 60 * 60_000, run: () => purgeExpiredSourceData() },
+  // On demand (desktop first launch): fill an empty database from the bundled snapshot.
+  "snapshot-import": { everyMs: 0, run: () => importSnapshotIfEmpty() },
 } as const;
 
 export type JobName = keyof typeof JOBS;
@@ -28,6 +31,7 @@ export function startInProcessJobs() {
   if (g.__jobsStarted) return;
   g.__jobsStarted = true;
   for (const [name, job] of Object.entries(JOBS)) {
+    if (!job.everyMs) continue;
     const tick = () => job.run().catch((err) => console.error(`[jobs] ${name} failed`, err));
     setTimeout(tick, 15_000);
     setInterval(tick, job.everyMs).unref();

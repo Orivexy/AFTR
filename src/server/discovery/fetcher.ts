@@ -1,6 +1,11 @@
 import "server-only";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import path from "node:path";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { env } from "../env";
 import { site } from "@/config/site";
 import { parseRobots, robotsPathAllowed } from "./parsers/robots";
@@ -63,7 +68,47 @@ interface FetchOptions {
   respectRobots?: boolean;
 }
 
+/**
+ * Snapshot of public source responses. CI records them
+ * (DISCOVERY_SNAPSHOT_RECORD=dir) and the desktop app replays them on its
+ * very first launch, so venues and events appear at once even before (or
+ * without) an Internet connection; live syncs take over right after.
+ * Replay is scoped to the calling async context: other requests stay live.
+ */
+const replayContext = new AsyncLocalStorage<string>();
+export const snapshotKey = (method: string, url: string, body: string | undefined) => createHash("sha256").update(`${method} ${url}\n${body ?? ""}`).digest("hex").slice(0, 40);
+
+export function withSnapshotReplay<T>(dir: string, fn: () => Promise<T>): Promise<T> {
+  return replayContext.run(dir, fn);
+}
+
+function recordSnapshot(key: string, url: string, contentType: string, body: Buffer) {
+  const dir = process.env.DISCOVERY_SNAPSHOT_RECORD;
+  if (!dir) return;
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, `${key}.gz`), gzipSync(body));
+  writeFileSync(path.join(dir, `${key}.json`), JSON.stringify({ url, contentType, recordedAt: new Date().toISOString() }));
+}
+
+function replaySnapshot(dir: string, key: string, rawUrl: string) {
+  try {
+    const meta = JSON.parse(readFileSync(path.join(dir, `${key}.json`), "utf8")) as { url: string; contentType: string };
+    return { body: gunzipSync(readFileSync(path.join(dir, `${key}.gz`))), contentType: meta.contentType, url: meta.url };
+  } catch {
+    throw new FetchError(`Sin copia guardada de ${new URL(rawUrl).host}`);
+  }
+}
+
 export async function fetchBytes(rawUrl: string, opts: FetchOptions = {}): Promise<{ body: Buffer; contentType: string; url: string }> {
+  const key = snapshotKey(opts.method ?? "GET", rawUrl, opts.body);
+  const replayDir = replayContext.getStore();
+  if (replayDir) return replaySnapshot(replayDir, key, rawUrl);
+  const result = await fetchLive(rawUrl, opts);
+  recordSnapshot(key, result.url, result.contentType, result.body);
+  return result;
+}
+
+async function fetchLive(rawUrl: string, opts: FetchOptions): Promise<{ body: Buffer; contentType: string; url: string }> {
   let url = await assertPublicUrl(rawUrl);
   if (opts.respectRobots && !(await robotsAllows(url))) throw new FetchError(`robots.txt no permite acceder a ${url.pathname}`);
 

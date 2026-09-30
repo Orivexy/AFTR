@@ -24,11 +24,14 @@ Código: `src/server/discovery/` · Panel: `/admin/discovery`.
 | `PARTNER_FEED` | Feed JSON que nos da un club o promotor (formato abajo) | `url` |
 | `TICKETMASTER` | Ticketmaster Discovery API | `TICKETMASTER_API_KEY`, `config.classificationName`, `config.keyword` |
 | `OSM_OVERPASS` | Locales, direcciones y horarios de OpenStreetMap (ODbL) | sin clave; `config.categories`, `config.radiusKm` |
+| `MADRID_AGENDA` | Agenda de datos abiertos del Ayuntamiento de Madrid (conciertos, fiestas, baile, ferias; se actualiza a diario) | sin clave; `url` (por defecto el JSON oficial) |
 | `GOOGLE_PLACES` | Vincula place IDs de Google y detecta cierres (Places API New) | `GOOGLE_PLACES_API_KEY`, `config.categories` |
 
 Cada fuente tiene: nombre, tipo, activada, ciudad, local propietario, confianza (`IMPORTED`/`OFFICIAL`), publicación automática, permiso de imágenes, intervalo, estado, último error, última sincronización y eventos encontrados. Cada sincronización queda en `SyncRun` con sus contadores y un registro.
 
 **Google**: no existe una API pública de eventos de Google y no se hace scraping de sus resultados. Places solo se usa para vincular locales (place ID) y detectar cierres, porque sus condiciones no permiten guardar ni mostrar su contenido en un mapa que no sea de Google. Los locales, sus datos y sus horarios vienen de OpenStreetMap. Detalles en [places-and-map.md](places-and-map.md).
+
+Las fuentes con clave (Ticketmaster, Google) vienen activadas pero **esperan su clave**: no se ejecutan ni dan error hasta que se configura, y entonces empiezan solas.
 
 ## Sincronización
 
