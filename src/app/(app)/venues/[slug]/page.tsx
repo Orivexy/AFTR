@@ -68,7 +68,7 @@ export default async function VenuePage({ params }: Props) {
   return (
     <article className="mx-auto max-w-6xl md:px-6 md:pt-6">
       <div className="relative md:overflow-hidden md:rounded-[1.75rem]">
-        <Cover imageKey={venue.coverKey} alt={venue.name} sizes="(min-width: 768px) 1100px, 100vw" priority className="aspect-[4/3] w-full md:aspect-[21/8]" />
+        <Cover imageKey={venue.coverKey} art="club" alt={venue.name} sizes="(min-width: 768px) 1100px, 100vw" priority className="aspect-[4/3] w-full md:aspect-[21/8]" />
         <div className="image-fade absolute inset-0" />
         <div className="absolute top-4 left-4">
           <BackButton />

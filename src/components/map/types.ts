@@ -40,6 +40,8 @@ export interface MapProviderProps {
   wheelZoom?: boolean;
   /** Group nearby markers into count bubbles. */
   cluster?: boolean;
+  /** Aerial imagery with labels (hybrid), when the config has satellite tiles. */
+  satellite?: boolean;
   /** Show +/- buttons (desktop). */
   zoomControls?: boolean;
   user?: { lat: number; lng: number } | null;

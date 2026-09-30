@@ -14,13 +14,14 @@ import { clusterHtml, isPlace, markerHtml } from "../marker-html";
  */
 
 export default function LeafletMap({
-  config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, wheelZoom, cluster = false, zoomControls = false, user, recenterKey = 0, className,
+  config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, wheelZoom, cluster = false, zoomControls = false, user, recenterKey = 0, className, satellite = false,
 }: MapProviderProps) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
   const userLayer = useRef<L.LayerGroup | null>(null);
   const leaflet = useRef<typeof L | null>(null);
+  const tiles = useRef<L.TileLayer | null>(null);
   const onSelectRef = useRef(onSelect);
   const onMapClickRef = useRef(onMapClick);
   useEffect(() => {
@@ -99,7 +100,7 @@ export default function LeafletMap({
         inertiaDeceleration: 2600,
       });
       if (interactive && zoomControls) Lf.control.zoom({ position: "bottomright" }).addTo(m);
-      Lf.tileLayer(config.tileUrl, { attribution: config.attribution, maxZoom: config.maxZoom, subdomains: "abcd", detectRetina: true, keepBuffer: 4, updateWhenZooming: false }).addTo(m);
+      tiles.current = baseTiles(Lf, satellite).addTo(m);
       if (interactive) {
         m.on("click", (e: L.LeafletMouseEvent) => {
           if (onMapClickRef.current) onMapClickRef.current({ lat: e.latlng.lat, lng: e.latlng.lng });
@@ -120,6 +121,20 @@ export default function LeafletMap({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function baseTiles(Lf: typeof L, sat: boolean) {
+    return sat && config.satelliteUrl
+      ? Lf.tileLayer(config.satelliteUrl, { attribution: config.satelliteAttribution, maxZoom: config.maxZoom, maxNativeZoom: 19, keepBuffer: 4, updateWhenZooming: false })
+      : Lf.tileLayer(config.tileUrl, { attribution: config.attribution, maxZoom: config.maxZoom, subdomains: "abcd", detectRetina: true, keepBuffer: 4, updateWhenZooming: false });
+  }
+  useEffect(() => {
+    const Lf = leaflet.current;
+    const m = map.current;
+    if (!Lf || !m) return;
+    tiles.current?.remove();
+    tiles.current = baseTiles(Lf, satellite).addTo(m);
+    tiles.current.bringToBack();
+  }, [satellite]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function drawUser() {
     const Lf = leaflet.current;

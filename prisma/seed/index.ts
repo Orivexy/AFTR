@@ -61,7 +61,7 @@ async function main() {
         where: { key: "bcn-open-data-music-venues" },
         create: {
           key: "bcn-open-data-music-venues", name: "Ayuntamiento de Barcelona · espacios de música y copas", type: "BCN_MUSIC_VENUES", cityId: city.id, trust: "IMPORTED",
-          enabled: discoveryEnabledFor(city.slug), autoPublish: true, syncIntervalMin: 24 * 60, config: {},
+          enabled: discoveryEnabledFor(city.slug), autoPublish: true, syncIntervalMin: 24 * 60, config: { authoritative: true },
         },
         update: {},
       });
@@ -69,7 +69,8 @@ async function main() {
         where: { key: "catalonia-agenda-bcn" },
         create: {
           key: "catalonia-agenda-bcn", name: "Agenda cultural de Catalunya · conciertos, festivales y fiestas de Barcelona", type: "CATALONIA_AGENDA", cityId: city.id, trust: "IMPORTED",
-          enabled: discoveryEnabledFor(city.slug), autoPublish: true, syncIntervalMin: 6 * 60, config: {},
+          // Official photos of the public agenda; only parties, festes majors and club nights.
+          enabled: discoveryEnabledFor(city.slug), autoPublish: true, allowImages: true, syncIntervalMin: 6 * 60, config: { nightlifeOnly: true },
         },
         update: {},
       });

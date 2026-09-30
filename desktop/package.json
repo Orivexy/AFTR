@@ -34,6 +34,7 @@
       "backend.mjs",
       "splash.html",
       "keys-preload.cjs",
+      "app-preload.cjs",
       "keys.html",
       "package.json",
       "build/icon.png",

@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+process.env.DATABASE_URL ??= "postgresql://test@localhost:5432/test"; // env is validated on import; nothing connects
 import { parseCataloniaAgenda, parseStartTime } from "@/server/discovery/parsers/catalonia-agenda";
 import { parseBcnMusicVenues, parseBcnTimetable, parseCatalanDays } from "@/server/discovery/parsers/bcn-music-venues";
 
@@ -33,10 +36,12 @@ describe("Agenda cultural de Catalunya (Barcelona)", () => {
         item({ codi: "4", tags_categor_es: "agenda:categories/concerts,agenda:categories/infantil" }),
         item({ codi: "5", data_fi: "2027-01-31T00:00:00.000" }),
         item({ codi: "6", denominaci: "ACTIVITAT CANCEL·LADA Concert solidari" }),
+        item({ codi: "7", denominaci: "Arielle Beck", subt_tol: "Recital de piano", espai: "Palau de la Música Catalana" }),
+        item({ codi: "8", denominaci: "La Traviata", tags_categor_es: "agenda:categories/opera" }),
       ],
       TZ,
     );
-    expect(skipped).toBe(3);
+    expect(skipped).toBe(5);
     expect(events).toHaveLength(3);
     expect(events[0]).toMatchObject({
       externalId: "2026072200006",
@@ -95,5 +100,16 @@ describe("Barcelona · espais de música i copes", () => {
         openingHours: expect.objectContaining({ fri: [{ open: "00:00", close: "06:00" }] }),
       }),
     ]);
+  });
+});
+
+describe("nightlife-only filter", () => {
+  it("keeps parties always and concerts only at clubs", async () => {
+    const { isNightlifeEvent } = await import("@/server/discovery/store");
+    const venues = [{ id: "club", name: "Apolo", address: "", lat: 0, lng: 0, type: "CLUB" }, { id: "hall", name: "Palau", address: "", lat: 0, lng: 0, type: "OTHER" }];
+    expect(isNightlifeEvent({ category: "fm", venueId: null }, venues)).toBe(true);
+    expect(isNightlifeEvent({ category: "concierto", venueId: "club" }, venues)).toBe(true);
+    expect(isNightlifeEvent({ category: "concierto", venueId: "hall" }, venues)).toBe(false);
+    expect(isNightlifeEvent({ category: "festival", venueId: null }, venues)).toBe(false);
   });
 });

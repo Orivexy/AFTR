@@ -31,3 +31,31 @@ describe("night map style", () => {
     expect(byId.poi_r1).toBeUndefined();
   });
 });
+
+describe("satellite view", async () => {
+  const { withSatellite, satelliteVisibility } = await import("@/components/map/night-style");
+  const base = withSatellite(
+    {
+      version: 8,
+      sources: {},
+      layers: [
+        { id: "background", type: "background" },
+        { id: "water", type: "fill" },
+        { id: "label", type: "symbol" },
+        { id: "hidden-label", type: "symbol", layout: { visibility: "none" } },
+      ],
+    },
+    "https://tiles.example/{z}/{x}/{y}.jpeg",
+    "© ICGC",
+  );
+
+  it("adds imagery right above the background, hidden by default", () => {
+    expect(base.layers.map((l) => l.id)).toEqual(["background", "nx-satellite", "water", "label", "hidden-label"]);
+    expect(base.sources["nx-satellite"]).toMatchObject({ type: "raster", tiles: ["https://tiles.example/{z}/{x}/{y}.jpeg"] });
+  });
+
+  it("shows imagery with labels only, and restores the map", () => {
+    expect(Object.fromEntries(satelliteVisibility(base, true))).toEqual({ background: "none", "nx-satellite": "visible", water: "none", label: "visible", "hidden-label": "none" });
+    expect(Object.fromEntries(satelliteVisibility(base, false))).toEqual({ background: "visible", "nx-satellite": "none", water: "visible", label: "visible", "hidden-label": "none" });
+  });
+});

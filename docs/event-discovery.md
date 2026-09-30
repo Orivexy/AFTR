@@ -33,6 +33,8 @@ Cada fuente tiene: nombre, tipo, activada, ciudad, local propietario, confianza 
 
 **Google**: no existe una API pública de eventos de Google y no se hace scraping de sus resultados. Places solo se usa para vincular locales (place ID) y detectar cierres, porque sus condiciones no permiten guardar ni mostrar su contenido en un mapa que no sea de Google. Los locales, sus datos y sus horarios vienen de OpenStreetMap. Detalles en [places-and-map.md](places-and-map.md).
 
+`config.nightlifeOnly` (agenda de Catalunya): solo fiestas, festes majors y sesiones de club; conciertos y festivales solo si son en una discoteca, bar musical o sala; nunca ópera, clásica, teatro ni restaurantes. `config.authoritative` (lista del Ayuntamiento): los locales que salen de la lista (o del filtro de ocio nocturno) se retiran del mapa. Las fotos de los eventos son las oficiales de la fuente (`allowImages`); si no hay, se muestra una portada ilustrada por categoría (nunca una foto inventada).
+
 Las fuentes con clave (Ticketmaster, Google) vienen activadas pero **esperan su clave**: no se ejecutan ni dan error hasta que se configura, y entonces empiezan solas.
 
 ## Sincronización

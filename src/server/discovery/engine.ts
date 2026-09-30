@@ -11,6 +11,8 @@ import { POSSIBLE_DUPLICATE_THRESHOLD } from "./dedupe";
 import {
   applySourceUpdate, attachVenue, contentHash, createEventFromNormalized, ensureTaxonomy, findBestMatch, loadCityVenues,
   type VenueCandidate,
+  isNightlifeEvent,
+  fillMissingCover,
 } from "./store";
 import type { ExternalVenue, NormalizedVenue, SourceContext } from "./types";
 import { ALL_PLACE_CATEGORIES, NIGHTLIFE_CATEGORIES, type NightlifeCategory, type ProviderPlace } from "../places/types";
@@ -112,6 +114,17 @@ export async function syncSource(sourceId: string, opts: { mode?: SyncMode; job?
         detectMissing: false,
         providerLabel: source.name,
       });
+      // Official registries (config.authoritative) are the full list: places they
+      // no longer include (or that no longer fit the filter) leave the map.
+      if ((source.config as { authoritative?: boolean } | null)?.authoritative && items.length) {
+        const listed = items.map((i) => i.externalId.slice(0, 300));
+        const gone = await db.sourceVenueRecord.findMany({ where: { sourceId: source.id, externalId: { notIn: listed }, venueId: { not: null } }, select: { venueId: true } });
+        const { count } = await db.venue.updateMany({
+          where: { id: { in: gone.map((g) => g.venueId!) }, primarySourceId: source.id, trust: "IMPORTED", isActive: true },
+          data: { isActive: false },
+        });
+        if (count) log(`${count} locales retirados: ya no están en la lista oficial o no son de ocio nocturno`);
+      }
     }
 
     if (connector.fetchEvents && mode === "full") {
@@ -187,6 +200,12 @@ async function processEvent(
     return;
   }
   const n = attachVenue(res.event, venues);
+  // Broad agendas: only parties, festes majors and club nights. Not touched, so
+  // anything imported earlier that no longer fits is hidden as "missing".
+  if ((source.config as { nightlifeOnly?: boolean } | null)?.nightlifeOnly && !isNightlifeEvent(n, venues)) {
+    c.skipped++;
+    return;
+  }
   if (isExpired(n, now)) {
     c.skipped++;
     await touch();
@@ -197,6 +216,7 @@ async function processEvent(
 
   // Already linked to an event → update it.
   if (existing?.eventId) {
+    if (await fillMissingCover(existing.eventId, n, source)) log(`Foto oficial añadida a «${n.title}»`);
     if (existing.contentHash === hash) {
       c.unchanged++;
       await touch();

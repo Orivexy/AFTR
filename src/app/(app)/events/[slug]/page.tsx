@@ -65,7 +65,7 @@ export default async function EventPage({ params }: Props) {
     <article className="mx-auto max-w-6xl md:px-6 md:pt-6">
       {/* Hero */}
       <div className="relative md:overflow-hidden md:rounded-[1.75rem]">
-        <Cover imageKey={event.coverKey} alt={event.title} sizes="(min-width: 768px) 1100px, 100vw" priority className="aspect-[4/5] w-full sm:aspect-[16/9] md:aspect-[21/9]" />
+        <Cover imageKey={event.coverKey} art={event.category.slug} alt={event.title} sizes="(min-width: 768px) 1100px, 100vw" priority className="aspect-[4/5] w-full sm:aspect-[16/9] md:aspect-[21/9]" />
         <div className="image-fade absolute inset-0" />
         <div className="absolute inset-x-4 top-4 flex justify-between">
           <BackButton />

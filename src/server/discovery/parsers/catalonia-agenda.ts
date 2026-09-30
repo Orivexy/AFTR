@@ -4,8 +4,10 @@ import { parsePriceText } from "./madrid-agenda";
 /**
  * Parser for the Generalitat de Catalunya open-data "Agenda cultural de
  * Catalunya" (Socrata dataset rhpv-yr4f, updated daily). Pure and
- * unit-tested. Only night-out activities are kept: concerts, festivals,
- * dance, popular festivities (festes majors, revetlles…). Nothing is
+ * unit-tested. Only night-out activities are kept: parties, popular
+ * festivities (festes majors, revetlles…), concerts and festivals — never
+ * opera, classical music, theatre or children's shows. The engine then
+ * keeps concerts only when they happen at a club (config.nightlifeOnly). Nothing is
  * guessed: an unreadable time stays unknown, an unreadable price stays null.
  */
 export interface CataloniaItem {
@@ -36,9 +38,11 @@ export const BARCELONA_MUNICIPALITY = "agenda:ubicacions/barcelona/barcelones/ba
 const IMAGE_BASE = "https://agenda.cultura.gencat.cat";
 const MAX_SPAN_DAYS = 14;
 
-const NIGHT_CATEGORIES = /categories\/(concerts|festivals|festes|revetll|carnaval|cultura-popular|dansa|sardanes|nit)/;
-const NIGHT_TITLE = /\b(festa|fiesta|revetlla|verbena|dj|concert|concierto|nit de|party|sessi[oó])\b/i;
-const EXCLUDED = /categories\/(infantil|exposicions|conferencies|cursos|rutes|activitats-virtuals|llibres|cinema|teatre)/;
+const NIGHT_CATEGORIES = /categories\/(concerts|festivals|festes|revetll|carnaval|cultura-popular|nit)|ambits\/tradicional-i-popular/;
+const NIGHT_TITLE = /\b(festa|fiesta|revetlla|verbena|dj|nit de|party|sessi[oó] de)\b/i;
+const EXCLUDED = /categories\/(infantil|exposicions|conferencies|cursos|rutes|activitats-virtuals|llibres|cinema|teatre|opera|magia|circ)/;
+/** Classical music, opera and seated recitals are not a night out. */
+const NOT_NIGHTLIFE = /\b(òpera|opera|simf[oò]ni|orquestra|orfe[oó]|cambra|recital|lied|sarsuela|zarzuela|coral|piano|violí|violoncel|quartet|missa|requiem|barroc|cl[aà]ssica)\b|palau de la m[uú]sica|liceu|l'auditori/i;
 
 /** "20.30 h", "A les 21 h", "De 18 a 23 h", "22:00" → "HH:MM" of the start, else null. */
 export function parseStartTime(text: string | undefined): string | null {
@@ -72,7 +76,8 @@ export function parseCataloniaAgenda(items: unknown, tz: string): { events: Exte
     const date = it.data_inici?.slice(0, 10);
     const endDate = it.data_fi?.slice(0, 10);
     const wanted = (NIGHT_CATEGORIES.test(cats) || NIGHT_TITLE.test(title)) && !EXCLUDED.test(cats);
-    if (!it.codi || !title || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !wanted || postponed) {
+    const classical = NOT_NIGHTLIFE.test(`${title} ${it.subt_tol ?? ""} ${it.espai ?? ""}`);
+    if (!it.codi || !title || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !wanted || classical || postponed) {
       skipped++;
       continue;
     }
@@ -86,7 +91,7 @@ export function parseCataloniaAgenda(items: unknown, tz: string): { events: Exte
     const lat = Number(it.latitud);
     const lng = Number(it.longitud);
     const image = it.imatges?.split(",")[0]?.trim();
-    const hint = /festes|revetll|carnaval|cultura-popular/.test(cats) || /festa major|festes de/i.test(title)
+    const hint = /festes|revetll|carnaval|cultura-popular|tradicional-i-popular/.test(cats) || /festa major|festes de/i.test(title)
       ? "festa major"
       : /festivals/.test(cats)
         ? "festival"

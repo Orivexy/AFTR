@@ -27,15 +27,13 @@ export interface BcnRow {
 export const BCN_MUSIC_VENUES_RESOURCE = "062da2e7-ddc9-4659-807a-2c1c5918b73c";
 export const BCN_DATASET_URL = "https://opendata-ajuntament.barcelona.cat/data/es/dataset/culturailleure-espaismusicacopes";
 
+/** Only clubs and music bars; restaurants, cocktail/champagne bars and flamenco dinner shows are left out. */
 const TYPE_BY_FILTER: Record<string, string> = {
   Discoteques: "nightclub",
   "Sales de festes": "nightclub",
   "Salons de ball": "dance_club",
-  "Tablaos flamencs": "live_music_venue",
   "Bars i pubs musicals": "music_bar",
   Karaokes: "music_bar",
-  Cocteleries: "music_bar",
-  Xampanyeries: "music_bar",
 };
 /** Most specific first: a club that is also listed as a bar stays a club. */
 const TYPE_RANK = ["nightclub", "dance_club", "live_music_venue", "music_bar"];
@@ -118,7 +116,8 @@ export function parseBcnMusicVenues(records: unknown): { venues: ExternalVenue[]
     const types = [...new Set(rows.map((r) => TYPE_BY_FILTER[r.secondary_filters_name?.trim() ?? ""]).filter((t): t is string => Boolean(t)))];
     const lat = Number(first.geo_epgs_4326_lat);
     const lng = Number(first.geo_epgs_4326_lon);
-    if (!first.name?.trim() || !types.length || !Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0) {
+    const restaurant = rows.some((r) => r.secondary_filters_name?.trim() === "Restaurants") && !types.includes("nightclub");
+    if (!first.name?.trim() || !types.length || restaurant || !Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0) {
       skipped++;
       continue;
     }

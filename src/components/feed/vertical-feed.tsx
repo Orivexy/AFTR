@@ -84,7 +84,7 @@ export function VerticalFeed({ initial, mode, pinned }: { initial: Page<FeedPost
   const remove = (id: string) => setItems((prev) => prev.filter((x) => x.id !== id));
 
   return (
-    <div className="fixed inset-x-0 top-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] bg-black md:relative md:h-[calc(100dvh-4rem)] md:bg-ink">
+    <div className="feed-viewport fixed inset-x-0 top-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] bg-black md:relative md:h-[calc(100dvh-4rem)] md:bg-ink">
       {/* Tabs */}
       <div className="safe-top pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center pt-3 md:pt-7">
         <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-black/30 p-1 backdrop-blur-md">

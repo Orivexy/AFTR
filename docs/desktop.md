@@ -54,6 +54,10 @@ bash scripts/build-desktop.sh --platform mac      # en un Mac Apple Silicon → 
 bash scripts/build-desktop.sh --resources-only --keep-host-natives   # solo recursos (pruebas en Linux)
 ```
 
+### Ventana estilo macOS y pantalla completa
+
+La app de escritorio se abre a pantalla completa (F11 en Windows/Linux, Ctrl+Cmd+F en Mac o el botón verde para salir; se recuerda). La ventana imita una app de macOS: barra de título unificada con semáforos (nativos en Mac; dibujados por la app en Windows y Linux, que controlan la ventana real vía `desktop/app-preload.cjs`), atrás/adelante, buscador central y barra lateral translúcida con secciones. El servidor la sirve al detectar `OrivexyDesktop/<plataforma>` en el user-agent (`MacShell`); en el navegador la web se ve como siempre.
+
 ### Datos iniciales (mapa lleno al abrir)
 
 CI ejecuta las sincronizaciones reales de las fuentes sin clave (OpenStreetMap y la agenda abierta de Madrid) con `scripts/record-snapshot.mts` y guarda sus respuestas en `resources/snapshot` (`--snapshot DIR`). En el primer arranque la app las importa (`/api/cron/snapshot-import`) antes de abrir la ventana, así que el mapa ya tiene discotecas y eventos aunque no haya Internet. Dos minutos después empiezan las sincronizaciones en vivo, que lo actualizan cada día. Son los datos que publicaron las fuentes el día de la compilación; no se inventa nada. Si esas fuentes fallan en CI, la app se publica igual y el mapa se llena con la primera sincronización.

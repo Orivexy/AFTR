@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ChevronUp, Clock, List, LocateFixed, MapPin, Navigation, Search, SlidersHorizontal, Star, Ticket, X } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronUp, Clock, Globe2, List, LocateFixed, Map as MapIcon, MapPin, Navigation, Search, SlidersHorizontal, Star, Ticket, X } from "lucide-react";
 import { MapView } from "./map-view";
 import type { MapMarker } from "./types";
 import { Cover } from "@/components/ui/cover";
@@ -50,6 +50,7 @@ export function NightMap({ config, places, center, cityName, initialWhen = "all"
   const [focus, setFocus] = useState(center);
   const [recenterKey, setRecenterKey] = useState(0);
   const [panel, setPanel] = useState<"none" | "list" | "filters">("none");
+  const [satellite, setSatellite] = useState(false);
   const { coords, status, request } = useLocation();
   const wantsCenterOnUser = useRef(false);
 
@@ -160,7 +161,7 @@ export function NightMap({ config, places, center, cityName, initialWhen = "all"
   );
 
   return (
-    <div className="relative h-[calc(100dvh-3.5rem-4rem)] overflow-hidden md:grid md:h-[calc(100dvh-4rem)] md:grid-cols-[400px_1fr]">
+    <div className="app-viewport relative overflow-hidden md:grid md:grid-cols-[400px_1fr]">
       {/* Desktop panel */}
       <aside className="hidden min-h-0 flex-col border-r border-line md:flex">
         <div className="space-y-3 border-b border-line p-4">
@@ -176,7 +177,7 @@ export function NightMap({ config, places, center, cityName, initialWhen = "all"
       </aside>
 
       <div className="relative size-full">
-        <MapView config={config} center={focus} zoom={13} markers={markers} selectedId={selectedId} onSelect={select} user={coords} cluster zoomControls recenterKey={recenterKey} className="size-full" />
+        <MapView config={config} center={focus} zoom={13} markers={markers} selectedId={selectedId} onSelect={select} user={coords} cluster zoomControls recenterKey={recenterKey} satellite={satellite} className="size-full" />
 
         {/* Mobile: search + chips */}
         <div className="absolute inset-x-0 top-0 z-[500] space-y-2 p-3 md:hidden">
@@ -185,6 +186,11 @@ export function NightMap({ config, places, center, cityName, initialWhen = "all"
         </div>
 
         <div className={cn("absolute right-3 z-[500] flex flex-col gap-2 transition-[bottom] duration-300", selected ? "bottom-[calc(20rem+1rem)] md:bottom-[7.5rem]" : "bottom-20 md:bottom-[7.5rem]")}>
+          {config.satelliteUrl && (
+            <button onClick={() => setSatellite((s) => !s)} aria-label={satellite ? "Ver mapa" : "Ver satélite"} aria-pressed={satellite} title={satellite ? "Mapa" : "Satélite"} className="glass pressable grid size-11 place-items-center rounded-2xl border border-line-strong shadow-lg shadow-black/30">
+              {satellite ? <MapIcon className="size-5" /> : <Globe2 className="size-5" />}
+            </button>
+          )}
           <button onClick={locate} aria-label="Mi ubicación" className="glass pressable grid size-11 place-items-center rounded-2xl border border-line-strong shadow-lg shadow-black/30">
             <LocateFixed className={cn("size-5", coords ? "text-[#3d8bff]" : "", status === "locating" && "animate-spin")} />
           </button>
@@ -248,7 +254,7 @@ function ResultRow({ r, active, onClick }: { r: FilteredPlace; active: boolean; 
   const price = priceFromLabel(r);
   return (
     <button onClick={onClick} className={cn("flex w-full items-center gap-3 rounded-2xl p-2 text-left transition-colors hover:bg-surface", active && "bg-surface")}>
-      <Cover imageKey={p.coverKey ?? r.events[0]?.coverKey ?? null} alt="" sizes="56px" className="size-14 shrink-0 rounded-xl" />
+      <Cover imageKey={p.coverKey ?? r.events[0]?.coverKey ?? null} art={p.kind === "venue" ? "club" : r.events[0]?.category} alt="" sizes="56px" className="size-14 shrink-0 rounded-xl" />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{p.name}</p>
         <p className={cn("truncate text-[13px]", st.tone === "live" ? "font-semibold text-volt" : st.tone === "open" ? "text-emerald-300" : "text-muted")}>{st.text}</p>
@@ -349,7 +355,7 @@ function PlaceSheet({ r, onClose }: { r: FilteredPlace; onClose: () => void }) {
   return (
     <div className="animate-sheet-up absolute inset-x-0 bottom-0 z-[600] max-h-[80%] overflow-y-auto rounded-t-[1.75rem] border-t border-line-strong bg-ink/95 shadow-2xl backdrop-blur-xl md:inset-x-auto md:bottom-6 md:left-6 md:w-[400px] md:rounded-[1.75rem] md:border">
       <div className="relative">
-        <Cover imageKey={p.coverKey ?? next?.coverKey ?? null} alt={p.name} sizes="400px" className="h-36 w-full" />
+        <Cover imageKey={p.coverKey ?? next?.coverKey ?? null} art={p.kind === "venue" ? "club" : next?.category} alt={p.name} sizes="400px" className="h-36 w-full" />
         <div className="image-fade absolute inset-0" />
         <button onClick={onClose} aria-label="Cerrar" className="glass absolute top-3 right-3 grid size-9 place-items-center rounded-full">
           <X className="size-4" />

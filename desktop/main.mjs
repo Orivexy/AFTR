@@ -5,7 +5,7 @@
  */
 import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, shell } from "electron";
 import path from "node:path";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import QRCode from "qrcode";
@@ -181,6 +181,29 @@ async function resetData() {
   app.exit(0);
 }
 
+const prefsFile = () => path.join(dataDir, "window.json");
+function readPrefs() {
+  try {
+    return JSON.parse(readFileSync(prefsFile(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+function writePrefs(p) {
+  try {
+    writeFileSync(prefsFile(), JSON.stringify(p));
+  } catch {
+    /* not critical */
+  }
+}
+
+// Window controls for the app's own title bar.
+ipcMain.handle("window:minimize", () => mainWindow?.minimize());
+ipcMain.handle("window:toggle-maximize", () => (mainWindow?.isMaximized() ? mainWindow.unmaximize() : mainWindow?.maximize()));
+ipcMain.handle("window:toggle-fullscreen", () => mainWindow?.setFullScreen(!mainWindow.isFullScreen()));
+ipcMain.handle("window:close", () => mainWindow?.close());
+ipcMain.handle("window:state", () => ({ fullscreen: Boolean(mainWindow?.isFullScreen()), maximized: Boolean(mainWindow?.isMaximized()), platform: process.platform }));
+
 function buildMenu() {
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
@@ -201,7 +224,7 @@ function buildMenu() {
           { role: "quit", label: "Salir" },
         ],
       },
-      { label: "Ver", submenu: [{ role: "reload", label: "Recargar" }, { role: "togglefullscreen", label: "Pantalla completa" }, { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" }, { type: "separator" }, { role: "toggleDevTools", label: "Herramientas de desarrollo" }] },
+      { label: "Ver", submenu: [{ role: "reload", label: "Recargar" }, { role: "togglefullscreen", label: "Pantalla completa", accelerator: process.platform === "darwin" ? "Ctrl+Cmd+F" : "F11" }, { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" }, { type: "separator" }, { role: "toggleDevTools", label: "Herramientas de desarrollo" }] },
     ]),
   );
 }
@@ -228,6 +251,8 @@ app.whenReady().then(async () => {
   }
 
   buildMenu();
+  const prefs = readPrefs();
+  const isMac = process.platform === "darwin";
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -237,8 +262,18 @@ app.whenReady().then(async () => {
     backgroundColor: "#07070b",
     show: false,
     icon: path.join(here, "build", "icon.png"),
-    webPreferences: { contextIsolation: true, sandbox: true },
+    // macOS-style window everywhere: native traffic lights on the Mac, the
+    // app's own title bar (with the same controls) on Windows and Linux.
+    ...(isMac ? { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 18, y: 19 } } : { frame: false }),
+    webPreferences: { contextIsolation: true, sandbox: true, preload: path.join(here, "app-preload.cjs") },
   });
+  // The web app renders its macOS-style interface for this window.
+  mainWindow.webContents.setUserAgent(`${mainWindow.webContents.getUserAgent()} OrivexyDesktop/${isMac ? "mac" : process.platform === "win32" ? "win" : "linux"}`);
+  const sendState = () =>
+    mainWindow.webContents.send("window:state", { fullscreen: mainWindow.isFullScreen(), maximized: mainWindow.isMaximized(), platform: process.platform });
+  for (const ev of ["enter-full-screen", "leave-full-screen", "maximize", "unmaximize"]) mainWindow.on(ev, sendState);
+  mainWindow.on("enter-full-screen", () => writePrefs({ ...readPrefs(), fullscreen: true }));
+  mainWindow.on("leave-full-screen", () => hidingFromFullScreen || writePrefs({ ...readPrefs(), fullscreen: false }));
   // Links to other sites open in the default browser.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (!url.startsWith(backend.url)) shell.openExternal(url);
@@ -252,11 +287,24 @@ app.whenReady().then(async () => {
   });
   mainWindow.once("ready-to-show", () => {
     loading?.destroy();
-    if (!startHidden) mainWindow.show();
+    if (startHidden) return;
+    mainWindow.show();
+    // Full screen by default (F11 / Ctrl+Cmd+F or the green button to leave; the choice is remembered).
+    if (prefs.fullscreen !== false) mainWindow.setFullScreen(true);
   });
   mainWindow.on("close", (e) => {
     if (quitting) return;
     e.preventDefault();
+    // A full-screen Mac window must leave full screen before hiding (it would leave a black Space).
+    if (process.platform === "darwin" && mainWindow.isFullScreen()) {
+      hidingFromFullScreen = true;
+      mainWindow.once("leave-full-screen", () => {
+        hidingFromFullScreen = false;
+        mainWindow.hide();
+      });
+      mainWindow.setFullScreen(false);
+      return;
+    }
     mainWindow.hide();
     if (!trayHintShown && process.platform === "win32") {
       trayHintShown = true;
@@ -276,6 +324,7 @@ app.on("before-quit", async (e) => {
 });
 
 let trayHintShown = false;
+let hidingFromFullScreen = false;
 
 // Windows are only hidden (tray); quitting happens from the tray/menu.
 app.on("window-all-closed", () => {

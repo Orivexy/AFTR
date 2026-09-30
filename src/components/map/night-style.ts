@@ -91,3 +91,29 @@ export function nightStyle(input: StyleJson): StyleJson {
   }
   return { ...input, layers };
 }
+
+/** Adds an aerial imagery layer (hidden until the satellite view is turned on). */
+export function withSatellite(style: StyleJson, tileUrl: string, attribution: string): StyleJson {
+  const layers = [...style.layers];
+  const at = layers.findIndex((l) => l.type !== "background");
+  layers.splice(at < 0 ? layers.length : at, 0, { id: "nx-satellite", type: "raster", layout: { visibility: "none" }, paint: { "raster-fade-duration": 150 } } as Layer & { source?: string });
+  (layers[at < 0 ? layers.length - 1 : at] as Layer & { source?: string }).source = "nx-satellite";
+  return {
+    ...style,
+    sources: { ...style.sources, "nx-satellite": { type: "raster", tiles: [tileUrl], tileSize: 256, maxzoom: 19, attribution } },
+    layers,
+  };
+}
+
+/**
+ * Layer visibility for the satellite (hybrid) view: imagery plus labels,
+ * like Apple Maps; everything else back to how the style defined it.
+ */
+export function satelliteVisibility(style: StyleJson, on: boolean): Array<[string, "visible" | "none"]> {
+  return style.layers.map((l) => {
+    const original = (l.layout?.visibility as "visible" | "none" | undefined) ?? "visible";
+    if (l.id === "nx-satellite") return [l.id, on ? "visible" : "none"];
+    if (!on) return [l.id, original];
+    return [l.id, l.type === "symbol" ? original : "none"];
+  });
+}

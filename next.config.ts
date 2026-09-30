@@ -4,7 +4,7 @@ const isDev = process.env.NODE_ENV !== "production";
 const isHttps = (process.env.APP_URL ?? "").startsWith("https://");
 
 /** Tile hosts the map may load directly (keyless providers only). */
-const MAP_TILE_HOSTS = "https://*.basemaps.cartocdn.com";
+const MAP_TILE_HOSTS = "https://*.basemaps.cartocdn.com https://geoserveis.icgc.cat";
 /** Vector map: style, tiles, fonts and sprites (OpenFreeMap by default, MAP_STYLE_URL to change). */
 const MAP_VECTOR_HOSTS = (() => {
   try {
@@ -31,7 +31,7 @@ const csp = [
   `img-src 'self' data: blob: ${MAP_TILE_HOSTS}${MAP_VECTOR_HOSTS}${MEDIA_ORIGIN}`,
   `media-src 'self' blob:${MEDIA_ORIGIN}`,
   "font-src 'self' data:",
-  `connect-src 'self'${MAP_VECTOR_HOSTS}${isDev ? " ws: wss:" : ""}`,
+  `connect-src 'self'${MAP_VECTOR_HOSTS} https://geoserveis.icgc.cat${isDev ? " ws: wss:" : ""}`,
   // MapLibre renders tiles in a Web Worker created from a blob.
   "worker-src 'self' blob:",
   "child-src 'self' blob:",

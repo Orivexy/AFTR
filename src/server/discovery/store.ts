@@ -55,10 +55,25 @@ export interface VenueCandidate {
   address: string;
   lat: number;
   lng: number;
+  /** CLUB, BAR, CONCERT_HALL… (used to keep only nightlife events). */
+  type?: string;
+}
+
+/**
+ * Nightlife filter for broad agendas (config.nightlifeOnly): parties and
+ * festes majors always; concerts and festivals only when they happen at a
+ * club, music bar or live-music room — never opera, classical halls,
+ * theatres or restaurants.
+ */
+export const NIGHTLIFE_VENUE_TYPES = ["CLUB", "BAR", "CONCERT_HALL"];
+export function isNightlifeEvent(n: Pick<NormalizedEvent, "category" | "venueId">, venues: VenueCandidate[]): boolean {
+  if (["fm", "fiesta", "dj", "discoteca"].includes(n.category)) return true;
+  const venue = n.venueId ? venues.find((v) => v.id === n.venueId) : null;
+  return Boolean(venue?.type && NIGHTLIFE_VENUE_TYPES.includes(venue.type));
 }
 
 export function loadCityVenues(cityId: string): Promise<VenueCandidate[]> {
-  return db.venue.findMany({ where: { cityId, isActive: true }, select: { id: true, name: true, address: true, lat: true, lng: true } });
+  return db.venue.findMany({ where: { cityId, isActive: true }, select: { id: true, name: true, address: true, lat: true, lng: true, type: true } });
 }
 
 export function matchVenue(venues: VenueCandidate[], name: string | null, lat: number | null, lng: number | null): VenueCandidate | null {
@@ -132,6 +147,17 @@ async function importCover(url: string, uploaderId: string): Promise<{ key: stri
 }
 
 type SourceLite = Pick<DiscoverySource, "id" | "trust" | "allowImages">;
+
+/** Adds the source's official photo to an imported event that still has none. */
+export async function fillMissingCover(eventId: string, n: NormalizedEvent, source: SourceLite): Promise<boolean> {
+  if (!source.allowImages || !n.imageUrls[0]) return false;
+  const event = await db.event.findUnique({ where: { id: eventId }, select: { coverKey: true, source: true } });
+  if (!event || event.coverKey || event.source !== "IMPORT") return false;
+  const cover = await importCover(n.imageUrls[0], await discoveryUserId());
+  if (!cover) return false;
+  await db.event.update({ where: { id: eventId }, data: { coverKey: cover.key } });
+  return true;
+}
 
 export async function createEventFromNormalized(n: NormalizedEvent, source: SourceLite, city: { id: string; name: string; timezone: string; currency: string }) {
   if (n.lat == null || n.lng == null) throw new Error("Falta la ubicación (latitud/longitud)");

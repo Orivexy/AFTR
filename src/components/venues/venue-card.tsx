@@ -23,7 +23,7 @@ export function VenueCard({ venue, className }: { venue: VenueCardData; classNam
   return (
     <Link href={`/venues/${venue.slug}`} className={cn("group pressable block", className)}>
       <div className="relative">
-        <Cover imageKey={venue.coverKey} alt={venue.name} sizes="(min-width: 768px) 300px, 70vw" className="aspect-[4/3] rounded-[var(--radius-card)] border border-line" />
+        <Cover imageKey={venue.coverKey} art="club" alt={venue.name} sizes="(min-width: 768px) 300px, 70vw" className="aspect-[4/3] rounded-[var(--radius-card)] border border-line" />
         <SponsorBadge type={venue.promotionType} className="absolute top-3 left-3" />
       </div>
       <div className="space-y-0.5 px-1 pt-3">

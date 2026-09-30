@@ -20,6 +20,9 @@ export interface MapConfig {
   tileUrl: string;
   /** Vector style (MapLibre). */
   styleUrl?: string;
+  /** Aerial imagery tiles for the satellite view (XYZ) and their attribution. */
+  satelliteUrl?: string;
+  satelliteAttribution?: string;
   attribution: string;
   maxZoom: number;
 }
@@ -27,7 +30,15 @@ export interface MapConfig {
 const CARTO_DARK = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const CARTO_ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>';
 
+const SATELLITE = env.MAP_SATELLITE_URL
+  ? { satelliteUrl: env.MAP_SATELLITE_URL, satelliteAttribution: env.MAP_SATELLITE_ATTRIBUTION }
+  : {};
+
 export function getMapConfig(): MapConfig {
+  return { ...baseConfig(), ...SATELLITE };
+}
+
+function baseConfig(): MapConfig {
   switch (env.MAP_PROVIDER) {
     case "mapbox":
       return {

@@ -6,7 +6,7 @@ import type * as ML from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MarkerClusters } from "../clusters";
 import { clusterHtml, isPlace, markerHtml } from "../marker-html";
-import { nightStyle, type StyleJson } from "../night-style";
+import { nightStyle, satelliteVisibility, withSatellite, type StyleJson } from "../night-style";
 import type { MapMarker, MapProviderProps } from "../types";
 
 /**
@@ -60,7 +60,7 @@ class TiltControl implements ML.IControl {
 }
 
 function VectorMap({
-  config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, wheelZoom, cluster = false, zoomControls = false, user, recenterKey = 0, className, onFail,
+  config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, wheelZoom, cluster = false, zoomControls = false, user, recenterKey = 0, className, satellite = false, onFail,
 }: MapProviderProps & { onFail: () => void }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<ML.Map | null>(null);
@@ -70,6 +70,7 @@ function VectorMap({
   const onSelectRef = useRef(onSelect);
   const onMapClickRef = useRef(onMapClick);
   const onFailRef = useRef(onFail);
+  const styleRef = useRef<StyleJson | null>(null);
   useEffect(() => {
     onSelectRef.current = onSelect;
     onMapClickRef.current = onMapClick;
@@ -141,7 +142,9 @@ function VectorMap({
       try {
         const [mod, res] = await Promise.all([import("maplibre-gl"), fetch(config.styleUrl!)]);
         if (!res.ok) throw new Error(`style ${res.status}`);
-        const style = nightStyle((await res.json()) as StyleJson);
+        const night = nightStyle((await res.json()) as StyleJson);
+        const style = config.satelliteUrl ? withSatellite(night, config.satelliteUrl, config.satelliteAttribution ?? "") : night;
+        styleRef.current = style;
         const gl = ("default" in mod && mod.default ? mod.default : mod) as unknown as typeof ML;
         if (disposed || !el.current || map.current) return;
         lib.current = gl;
@@ -177,6 +180,7 @@ function VectorMap({
           m.on("moveend", () => renderRef.current());
         }
         map.current = m;
+        m.once("load", () => applySatellite());
         renderRef.current();
         drawUser();
       } catch (err) {
@@ -193,6 +197,14 @@ function VectorMap({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function applySatellite() {
+    const m = map.current;
+    const style = styleRef.current;
+    if (!m || !style || !m.isStyleLoaded() || !config.satelliteUrl) return;
+    for (const [id, v] of satelliteVisibility(style, satellite)) if (m.getLayer(id)) m.setLayoutProperty(id, "visibility", v);
+  }
+  useEffect(applySatellite, [satellite]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function drawUser() {
     const gl = lib.current;

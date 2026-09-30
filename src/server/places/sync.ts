@@ -220,7 +220,7 @@ export async function createVenueFromPlace(place: ProviderPlace, source: Pick<So
       nextSyncAt,
       searchText: buildSearchText(place.name, place.address, place.neighborhood, cityName),
     },
-    select: { id: true, slug: true, name: true, address: true, lat: true, lng: true },
+    select: { id: true, slug: true, name: true, address: true, lat: true, lng: true, type: true },
   });
 }
 

@@ -29,6 +29,9 @@ const schema = z.object({
   MAP_PROVIDER: z.enum(["openfreemap", "carto", "mapbox", "maptiler"]).default("openfreemap"),
   // Vector style for the MapLibre map (OpenFreeMap: free, no key). Recolored to the night look client-side.
   MAP_STYLE_URL: z.url().default("https://tiles.openfreemap.org/styles/liberty"),
+  // Satellite view: official orthophoto of Catalonia (ICGC, open licence CC BY 4.0, no key). "" disables it.
+  MAP_SATELLITE_URL: z.string().default("https://geoserveis.icgc.cat/icc_mapesmultibase/noutm/wmts/orto/GRID3857/{z}/{x}/{y}.jpeg"),
+  MAP_SATELLITE_ATTRIBUTION: z.string().default('Ortofoto © <a href="https://www.icgc.cat">Institut Cartogràfic i Geològic de Catalunya</a> (CC BY 4.0)'),
   MAPBOX_TOKEN: z.string().optional().default(""),
   MAPTILER_KEY: z.string().optional().default(""),
   CRON_SECRET: z.string().optional().default(""),
