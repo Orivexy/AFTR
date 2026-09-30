@@ -1,0 +1,69 @@
+name: Data sources probe
+# Temporary: checks public sources (format, licence, reachability) from CI.
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/data-probe.yml"]
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Barcelona · agenda (datastore API and download with file name)
+        continue-on-error: true
+        run: |
+          for u in "https://opendata-ajuntament.barcelona.cat/data/api/action/datastore_search?resource_id=877ccf66-9106-4ae2-be51-95a9f6469e4c&limit=2" \
+                   "https://opendata-ajuntament.barcelona.cat/data/dataset/a25e60cd-3083-4252-9fce-81f733871cb1/resource/877ccf66-9106-4ae2-be51-95a9f6469e4c/download/opendatabcn_agenda-csv.csv"; do
+            echo "== $u"
+            curl -sSL --max-time 90 -A "OrivexyNightsBot/1.0" "$u" -o out.bin -w "HTTP %{http_code} %{content_type} %{size_download}\n"
+            head -c 2500 out.bin | iconv -f utf-8 -t utf-8 -c; echo
+          done
+          python3 - <<'PY' || true
+          import csv, io, collections
+          raw = open("out.bin","rb").read()
+          for enc in ("utf-8-sig","utf-16","latin-1"):
+              try: text = raw.decode(enc); break
+              except Exception: pass
+          d = csv.Sniffer().sniff(text[:5000], delimiters=",;\t")
+          rows = list(csv.DictReader(io.StringIO(text), dialect=d))
+          print("enc", enc, "delim", repr(d.delimiter), "rows", len(rows)); print("cols", list(rows[0].keys()))
+          for r in rows[:2]: print(dict(r))
+          for col in rows[0].keys():
+              if any(k in col.lower() for k in ("classif","categ","tipus","nom_")):
+                  print(col, collections.Counter(r[col] for r in rows).most_common(40))
+          PY
+      - name: Generalitat · Agenda cultural de Catalunya (Socrata, Barcelona)
+        continue-on-error: true
+        run: |
+          B="https://analisi.transparenciacatalunya.cat/resource/rhpv-yr4f.json"
+          curl -sSG --max-time 60 "$B" --data-urlencode "\$where=data_fi >= '2026-09-30T00:00:00' AND comarca_i_municipi like '%Barcelona%'" --data-urlencode '$limit=3' -w "\nHTTP %{http_code}\n" | head -c 6000; echo
+          curl -sSG --max-time 60 "$B" --data-urlencode "\$select=tags_categor_es, count(*)" --data-urlencode "\$where=data_fi >= '2026-09-30T00:00:00' AND comarca_i_municipi like '%/barcelona%'" --data-urlencode '$group=tags_categor_es' --data-urlencode '$order=count(*) DESC' --data-urlencode '$limit=40' -w "\nHTTP %{http_code}\n" | head -c 5000; echo
+          curl -sSG --max-time 60 "$B" --data-urlencode '$select=comarca_i_municipi, count(*)' --data-urlencode '$where=comarca_i_municipi like "%arcelon%"' --data-urlencode '$group=comarca_i_municipi' --data-urlencode '$limit=10' -w "\nHTTP %{http_code}\n" | head -c 2000; echo
+      - name: Club websites · schema.org events and robots.txt
+        continue-on-error: true
+        run: |
+          for u in https://www.razzmatazz.com/es/agenda https://www.sala-apolo.com/es/programacion https://www.salaapolo.com https://www.bikinibcn.com https://www.laterrrazza.com https://www.pachabarcelona.es/es/eventos https://www.ottozutz.com https://www.sidecarfactoryclub.com https://www.masimas.com/jamboree https://www.input-bcn.com https://www.opiumbarcelona.com https://www.shokobarcelona.com https://www.salarazz.com https://www.laplataformabcn.com https://www.bcnunderground.com https://www.cafedelmar.com; do
+            host=$(echo "$u" | cut -d/ -f1-3)
+            code=$(curl -sSL --max-time 30 -A "OrivexyNightsBot/1.0" "$u" -o page.html -w "%{http_code}" || echo ERR)
+            ld=$(grep -o 'application/ld+json' page.html 2>/dev/null | wc -l)
+            ev=$(grep -oE '"@type" *: *"(Music)?Event"' page.html 2>/dev/null | wc -l)
+            ical=$(grep -oiE 'href="[^"]*\.ics[^"]*"' page.html 2>/dev/null | head -2 | tr '\n' ' ')
+            robots=$(curl -s --max-time 15 "$host/robots.txt" | grep -iE '^(user-agent: \*|disallow: /$)' | tr '\n' ' ' | head -c 120)
+            echo "$code ld=$ld events=$ev ics=[$ical] robots=[$robots] $u"
+          done
+      - name: OpenFreeMap vector styles (no key)
+        continue-on-error: true
+        run: |
+          for s in liberty bright positron dark fiord; do
+            curl -s --max-time 30 "https://tiles.openfreemap.org/styles/$s" -o s.json -w "$s HTTP %{http_code} %{size_download}\n"
+            python3 -c "import json;d=json.load(open('s.json'));print('  sources',list(d['sources']),'layers',len(d['layers']),'glyphs',d.get('glyphs'),'sprite',d.get('sprite'))" || true
+          done
+          curl -sI --max-time 30 "https://tiles.openfreemap.org/planet" | head -5
+      - name: Overpass mirrors
+        continue-on-error: true
+        run: |
+          Q='[out:json][timeout:60];nwr["amenity"="nightclub"](41.30,2.05,41.48,2.25);out count;'
+          for e in https://overpass-api.de/api/interpreter https://overpass.kumi.systems/api/interpreter https://overpass.private.coffee/api/interpreter https://maps.mail.ru/osm/tools/overpass/api/interpreter; do
+            curl -sS --max-time 90 -A "OrivexyNightsBot/1.0" --data-urlencode "data=$Q" "$e" -o o.txt -w "$e HTTP %{http_code} %{time_total}s\n" || true
+            head -c 300 o.txt; echo
+          done
