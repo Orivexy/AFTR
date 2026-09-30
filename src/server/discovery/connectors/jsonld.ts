@@ -1,6 +1,6 @@
 import "server-only";
 import { fetchText } from "../fetcher";
-import { extractJsonLdBlocks, flattenNodes, jsonLdToEvents, jsonLdToVenues } from "../parsers/jsonld";
+import { extractJsonLdBlocks, flattenNodes, jsonLdToEvents, jsonLdToVenues, ogImage } from "../parsers/jsonld";
 import type { Connector, SourceContext } from "../types";
 
 /**
@@ -44,13 +44,13 @@ async function nodes(ctx: SourceContext) {
   const cfg = ctx.config as Config;
   const follow = cfg.followLinks && typeof cfg.followLinks.pattern === "string" ? new RegExp(cfg.followLinks.pattern) : null;
   const maxFollow = Math.min(Number(cfg.followLinks?.max) || 40, 120);
-  const out: Array<{ page: string; nodes: ReturnType<typeof flattenNodes> }> = [];
+  const out: Array<{ page: string; nodes: ReturnType<typeof flattenNodes>; image: string | null }> = [];
   const seen = new Set<string>();
   const read = async (page: string) => {
     if (seen.has(page)) return "";
     seen.add(page);
     const html = await fetchText(page, { accept: "text/html", respectRobots: true });
-    out.push({ page, nodes: flattenNodes(extractJsonLdBlocks(html)) });
+    out.push({ page, nodes: flattenNodes(extractJsonLdBlocks(html)), image: ogImage(html) });
     return html;
   };
   for (const page of pages(ctx)) {
@@ -74,8 +74,12 @@ export const jsonLdConnector: Connector = {
   label: "Web con datos estructurados (schema.org)",
   async fetchEvents(ctx) {
     const nightClubsOnly = (ctx.config as Config).nightClubsOnly === true;
-    const all = (await nodes(ctx)).flatMap(({ page, nodes }) => jsonLdToEvents(nodes, page, ctx.city.timezone, { nightClubsOnly }));
-    // The same event can appear on the list page and on its own page.
+    const pagesRead = await nodes(ctx);
+    // An event page's share image stands in for a missing event image (not on list pages: it would be generic).
+    const all = pagesRead.flatMap(({ page, nodes, image }) =>
+      jsonLdToEvents(nodes, page, ctx.city.timezone, { nightClubsOnly, fallbackImage: pagesRead.length > 1 && page !== pagesRead[0]!.page ? image : null }),
+    );
+    // The same event can appear on the list page and on its own page: keep the richest (its own page, read later).
     const unique = [...new Map(all.map((e) => [e.externalId, e])).values()];
     ctx.log(`${unique.length} eventos${nightClubsOnly ? " en discotecas" : ""}`);
     return unique;

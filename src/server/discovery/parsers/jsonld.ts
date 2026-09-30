@@ -79,7 +79,14 @@ function place(v: unknown): ExternalPlace | null {
     city: typeof addr === "object" && addr ? str(addr.addressLocality) : null,
     lat: geo ? Number(geo.latitude) || null : null,
     lng: geo ? Number(geo.longitude) || null : null,
+    imageUrl: imageUrls(o.image)[0] ?? null,
   };
+}
+
+/** The page's own share image (og:image), used when an event has no image in its data. */
+export function ogImage(html: string): string | null {
+  const m = html.match(/<meta[^>]+property=["']og:image(?::url)?["'][^>]*content=["']([^"']+)["']/i) ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+  return m?.[1]?.startsWith("http") ? m[1].replace(/&amp;/g, "&") : null;
 }
 
 /** Price in cents from a schema.org Offer / AggregateOffer (only explicit numbers). */
@@ -111,7 +118,7 @@ const atNightClub = (o: Json) => {
 };
 
 /** Events of the page; `nightClubsOnly` keeps those whose location is a schema.org NightClub. */
-export function jsonLdToEvents(nodes: Json[], pageUrl: string, defaultTz: string, opts: { nightClubsOnly?: boolean } = {}): ExternalEvent[] {
+export function jsonLdToEvents(nodes: Json[], pageUrl: string, defaultTz: string, opts: { nightClubsOnly?: boolean; fallbackImage?: string | null } = {}): ExternalEvent[] {
   return nodes
     .filter((o) => types(o).some((t) => EVENT_TYPES.has(t)))
     .filter((o) => !opts.nightClubsOnly || atNightClub(o))
@@ -138,7 +145,7 @@ export function jsonLdToEvents(nodes: Json[], pageUrl: string, defaultTz: string
         sourceUrl: url ?? pageUrl,
         organizerName: typeof organizer === "string" ? organizer : organizer ? str(organizer.name) : null,
         genres: [o.genre, (o as Json).keywords].flat().filter((g): g is string => typeof g === "string").flatMap((g) => g.split(",")),
-        imageUrls: imageUrls(o.image),
+        imageUrls: imageUrls(o.image).length ? imageUrls(o.image) : opts.fallbackImage ? [opts.fallbackImage] : [],
         cancelled: String(o.eventStatus ?? "").includes("EventCancelled"),
         categoryHint: atNightClub(o) ? "discoteca" : (types(o).find((t) => EVENT_TYPES.has(t)) ?? null),
       } satisfies ExternalEvent;

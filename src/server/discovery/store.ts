@@ -152,6 +152,17 @@ async function importCover(url: string, uploaderId: string): Promise<{ key: stri
 
 type SourceLite = Pick<DiscoverySource, "id" | "trust" | "allowImages">;
 
+/** Uses the source's photo of the place as the cover of a venue that has none. */
+export async function fillMissingVenueCover(venueId: string, url: string | null | undefined, source: SourceLite): Promise<boolean> {
+  if (!source.allowImages || !url) return false;
+  const venue = await db.venue.findUnique({ where: { id: venueId }, select: { coverKey: true } });
+  if (!venue || venue.coverKey) return false;
+  const cover = await importCover(url, await discoveryUserId());
+  if (!cover) return false;
+  await db.venue.update({ where: { id: venueId }, data: { coverKey: cover.key } });
+  return true;
+}
+
 /** Adds the source's official photo to an imported event that still has none. */
 export async function fillMissingCover(eventId: string, n: NormalizedEvent, source: SourceLite): Promise<boolean> {
   if (!source.allowImages || !n.imageUrls[0]) return false;

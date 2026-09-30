@@ -5,6 +5,7 @@ import { endExpiredPromotions } from "../monetization/promotions";
 import { purgeExpiredSourceData } from "../discovery/engine";
 import { runSyncJob } from "../sync/jobs";
 import { importSnapshotIfEmpty } from "../discovery/snapshot";
+import { ensureBootstrapAdmin } from "../services/bootstrap-admin";
 
 /**
  * Periodic jobs. Run in-process (see src/instrumentation.ts) for a single
@@ -22,6 +23,7 @@ export const JOBS = {
   "discovery-maintenance": { everyMs: 24 * 60 * 60_000, run: () => purgeExpiredSourceData() },
   // On demand (desktop first launch): fill an empty database from the bundled snapshot.
   "snapshot-import": { everyMs: 0, run: () => importSnapshotIfEmpty() },
+  "bootstrap-admin": { everyMs: 0, run: () => ensureBootstrapAdmin() },
 } as const;
 
 export type JobName = keyof typeof JOBS;

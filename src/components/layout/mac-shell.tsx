@@ -31,8 +31,8 @@ const bridge = () => (typeof window === "undefined" ? null : ((window as unknown
 /**
  * The desktop app's window, in the style of a macOS app: unified title bar
  * with back/forward and a search field; translucent sidebar with grouped
- * sections. Window buttons are the platform's own: native traffic lights on
- * the Mac, Windows-style minimize/maximize/close on the right elsewhere.
+ * sections. Window buttons are Windows-style (minimize, maximize, close) on
+ * the right, on every system.
  */
 export function MacShell({ platform, cities, city, children }: { platform: DesktopPlatform; cities: CityOption[]; city: CityOption; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -81,14 +81,11 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
     },
   ];
   const selected = (href: string) => (href === "/discover" ? pathname.startsWith("/discover") : href === "/map" ? pathname.startsWith("/map") : isActive(pathname, href));
-  const nativeLights = platform === "mac" && !fullscreen;
 
   return (
     <div className="mac-ui">
       {/* Unified title bar */}
-      <header className={cn("mac-titlebar fixed inset-x-0 top-0 z-50 flex h-[var(--mac-titlebar)] items-center gap-2 border-b border-white/[0.07]", platform === "mac" ? "pr-3" : "pr-0")}>
-        {/* Mac: room for the native traffic lights. Windows/Linux: their own controls, on the right. */}
-        <div className={cn("flex h-full shrink-0 items-center", nativeLights ? "w-[84px]" : "w-2")} />
+      <header className="mac-titlebar fixed inset-x-0 top-0 z-50 flex h-[var(--mac-titlebar)] items-center gap-2 border-b border-white/[0.07] pl-2">
         <div className="mac-no-drag flex items-center gap-0.5">
           <button onClick={() => router.back()} aria-label="Atrás" className="mac-tool">
             <ChevronLeft className="size-[18px]" />
@@ -117,7 +114,7 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
             </Link>
           )}
         </div>
-        {platform !== "mac" && <WindowControls fullscreen={fullscreen} />}
+        <WindowControls fullscreen={fullscreen} />
       </header>
 
       {/* Sidebar */}
@@ -155,7 +152,7 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
   );
 }
 
-/** Windows/Linux window buttons (minimize, maximize/restore, close), in the native Windows style. */
+/** Window buttons (minimize, maximize/restore, close) in the Windows style, on every system. */
 function WindowControls({ fullscreen }: { fullscreen: boolean }) {
   const [maximized, setMaximized] = useState(false);
   useEffect(() => {

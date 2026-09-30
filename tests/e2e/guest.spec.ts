@@ -2,12 +2,13 @@ import { expect, test } from "@playwright/test";
 import { TONIGHT, TOMORROW, VENUE } from "./helpers";
 
 test.describe("guest browsing", () => {
-  test("home shows tonight's real events", async ({ page }) => {
+  test("home shows the map and the next parties", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /¿Qué hay hoy\?/ })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Hoy", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /¿A qué discoteca vas\?/ })).toBeVisible();
+    await expect(page.getByRole("application", { name: "Mapa" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Próximas fiestas" })).toBeVisible();
     await expect(page.getByText(TONIGHT.title).first()).toBeVisible();
-    await expect(page.getByText(/en Barcelona/).first()).toBeVisible();
+    await expect(page.getByText(/Esta noche · Barcelona/i)).toBeVisible();
   });
 
   test("event detail and auth gate on 'Voy'", async ({ page }) => {

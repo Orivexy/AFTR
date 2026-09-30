@@ -17,6 +17,14 @@ const DB_NAME = "nivex";
 const PG_PACKAGE = `@embedded-postgres/${process.platform === "win32" ? "windows" : process.platform}-${process.arch}`;
 const DB_USER = "nivex";
 
+/** "Noche-4k7p-Q2mx-9tzr": easy to read and type, 60+ bits of randomness. */
+function readablePassword() {
+  const abc = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = randomBytes(12);
+  const chars = [...bytes].map((b) => abc[b % abc.length]);
+  return `Noche-${chars.slice(0, 4).join("")}-${chars.slice(4, 8).join("")}-${chars.slice(8, 12).join("")}`;
+}
+
 function freePort(start) {
   return new Promise((resolve) => {
     const tryPort = (port) => {
@@ -215,7 +223,7 @@ export function writeApiKeys(dataDir, values) {
   return clean;
 }
 
-function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databaseUrl, storageDir, cronSecret, logFile, log }) {
+function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databaseUrl, storageDir, cronSecret, admin, logFile, log }) {
   const appDir = path.join(resourcesDir, "server");
   const bin = (name) => {
     const p = path.join(resourcesDir, "bin", process.platform === "win32" ? `${name}.exe` : name);
@@ -236,6 +244,8 @@ function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databas
     STORAGE_LOCAL_DIR: storageDir,
     FFMPEG_PATH: bin("ffmpeg"),
     CRON_SECRET: cronSecret,
+    ADMIN_BOOTSTRAP_EMAIL: admin.email,
+    ADMIN_BOOTSTRAP_PASSWORD: admin.password,
     ENABLE_INPROCESS_JOBS: "true",
     // Local single-user install: the first account created becomes its administrator.
     FIRST_USER_IS_ADMIN: "true",
@@ -294,6 +304,8 @@ export async function startBackend(opts) {
   const state = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, "utf8")) : {};
   state.dbPassword ??= randomBytes(18).toString("hex");
   state.cronSecret ??= randomBytes(24).toString("hex");
+  // Administrator of this installation: generated here, kept only on this computer.
+  state.admin ??= { email: "admin@orivexy.local", password: readablePassword() };
   const saveState = () => writeFileSync(stateFile, JSON.stringify(state, null, 2));
   saveState(); // before initdb: the cluster's password must never get lost
 
@@ -306,7 +318,7 @@ export async function startBackend(opts) {
   const pgDir = path.join(dataDir, "pgdata");
   const stopPostgres = () => run(pg_ctl, ["stop", "-D", pgDir, "-m", "fast", "-w"], logFile).catch(() => {});
 
-  const server = startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv: opts.nodeEnv, port, databaseUrl, storageDir, cronSecret: state.cronSecret, logFile, log });
+  const server = startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv: opts.nodeEnv, port, databaseUrl, storageDir, cronSecret: state.cronSecret, admin: state.admin, logFile, log });
   try {
     await Promise.all([
       preparePostgres({ resourcesDir, dataDir, pgDir, pgPort, pg_ctl, databaseUrl, state, saveState, logFile, log, since: t0 }),
@@ -318,6 +330,15 @@ export async function startBackend(opts) {
     throw err;
   }
   const url = `http://localhost:${port}`;
+  if (!state.adminCreated) {
+    try {
+      const res = await fetch(`${url}/api/cron/bootstrap-admin`, { method: "POST", headers: { Authorization: `Bearer ${state.cronSecret}` } });
+      state.adminCreated = res.ok;
+      log(`Administrador ${res.ok ? "listo" : `no creado (${res.status})`}: ${state.admin.email}`);
+    } catch (err) {
+      log(`Administrador no creado: ${err.message}`);
+    }
+  }
   if (!state.snapshotImported && existsSync(path.join(resourcesDir, "snapshot"))) {
     await importSnapshot(url, state.cronSecret, log);
     state.snapshotImported = true;
@@ -330,6 +351,11 @@ export async function startBackend(opts) {
   return {
     url,
     port,
+    admin: { ...state.admin, firstTime: !state.adminShown },
+    markAdminShown() {
+      state.adminShown = true;
+      saveState();
+    },
     lanUrls: lanAddresses().map((ip) => `http://${ip}:${port}`),
     logFile,
     async stop() {

@@ -411,7 +411,7 @@ function PlaceSheet({ r, onClose }: { r: FilteredPlace; onClose: () => void }) {
         {next ? (
           <Link href={`/events/${next.slug}`} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 hover:bg-surface-2">
             <span className="relative shrink-0">
-              <Cover imageKey={next.coverKey} art={next.category} alt="" sizes="64px" className="size-14 rounded-xl" />
+              <Cover imageKey={next.coverKey ?? p.coverKey} art={next.category} alt="" sizes="64px" className="size-14 rounded-xl" />
               {liveNow && <LiveDot className="absolute top-1 right-1" />}
             </span>
             <span className="min-w-0 flex-1">

@@ -54,9 +54,13 @@ bash scripts/build-desktop.sh --platform mac      # en un Mac Apple Silicon → 
 bash scripts/build-desktop.sh --resources-only --keep-host-natives   # solo recursos (pruebas en Linux)
 ```
 
+### Cuenta de administrador
+
+En el primer arranque la app genera una cuenta de administrador propia de ese ordenador (`admin@orivexy.local` y una contraseña aleatoria), la crea y la muestra en un aviso; siempre se puede consultar en el menú *ORIVEXY NIGHTS → Credenciales de administrador…*. Se guarda solo en `state.json` de la carpeta de datos, nunca en el repositorio.
+
 ### Ventana estilo macOS y pantalla completa
 
-La app de escritorio se abre a pantalla completa (F11 en Windows/Linux, Ctrl+Cmd+F en Mac o el botón verde para salir; se recuerda). La ventana imita una app de macOS: barra de título unificada con semáforos (nativos en Mac; dibujados por la app en Windows y Linux, que controlan la ventana real vía `desktop/app-preload.cjs`), atrás/adelante, buscador central y barra lateral translúcida con secciones. El servidor la sirve al detectar `OrivexyDesktop/<plataforma>` en el user-agent (`MacShell`); en el navegador la web se ve como siempre.
+La app de escritorio se abre a pantalla completa (F11 en Windows/Linux, Ctrl+Cmd+F en Mac o el botón verde para salir; se recuerda). La ventana imita una app de macOS: barra de título unificada con botones de ventana estilo Windows a la derecha en todos los sistemas (minimizar, maximizar, cerrar; controlan la ventana real vía `desktop/app-preload.cjs`), atrás/adelante, buscador central y barra lateral translúcida con secciones. El servidor la sirve al detectar `OrivexyDesktop/<plataforma>` en el user-agent (`MacShell`); en el navegador la web se ve como siempre.
 
 ### Datos iniciales (mapa lleno al abrir)
 

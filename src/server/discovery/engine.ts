@@ -13,6 +13,7 @@ import {
   type VenueCandidate,
   isNightlifeEvent,
   fillMissingCover,
+  fillMissingVenueCover,
 } from "./store";
 import type { ExternalVenue, NormalizedVenue, SourceContext } from "./types";
 import { ALL_PLACE_CATEGORIES, NIGHTLIFE_CATEGORIES, type NightlifeCategory, type ProviderPlace } from "../places/types";
@@ -211,6 +212,7 @@ async function processEvent(
     }
     return;
   }
+  if (n.venueId && (await fillMissingVenueCover(n.venueId, item.place?.imageUrl, source))) log(`Foto añadida a ${n.locationName ?? "la discoteca"}`);
   if (isExpired(n, now)) {
     c.skipped++;
     await touch();

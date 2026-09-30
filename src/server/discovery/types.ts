@@ -17,6 +17,8 @@ export interface ExternalPlace {
   city?: string | null;
   lat?: number | null;
   lng?: number | null;
+  /** Photo of the place published by the source (used as the venue cover when it has none). */
+  imageUrl?: string | null;
 }
 
 export interface ExternalEvent {

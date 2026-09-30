@@ -3,7 +3,7 @@
  * (backend.mjs), opens the app in a window and offers a QR code so phones on
  * the same Wi-Fi can use this computer as their server.
  */
-import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, shell } from "electron";
+import { app, BrowserWindow, Menu, Tray, clipboard, dialog, ipcMain, nativeImage, shell } from "electron";
 import path from "node:path";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -204,6 +204,22 @@ ipcMain.handle("window:toggle-fullscreen", () => mainWindow?.setFullScreen(!main
 ipcMain.handle("window:close", () => mainWindow?.close());
 ipcMain.handle("window:state", () => ({ fullscreen: Boolean(mainWindow?.isFullScreen()), maximized: Boolean(mainWindow?.isMaximized()), platform: process.platform }));
 
+/** Administrator of this installation (generated on first launch, kept only on this computer). */
+async function showAdminCredentials() {
+  if (!backend?.admin) return;
+  const { email, password } = backend.admin;
+  const { response } = await dialog.showMessageBox(mainWindow ?? undefined, {
+    type: "info",
+    title: "Cuenta de administrador",
+    message: "Tu cuenta de administrador de ORIVEXY NIGHTS",
+    detail: `Email: ${email}\nContraseña: ${password}\n\nEntra con ella en «Entrar». Puedes cambiar la contraseña en Ajustes. Siempre la tienes en el menú ORIVEXY NIGHTS → Credenciales de administrador.`,
+    buttons: ["Copiar contraseña", "Aceptar"],
+    defaultId: 1,
+  });
+  if (response === 0) clipboard.writeText(password);
+  backend.markAdminShown();
+}
+
 function buildMenu() {
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
@@ -217,6 +233,7 @@ function buildMenu() {
           ...(process.platform === "linux"
             ? []
             : [{ label: `Iniciar con ${process.platform === "darwin" ? "el Mac" : "Windows"} (abre al instante)`, type: "checkbox", checked: loginItem(), click: (item) => setOpenAtLogin(item.checked) }]),
+          { label: "Credenciales de administrador…", click: showAdminCredentials },
           { label: "Claves de API…", click: showApiKeys },
           { label: "Ver carpeta de datos", click: () => shell.openPath(dataDir) },
           { label: "Borrar datos locales…", click: resetData },
@@ -262,9 +279,8 @@ app.whenReady().then(async () => {
     backgroundColor: "#07070b",
     show: false,
     icon: path.join(here, "build", "icon.png"),
-    // macOS-style window everywhere: native traffic lights on the Mac, the
-    // app's own title bar (with the same controls) on Windows and Linux.
-    ...(isMac ? { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 18, y: 19 } } : { frame: false }),
+    // The app draws its own title bar, with Windows-style window buttons on the right (all systems).
+    frame: false,
     webPreferences: { contextIsolation: true, sandbox: true, preload: path.join(here, "app-preload.cjs") },
   });
   // The web app renders its macOS-style interface for this window.
@@ -289,8 +305,9 @@ app.whenReady().then(async () => {
     loading?.destroy();
     if (startHidden) return;
     mainWindow.show();
-    // Full screen by default (F11 / Ctrl+Cmd+F or the green button to leave; the choice is remembered).
+    // Full screen by default (F11 / Ctrl+Cmd+F or the window button to leave; the choice is remembered).
     if (prefs.fullscreen !== false) mainWindow.setFullScreen(true);
+    if (backend.admin?.firstTime) setTimeout(() => void showAdminCredentials(), 1500);
   });
   mainWindow.on("close", (e) => {
     if (quitting) return;

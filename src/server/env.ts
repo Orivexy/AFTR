@@ -63,6 +63,9 @@ const schema = z.object({
   GOOGLE_PLACES_COST_PER_1000: z.preprocess((v) => (v === "" ? undefined : v), z.coerce.number().min(0).optional()),
   // Set by the desktop app (Windows/Mac/Linux) for its local server.
   DESKTOP_APP: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
+  // Desktop app only: administrator generated on the user's computer at first launch.
+  ADMIN_BOOTSTRAP_EMAIL: z.string().optional().default(""),
+  ADMIN_BOOTSTRAP_PASSWORD: z.string().optional().default(""),
   // Desktop app only: the first registered account becomes ADMIN. Never enable on a public site.
   FIRST_USER_IS_ADMIN: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   ENABLE_INPROCESS_JOBS: z

@@ -33,6 +33,7 @@ export const eventCardSelect = {
   address: true,
   lat: true,
   lng: true,
+  ticketUrl: true,
   interestedCount: true,
   goingCount: true,
   isFeatured: true,
@@ -43,16 +44,19 @@ export const eventCardSelect = {
   status: true,
   category: { select: { slug: true, name: true, emoji: true } },
   genres: { select: { genre: { select: { slug: true, name: true } } }, orderBy: { genre: { order: "asc" } } },
-  venue: { select: { id: true, slug: true, name: true, ratingAvg: true, ratingCount: true } },
+  venue: { select: { id: true, slug: true, name: true, ratingAvg: true, ratingCount: true, coverKey: true } },
   city: { select: { timezone: true, country: { select: { currency: true } } } },
 } satisfies Prisma.EventSelect;
 
 export type EventCardRow = Prisma.EventGetPayload<{ select: typeof eventCardSelect }>;
 
 export function toEventCard(e: EventCardRow): EventCardData {
-  const { genres, city, timezone, currency, ...rest } = e;
+  const { genres, city, timezone, currency, venue, ...rest } = e;
   return {
     ...rest,
+    // No event photo: the discoteca's photo (never an invented image).
+    coverKey: rest.coverKey ?? venue?.coverKey ?? null,
+    venue: venue ? { id: venue.id, slug: venue.slug, name: venue.name, ratingAvg: venue.ratingAvg, ratingCount: venue.ratingCount } : null,
     genres: genres.map((g) => g.genre),
     timezone: timezone ?? city.timezone,
     currency: currency ?? city.country.currency,

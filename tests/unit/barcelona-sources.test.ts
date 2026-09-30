@@ -142,3 +142,14 @@ describe("Xceed agenda (schema.org pages)", async () => {
     expect(events[0]).toMatchObject({ title: "HUMANOS x NOM", categoryHint: "discoteca", place: { name: "SEASEACLUB" }, imageUrls: ["https://images.xceed.me/a.jpg"] });
   });
 });
+
+describe("event photos", async () => {
+  const { ogImage, jsonLdToEvents } = await import("@/server/discovery/parsers/jsonld");
+  it("uses the page's share image when the event has none", () => {
+    const html = '<meta property="og:image" content="https://images.xceed.me/events/x.jpg?w=1200&amp;h=630">';
+    expect(ogImage(html)).toBe("https://images.xceed.me/events/x.jpg?w=1200&h=630");
+    const [e] = jsonLdToEvents([{ "@type": "Event", name: "Noche", startDate: "2026-10-18T23:30:00+02:00", location: { "@type": "NightClub", name: "Club", image: "https://img/club.jpg" } }], "https://x/e/1", "Europe/Madrid", { fallbackImage: ogImage(html) });
+    expect(e!.imageUrls).toEqual(["https://images.xceed.me/events/x.jpg?w=1200&h=630"]);
+    expect(e!.place?.imageUrl).toBe("https://img/club.jpg");
+  });
+});

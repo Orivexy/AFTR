@@ -49,6 +49,8 @@ export interface EventCardData {
   category: CategoryMini;
   genres: GenreMini[];
   venue: VenueMini | null;
+  /** Where to buy tickets, as published by the source. */
+  ticketUrl: string | null;
   interestedCount: number;
   goingCount: number;
   isFeatured: boolean;
