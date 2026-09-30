@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AtSign, Clock, ExternalLink, MapPin, Music2, Users, Wallet } from "lucide-react";
+import { AtSign, Clock, ExternalLink, MapPin, Music2, ShieldCheck, Wallet } from "lucide-react";
 import { getSessionUser } from "@/server/auth/session";
 import { getVenueDetail, listReviews, venueGallery } from "@/server/services/venues";
 import { listEvents } from "@/server/services/events";
@@ -26,10 +26,9 @@ import { formatPrice } from "@/lib/money";
 import { formatNumber } from "@/lib/text";
 import { imageUrl } from "@/lib/media";
 import { cn } from "@/lib/cn";
+import { VENUE_STATUS_LABEL, VENUE_TYPE_LABEL } from "@/lib/nightlife";
 
 type Props = { params: Promise<{ slug: string }> };
-
-const TYPE_LABEL: Record<string, string> = { CLUB: "Discoteca", BAR: "Bar musical", CONCERT_HALL: "Sala de conciertos", OPEN_AIR: "Open air", OTHER: "Local" };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -63,7 +62,9 @@ export default async function VenuePage({ params }: Props) {
         ? Math.min(...eventPrices) === 0
           ? "Hay eventos gratis"
           : `Desde ${formatPrice(Math.min(...eventPrices), null, venue.currency)}`
-        : "No disponible";
+        : "No verificado";
+  const zone = [venue.neighborhood, venue.district].filter(Boolean).join(" · ");
+  const music = venue.musicTags.length ? venue.musicTags : venue.genres.map((g) => g.name);
 
   return (
     <article className="mx-auto max-w-6xl md:px-6 md:pt-6">
@@ -75,7 +76,8 @@ export default async function VenuePage({ params }: Props) {
         </div>
         <div className="absolute inset-x-0 bottom-0 p-5 md:p-8">
           <div className="mb-2 flex flex-wrap gap-1.5">
-            <Badge tone="glass">{TYPE_LABEL[venue.type] ?? "Local"}</Badge>
+            <Badge tone="glass">{VENUE_TYPE_LABEL[venue.type] ?? "Local"}</Badge>
+            {venue.status !== "OPEN" && <Badge tone="glass">{VENUE_STATUS_LABEL[venue.status] ?? venue.status}</Badge>}
             {status?.open && (
               <Badge tone="volt">
                 <LiveDot className="!bg-on-volt" /> Abierto ahora
@@ -93,7 +95,7 @@ export default async function VenuePage({ params }: Props) {
               </span>
             )}
             <span className="flex items-center gap-1 text-muted">
-              <MapPin className="size-4" /> {venue.neighborhood ? `${venue.neighborhood}, ` : ""}
+              <MapPin className="size-4" /> {zone ? `${zone}, ` : ""}
               {venue.city.name}
               <Distance lat={venue.lat} lng={venue.lng} />
             </span>
@@ -111,13 +113,27 @@ export default async function VenuePage({ params }: Props) {
             </Link>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Info icon={<Music2 className="size-4" />} label="Música" value={venue.genres.map((g) => g.name).join(" · ") || "No disponible"} />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Info icon={<Music2 className="size-4" />} label="Música y eventos" value={music.join(" · ") || "No verificado"} />
             <Info icon={<Wallet className="size-4" />} label={venue.priceMin != null ? "Precio habitual" : "Entradas"} value={venuePrice} />
-            <Info icon={<Users className="size-4" />} label="Edad mínima" value={venue.minAge ? `+${venue.minAge}` : "No disponible"} />
+            <Info icon={<MapPin className="size-4" />} label="Zona" value={zone || "No verificado"} />
+            <Info icon={<ShieldCheck className="size-4" />} label="Estado" value={VENUE_STATUS_LABEL[venue.status] ?? "No verificado"} />
           </div>
 
           {venue.description && <p className="text-[15px] leading-relaxed text-fg/90">{venue.description}</p>}
+
+          {venue.officialPhotos.length > 0 && (
+            <section>
+              <SectionHeader title="Fotos" eyebrow="De su web oficial" />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {venue.officialPhotos.map((p, i) => (
+                  <a key={p.id} href={imageUrl(p.key, "lg") ?? "#"} target="_blank" rel="noopener" className={cn("block overflow-hidden rounded-2xl", i === 0 && "col-span-2 row-span-2")}>
+                    <Cover imageKey={p.key} blurDataUrl={p.blurDataUrl} alt={`${venue.name} · foto ${i + 1}`} sizes={i === 0 ? "(min-width: 768px) 520px, 100vw" : "(min-width: 768px) 260px, 50vw"} className="aspect-square w-full" />
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section id="eventos" className="scroll-mt-24">
             <SectionHeader
@@ -184,13 +200,18 @@ export default async function VenuePage({ params }: Props) {
           {(venue.instagram || venue.website) && (
             <div className="flex gap-2">
               {venue.instagram && (
-                <span className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 text-sm">
-                  <AtSign className="size-4" /> {venue.instagram}
-                </span>
+                <a
+                  href={`https://www.instagram.com/${venue.instagram.replace(/^@/, "")}/`}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 text-sm"
+                >
+                  <AtSign className="size-4" /> {venue.instagram.replace(/^@/, "")}
+                </a>
               )}
               {venue.website && (
                 <a href={venue.website} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 text-sm">
-                  Web <ExternalLink className="size-3.5" />
+                  Web oficial <ExternalLink className="size-3.5" />
                 </a>
               )}
             </div>

@@ -114,7 +114,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 }
 
 const WHEN_LABEL: Record<string, string> = { today: "Hoy", tomorrow: "Mañana", weekend: "Este finde", week: "7 días" };
-const TYPE_LABEL: Record<string, string> = { club: "Discotecas", fiesta: "Fiestas", festival: "Festivales", concierto: "Conciertos", evento: "Eventos" };
+const TYPE_LABEL: Record<string, string> = { discoteca: "Discotecas", club: "Clubs", fiesta: "Fiestas", festival: "Festivales", concierto: "Conciertos", evento: "Eventos" };
 
 function intentChips(r: Awaited<ReturnType<typeof globalSearch>>): string[] {
   const i = r.intent;

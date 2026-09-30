@@ -58,7 +58,7 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
         { href: "/map", label: "Mapa", icon: MapIcon },
         { href: "/discover", label: "Descubrir", icon: Compass },
         { href: "/events", label: "Eventos", icon: CalendarDays },
-        { href: "/venues", label: "Discotecas", icon: Building2 },
+        { href: "/venues", label: "Ocio nocturno", icon: Building2 },
       ],
     },
     {
@@ -96,7 +96,7 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
         </div>
         <Link href="/search" className="mac-no-drag mac-search mx-auto flex h-7 w-full max-w-[420px] items-center gap-2 rounded-[7px] px-2.5 text-[13px] text-white/45">
           <Search className="size-3.5" />
-          Buscar discotecas y fiestas…
+          Buscar locales y eventos…
         </Link>
         <div className="mac-no-drag flex items-center gap-1">
           <CityPicker cities={cities} current={city} className="mac-city" labelClassName="max-lg:hidden" />
@@ -138,7 +138,7 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
               })}
           </nav>
         ))}
-        <p className="mt-auto hidden px-2 text-[11px] leading-snug text-white/30 lg:block">Barcelona · datos oficiales abiertos y OpenStreetMap, actualizados cada día.</p>
+        <p className="mt-auto hidden px-2 text-[11px] leading-snug text-white/30 lg:block">Barcelona · locales verificados uno a uno; fotos, horarios y eventos de sus webs oficiales.</p>
       </aside>
 
       <main className="min-h-dvh pt-[var(--mac-titlebar)] pl-[64px] lg:pl-[var(--mac-sidebar)]">

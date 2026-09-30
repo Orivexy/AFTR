@@ -26,6 +26,21 @@ test.describe("guest browsing", () => {
     await expect(page.getByRole("link", { name: "Gestionar ficha" })).toHaveCount(0);
   });
 
+  test("nightlife filters and search by name", async ({ page }) => {
+    await page.goto("/venues?tipo=clubs");
+    await expect(page.getByRole("heading", { level: 1, name: "Ocio nocturno" })).toBeVisible();
+    await expect(page.getByText(VENUE.name).first()).toBeVisible();
+    await page.goto("/venues?tipo=discotecas");
+    await expect(page.getByText("Ningún lugar con estos filtros")).toBeVisible();
+    await page.goto("/venues");
+    await page.getByRole("textbox", { name: "Buscar por nombre" }).fill("prueba");
+    await page.getByRole("button", { name: "Buscar", exact: true }).click();
+    await expect(page).toHaveURL(/q=prueba/);
+    await expect(page.getByText(VENUE.name).first()).toBeVisible();
+    await page.goto("/events?tipo=conciertos&q=zzzz");
+    await expect(page.getByText("No hay eventos con estos filtros")).toBeVisible();
+  });
+
   test("discover filters work with real data", async ({ page }) => {
     await page.goto("/discover");
     await page.getByRole("button", { name: "Gratis" }).click();

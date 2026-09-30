@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { VENUE_TYPE_LABEL } from "@/lib/nightlife";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ChevronUp, Clock, Globe2, List, LocateFixed, Map as MapIcon, MapPin, Navigation, Search, SlidersHorizontal, Star, Ticket, X } from "lucide-react";
 import { MapView } from "./map-view";
@@ -23,8 +24,8 @@ import { cn } from "@/lib/cn";
 import type { MapConfig } from "@/server/services/map";
 import type { MapEvent, MapPlace } from "@/lib/types";
 
-const TYPE_LABEL: Record<string, string> = { CLUB: "Discoteca", BAR: "Bar musical", CONCERT_HALL: "Sala de conciertos", OPEN_AIR: "Open air", OTHER: "Local" };
-const CATEGORY_LABEL: Record<string, string> = { fm: "FM", fiesta: "Fiesta", discoteca: "Discoteca", concierto: "Concierto", dj: "DJ", festival: "Festival", otro: "Evento" };
+const TYPE_LABEL = VENUE_TYPE_LABEL;
+const CATEGORY_LABEL: Record<string, string> = { fm: "FM", fiesta: "Fiesta", discoteca: "Fiesta de club", concierto: "Concierto", dj: "Sesión DJ", festival: "Festival", especial: "Evento especial", tematica: "Noche temática", otro: "Evento" };
 const genreName = (slug: string) => GENRES.find((g) => g.slug === slug)?.name ?? slug;
 /** "Gratis" / "Desde 12 €", or null when no price was published. */
 function priceFromLabel(r: FilteredPlace): string | null {
@@ -122,7 +123,7 @@ export function NightMap({ config, places, center, cityName, initialWhen = "all"
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Discotecas, fiestas, techno, «hoy»…"
+        placeholder="Locales, fiestas, conciertos, «hoy»…"
         className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint"
         aria-label="Buscar en el mapa"
         enterKeyHint="search"

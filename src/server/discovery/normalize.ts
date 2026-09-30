@@ -114,6 +114,8 @@ export function detectCategory(title: string, hint: string | null | undefined, a
   if (/\b(festival|fest)\b/.test(t)) return "festival";
   if (/\b(concierto|concert|en directo|live|gira|tour)\b/.test(t)) return "concierto";
   if (/\b(dj set|dj)\b/.test(t)) return "dj";
+  if (/\b(tributo|tribute|tematica|theme party|halloween|carnaval|remember|revival|80s|90s|2000s|ochentas|noventas)\b/.test(t)) return "tematica";
+  if (/\b(especial|special|gala|opening party|closing party|aniversario|anniversary|nochevieja|new year|fin de ano)\b/.test(t)) return "especial";
   if (/\b(discoteca|nightclub)\b/.test(normalizeSearch(hint ?? ""))) return "discoteca";
   return atVenue ? "discoteca" : "fiesta";
 }

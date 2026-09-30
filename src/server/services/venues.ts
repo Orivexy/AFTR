@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, VenueType } from "@prisma/client";
 import { db } from "../db";
 import { badRequest, notFound } from "../http";
 import type { SessionUser } from "../auth/session";
@@ -11,12 +11,20 @@ import type { reviewSchema } from "@/lib/validators";
 import { isStaff } from "@/lib/roles";
 import { normalizeSearch } from "@/lib/text";
 import { sanitizeHours } from "@/lib/hours";
+import { SYSTEM_USERNAMES } from "@/config/system";
+
+/** Photos imported from the venue's official website (uploaded by the discovery account). */
+const OFFICIAL_UPLOADER: Prisma.PhotoWhereInput = { uploader: { profile: { username: SYSTEM_USERNAMES[0] } } };
 
 export type VenueSort = "popular" | "rating" | "name";
 
 export interface VenueQuery {
   cityId: string;
   genres?: string[];
+  /** Venue kinds (CLUB, DISCO, CONCERT_HALL…). */
+  types?: VenueType[];
+  /** District (zone). */
+  district?: string;
   sort?: VenueSort;
   near?: LatLng & { radiusKm: number };
   featured?: boolean;
@@ -32,6 +40,8 @@ export async function listVenues(q: VenueQuery): Promise<Page<VenueCardData>> {
   const where: Prisma.VenueWhereInput = { cityId: q.cityId, isActive: true };
   if (q.genres?.length) where.genres = { some: { genre: { slug: { in: q.genres } } } };
   if (q.featured) where.isFeatured = true;
+  if (q.types?.length) where.type = { in: q.types };
+  if (q.district) where.district = q.district;
   const terms = normalizeSearch(q.q ?? "").split(" ").filter((t) => t.length >= 2).slice(0, 5);
   if (terms.length) where.AND = terms.map((t) => ({ searchText: { contains: t } }));
   if (q.near) {
@@ -94,7 +104,7 @@ export async function getVenueDetail(slug: string, viewer: SessionUser | null): 
   });
   if (!v || (!v.isActive && !isStaff(viewer?.role))) return null;
 
-  const [agg, dist, following, myReview, manager] = await Promise.all([
+  const [agg, dist, following, myReview, manager, officialPhotos] = await Promise.all([
     db.review.aggregate({
       where: { venueId: v.id, isHidden: false },
       _avg: { ambience: true, music: true, staff: true, price: true, space: true },
@@ -103,6 +113,7 @@ export async function getVenueDetail(slug: string, viewer: SessionUser | null): 
     viewer ? db.venueFollow.findUnique({ where: { userId_venueId: { userId: viewer.id, venueId: v.id } } }) : null,
     viewer ? db.review.findUnique({ where: { userId_venueId: { userId: viewer.id, venueId: v.id } }, select: reviewSelect }) : null,
     viewer ? db.venue.count({ where: { id: v.id, managers: { some: { id: viewer.id } } } }) : 0,
+    db.photo.findMany({ where: { venueId: v.id, status: "VISIBLE", postId: null, ...OFFICIAL_UPLOADER }, orderBy: { position: "asc" }, select: photoSelect, take: 12 }),
   ]);
 
   const distribution = [0, 0, 0, 0, 0];
@@ -126,6 +137,7 @@ export async function getVenueDetail(slug: string, viewer: SessionUser | null): 
     minAge: v.minAge,
     website: v.website,
     instagram: v.instagram,
+    officialPhotos,
     city: { slug: v.city.slug, name: v.city.name },
     subScores: {
       ambience: round(agg._avg.ambience),
@@ -221,7 +233,7 @@ export async function setVenueFollow(userId: string, venueId: string, follow: bo
 export async function venueGallery(venueId: string, viewerId: string | undefined, cursor?: string, limit = 18): Promise<Page<GalleryPhoto>> {
   const offset = parseOffset(cursor);
   const rows = await db.photo.findMany({
-    where: { venueId, status: "VISIBLE", postId: null },
+    where: { venueId, status: "VISIBLE", postId: null, NOT: OFFICIAL_UPLOADER },
     orderBy: { createdAt: "desc" },
     select: { ...photoSelect, createdAt: true, likeCount: true, uploader: { select: userMiniSelect } },
     skip: offset,
@@ -276,4 +288,10 @@ export async function venueOptions(cityId: string) {
     select: { id: true, name: true, address: true, lat: true, lng: true, neighborhood: true },
     orderBy: { name: "asc" },
   });
+}
+
+/** Zones (districts) that have listed places, for the zone filter. */
+export async function listZones(cityId: string): Promise<string[]> {
+  const rows = await db.venue.groupBy({ by: ["district"], where: { cityId, isActive: true, district: { not: null } }, _count: { _all: true } });
+  return rows.map((r) => r.district!).sort((a, b) => a.localeCompare(b, "es"));
 }

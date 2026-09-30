@@ -12,7 +12,7 @@ import type { MapEvent, MapPlace } from "./types";
 
 export type WhenFilter = "all" | "today" | "tomorrow" | "weekend" | "week";
 export type PriceFilter = "any" | "free" | "lt10" | "10-20" | "20-30" | "30plus";
-export type TypeFilter = "club" | "fiesta" | "festival" | "concierto" | "evento";
+export type TypeFilter = "discoteca" | "club" | "fiesta" | "festival" | "concierto" | "evento";
 
 export interface MapFilters {
   when: WhenFilter;
@@ -43,16 +43,40 @@ export const PRICE_OPTIONS: Array<{ value: PriceFilter; label: string }> = [
 ];
 
 export const TYPE_OPTIONS: Array<{ value: TypeFilter; label: string }> = [
-  { value: "club", label: "Discotecas" },
+  { value: "discoteca", label: "Discotecas" },
+  { value: "club", label: "Clubs" },
+  { value: "concierto", label: "Conciertos" },
   { value: "fiesta", label: "Fiestas" },
+  { value: "festival", label: "Festivales" },
+  { value: "evento", label: "Eventos" },
 ];
 
 /** Event category → filter type. */
 export function eventType(category: string): TypeFilter {
   if (category === "festival") return "festival";
   if (category === "concierto") return "concierto";
-  if (category === "fm" || category === "fiesta" || category === "dj" || category === "discoteca") return "fiesta";
+  if (category === "fm" || category === "fiesta" || category === "dj" || category === "discoteca" || category === "tematica") return "fiesta";
   return "evento";
+}
+
+/** Kind of place → filter type (a place shows on its own under its kind). */
+export function placeType(venueType: string | null): TypeFilter | null {
+  switch (venueType) {
+    case "DISCO":
+      return "discoteca";
+    case "CLUB":
+      return "club";
+    case "CONCERT_HALL":
+      return "concierto";
+    case "FESTIVAL_SPACE":
+    case "OPEN_AIR":
+      return "festival";
+    case "EVENT_SPACE":
+    case "OTHER":
+      return "evento";
+    default:
+      return null;
+  }
 }
 
 /** Does a price (cents, lowest price) fall in the bucket? null = unknown → never matches. */
@@ -114,7 +138,6 @@ function textMatches(p: MapPlace, events: MapEvent[], terms: string[]) {
 export function filterPlaces(places: MapPlace[], f: MapFilters, opts: { now?: Date; coords?: LatLng | null; sortByDistance?: boolean } = {}): FilteredPlace[] {
   const now = opts.now ?? new Date();
   const terms = normalizeSearch(f.query).split(" ").filter((t) => t.length >= 2);
-  const wantsClub = !f.types.length || f.types.includes("club");
   const out: FilteredPlace[] = [];
 
   for (const p of places) {
@@ -125,7 +148,7 @@ export function filterPlaces(places: MapPlace[], f: MapFilters, opts: { now?: Da
         inWindow(e, w) &&
         priceMatches(e.priceMin, f.price) &&
         (!f.genres.length || e.genres.some((g) => f.genres.includes(g)) || (p.kind === "venue" && p.genres.some((g) => f.genres.includes(g)))) &&
-        (!f.types.length || f.types.includes(eventType(e.category)) || (p.kind === "venue" && f.types.includes("club"))),
+        (!f.types.length || f.types.includes(eventType(e.category)) || (p.kind === "venue" && f.types.includes(placeType(p.venueType)!))),
     );
     const status = p.kind === "venue" ? openingStatus(p.openingHours, p.timezone, now) : null;
 
@@ -134,8 +157,9 @@ export function filterPlaces(places: MapPlace[], f: MapFilters, opts: { now?: Da
     else {
       // A venue shows up with a matching event, or on its own when only
       // venue-level filters apply (opening hours for the date, genres, its usual price).
+      const kind = placeType(p.venueType);
       const venueOnly =
-        wantsClub &&
+        (!f.types.length || (kind != null && f.types.includes(kind))) &&
         (!f.genres.length || p.genres.some((g) => f.genres.includes(g))) &&
         (f.price === "any" || priceMatches(p.priceMin, f.price)) &&
         (f.when === "all" || opensDuring(p.openingHours, p.timezone, w.from, w.to));

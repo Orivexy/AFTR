@@ -1,0 +1,12 @@
+-- Verified list of places: new venue kinds, verified status, zone and music.
+ALTER TYPE "VenueType" ADD VALUE IF NOT EXISTS 'DISCO';
+ALTER TYPE "VenueType" ADD VALUE IF NOT EXISTS 'EVENT_SPACE';
+ALTER TYPE "VenueType" ADD VALUE IF NOT EXISTS 'FESTIVAL_SPACE';
+ALTER TYPE "DiscoverySourceType" ADD VALUE IF NOT EXISTS 'CURATED';
+
+CREATE TYPE "VenueStatus" AS ENUM ('OPEN', 'TEMPORARILY_CLOSED', 'PERMANENTLY_CLOSED');
+
+ALTER TABLE "Venue" ADD COLUMN "district" TEXT,
+ADD COLUMN "status" "VenueStatus" NOT NULL DEFAULT 'OPEN',
+ADD COLUMN "musicTags" TEXT[] DEFAULT ARRAY[]::TEXT[],
+ADD COLUMN "aliases" TEXT[] DEFAULT ARRAY[]::TEXT[];

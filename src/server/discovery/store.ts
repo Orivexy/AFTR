@@ -6,7 +6,8 @@ import { processImage } from "../media/image";
 import { notifyVenueFollowers } from "../services/events";
 import { CATEGORIES, GENRES } from "@/config/taxonomy";
 import { SYSTEM_USERNAMES } from "@/config/system";
-import { buildSearchText, slugify } from "@/lib/text";
+import { buildSearchText, normalizeSearch, slugify } from "@/lib/text";
+import { distanceKm } from "@/lib/geo";
 import { fetchBytes } from "./fetcher";
 import { DUPLICATE_THRESHOLD, scoreMatch, venueSimilarity, type Comparable } from "./dedupe";
 import type { NormalizedEvent } from "./types";
@@ -57,6 +58,8 @@ export interface VenueCandidate {
   lng: number;
   /** CLUB, BAR, CONCERT_HALL… (used to keep only nightlife events). */
   type?: string;
+  /** Other names of the place (old names, rooms). */
+  aliases?: string[];
 }
 
 /**
@@ -65,7 +68,7 @@ export interface VenueCandidate {
  * (mapped venue of type CLUB, or a well-known club name). Concerts in halls,
  * festivals, popular fiestas, opera, theatre and restaurants are left out.
  */
-export const NIGHTLIFE_VENUE_TYPES = ["CLUB"];
+export const NIGHTLIFE_VENUE_TYPES = ["CLUB", "DISCO"];
 const CLUB_NAME = /\b(discoteca|disco|club|nightclub|razzmatazz|apolo|bikini|pacha|opium|sh[oô]ko|sutton|input|otto zutz|macarena|moog|marula|jamboree|sidecar|terrrazza|city hall|catwalk|carpe diem|cdlc|eclipse|hyde|bling bling|wolf|upload|luz de gas|twenty two|la biblio|boujee|sala b)\b/i;
 const NOT_A_CLUB = /\b(teatre|teatro|auditori|palau|museu|museo|biblioteca p[uú]blica|església|iglesia|bas[ií]lica|centre c[ií]vic|casal|escola|golf|tennis|esport)\b/i;
 export function isNightlifeEvent(n: Pick<NormalizedEvent, "category" | "venueId"> & Partial<Pick<NormalizedEvent, "venueName" | "locationName">>, venues: VenueCandidate[]): boolean {
@@ -77,15 +80,25 @@ export function isNightlifeEvent(n: Pick<NormalizedEvent, "category" | "venueId"
 }
 
 export function loadCityVenues(cityId: string): Promise<VenueCandidate[]> {
-  return db.venue.findMany({ where: { cityId, isActive: true }, select: { id: true, name: true, address: true, lat: true, lng: true, type: true } });
+  return db.venue.findMany({ where: { cityId, isActive: true }, select: { id: true, name: true, address: true, lat: true, lng: true, type: true, aliases: true } });
 }
+
+const coreName = (n: string) => normalizeSearch(n).replace(/\b(sala|club|discoteca|barcelona|bcn)\b/g, " ").replace(/\s+/g, " ").trim();
+const sameName = (a: string, b: string) => {
+  const x = coreName(a);
+  return x.length >= 2 && x === coreName(b);
+};
 
 export function matchVenue(venues: VenueCandidate[], name: string | null, lat: number | null, lng: number | null): VenueCandidate | null {
   if (!name) return null;
   let best: { v: VenueCandidate; s: number } | null = null;
   for (const v of venues) {
-    const s = venueSimilarity({ name, lat, lng }, v);
-    if (!best || s > best.s) best = { v, s };
+    for (const n of [v.name, ...(v.aliases ?? [])]) {
+      let s = venueSimilarity({ name, lat, lng }, { ...v, name: n });
+      // Same name (or a known alias) nearby: the coordinates of ticketing sites are approximate.
+      if (s < 0.75 && sameName(name, n) && (lat == null || lng == null || distanceKm({ lat, lng }, v) <= 2)) s = 0.8;
+      if (!best || s > best.s) best = { v, s };
+    }
   }
   return best && best.s >= 0.75 ? best.v : null;
 }
@@ -94,7 +107,10 @@ export function matchVenue(venues: VenueCandidate[], name: string | null, lat: n
 export function attachVenue(n: NormalizedEvent, venues: VenueCandidate[]): NormalizedEvent {
   const v = matchVenue(venues, n.venueName, n.lat, n.lng);
   if (!v) return n;
-  return { ...n, venueId: v.id, locationName: v.name, address: n.address ?? v.address, lat: n.lat ?? v.lat, lng: n.lng ?? v.lng };
+  // "Fiesta de club" is only the default for events at a place; at arenas and
+  // festival grounds an event without a clearer kind is just an event.
+  const category = n.category === "discoteca" && (v.type === "EVENT_SPACE" || v.type === "FESTIVAL_SPACE") ? "otro" : n.category;
+  return { ...n, category, venueId: v.id, locationName: v.name, address: n.address ?? v.address, lat: n.lat ?? v.lat, lng: n.lng ?? v.lng };
 }
 
 // ─── Duplicates ──────────────────────────────────────────────────────────────

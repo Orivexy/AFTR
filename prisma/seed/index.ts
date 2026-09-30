@@ -23,6 +23,16 @@ const log = (msg: string) => console.log(`  • ${msg}`);
 const SEED_CITIES = (process.env.SEED_DISCOVERY_CITIES ?? "all").split(",").map((s) => s.trim()).filter(Boolean);
 const discoveryEnabledFor = (slug: string) => SEED_CITIES.includes("all") || SEED_CITIES.includes(slug);
 
+/** Xceed agenda pages of places in the verified list. */
+const XCEED_VENUE_PAGES = [
+  "https://xceed.me/en/barcelona/venue/sutton-barcelona",
+  "https://xceed.me/en/barcelona/venue/nitsa-club",
+  "https://xceed.me/en/barcelona/venue/draco-club",
+  "https://xceed.me/es/barcelona/venue/la-biblio-bcn",
+  "https://xceed.me/en/barcelona/venue/laut",
+  "https://xceed.me/en/barcelona/venue/sidecar-factory-club",
+];
+
 async function main() {
   console.log("🌙 ORIVEXY NIGHTS · datos base");
 
@@ -50,20 +60,34 @@ async function main() {
       where: { key: `osm-${city.slug}-nightlife` },
       create: {
         key: `osm-${city.slug}-nightlife`, name: `OpenStreetMap · ocio nocturno de ${city.name}`, type: "OSM_OVERPASS", cityId: city.id, trust: "IMPORTED",
-        enabled: discoveryEnabledFor(city.slug), autoPublish: true,
+        // Barcelona uses its verified list of places instead.
+        enabled: discoveryEnabledFor(city.slug) && city.slug !== "barcelona", autoPublish: true,
         config: { categories: ["nightclub", "dance_club"], radiusKm: 12 },
       },
       update: {},
     });
     if (city.slug === "barcelona") {
-      // Club nights from Xceed's public agenda (schema.org data it publishes for search engines; robots.txt allows it).
+      // The verified list of places (src/server/discovery/curated/barcelona.ts): the only source of venues.
+      await db.discoverySource.upsert({
+        where: { key: "barcelona-verified-venues" },
+        create: {
+          id: "src_curated_bcn", key: "barcelona-verified-venues", name: "Listado verificado de Barcelona (web oficial de cada local)", type: "CURATED", cityId: city.id, trust: "VERIFIED",
+          enabled: discoveryEnabledFor(city.slug), autoPublish: true, allowImages: true, syncIntervalMin: 24 * 60, config: { list: "barcelona", listedVenuesOnly: true },
+        },
+        update: {},
+      });
+      // Events of the listed places from Xceed's public agenda (schema.org data it publishes for search engines; robots.txt allows it).'s public agenda (schema.org data it publishes for search engines; robots.txt allows it).
       await db.discoverySource.upsert({
         where: { key: "xceed-barcelona-clubs" },
         create: {
-          key: "xceed-barcelona-clubs", name: "Xceed · fiestas en discotecas de Barcelona", type: "JSON_LD_PAGE", cityId: city.id, trust: "IMPORTED",
+          id: "src_xceed_bcn_clubs", key: "xceed-barcelona-clubs", name: "Xceed · agenda de los locales verificados", type: "JSON_LD_PAGE", cityId: city.id, trust: "IMPORTED",
           enabled: discoveryEnabledFor(city.slug), autoPublish: true, allowImages: true, syncIntervalMin: 12 * 60,
           url: "https://xceed.me/es/barcelona/events",
-          config: { followLinks: { pattern: "^https://xceed\\.me/es/barcelona/event/[^/]+/\\d+$", max: 60 }, nightClubsOnly: true },
+          config: {
+            pages: XCEED_VENUE_PAGES,
+            followLinks: { pattern: "^https://xceed\\.me/(es|en)/barcelona/event/[^/]+/\\d+$", max: 30 },
+            listedVenuesOnly: true,
+          },
         },
         update: {},
       });
@@ -72,7 +96,8 @@ async function main() {
         where: { key: "bcn-open-data-music-venues" },
         create: {
           key: "bcn-open-data-music-venues", name: "Ayuntamiento de Barcelona · espacios de música y copas", type: "BCN_MUSIC_VENUES", cityId: city.id, trust: "IMPORTED",
-          enabled: discoveryEnabledFor(city.slug), autoPublish: true, syncIntervalMin: 24 * 60, config: { authoritative: true },
+          // Replaced by the verified list. Kept for admins.
+          enabled: false, autoPublish: true, syncIntervalMin: 24 * 60, config: { authoritative: true },
         },
         update: {},
       });
@@ -92,7 +117,7 @@ async function main() {
       where: { key: `ticketmaster-${short}-music` },
       create: {
         key: `ticketmaster-${short}-music`, name: `Ticketmaster · música en ${city.name}`, type: "TICKETMASTER", cityId: city.id, trust: "IMPORTED",
-        enabled: discoveryEnabledFor(city.slug), autoPublish: true, config: { classificationName: "music", maxPages: 3, nightlifeOnly: true },
+        enabled: discoveryEnabledFor(city.slug), autoPublish: true, config: { classificationName: "music", maxPages: 3, ...(city.slug === "barcelona" ? { listedVenuesOnly: true } : { nightlifeOnly: true }) },
       },
       update: {},
     });
@@ -100,7 +125,7 @@ async function main() {
       where: { key: `google-places-${short}-clubs` },
       create: {
         key: `google-places-${short}-clubs`, name: `Google Places · vincular locales de ${city.name}`, type: "GOOGLE_PLACES", cityId: city.id, trust: "IMPORTED",
-        enabled: discoveryEnabledFor(city.slug), syncIntervalMin: 7 * 24 * 60, config: { categories: ["nightclub"], maxPages: 1 },
+        enabled: discoveryEnabledFor(city.slug) && city.slug !== "barcelona", syncIntervalMin: 7 * 24 * 60, config: { categories: ["nightclub"], maxPages: 1 },
       },
       update: {},
     });

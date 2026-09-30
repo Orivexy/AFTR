@@ -5,10 +5,12 @@
 export const CATEGORIES = [
   { slug: "fm", name: "FM", emoji: "🎪" },
   { slug: "fiesta", name: "Fiesta", emoji: "🎉" },
-  { slug: "discoteca", name: "Discoteca", emoji: "🪩" },
+  { slug: "discoteca", name: "Fiesta de club", emoji: "🪩" },
   { slug: "concierto", name: "Concierto", emoji: "🎤" },
-  { slug: "dj", name: "DJ", emoji: "🎧" },
+  { slug: "dj", name: "Sesión DJ", emoji: "🎧" },
   { slug: "festival", name: "Festival", emoji: "🎡" },
+  { slug: "especial", name: "Evento especial", emoji: "⭐" },
+  { slug: "tematica", name: "Noche temática", emoji: "🎭" },
   { slug: "otro", name: "Otro", emoji: "✨" },
 ] as const;
 

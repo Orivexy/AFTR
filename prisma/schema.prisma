@@ -204,11 +204,25 @@ model VenueGenre {
 // ─── Venues ──────────────────────────────────────────────────────────────────
 
 enum VenueType {
+  /// Club (electrónica, underground…)
   CLUB
   BAR
   CONCERT_HALL
   OPEN_AIR
   OTHER
+  /// Discoteca (comercial, hits, reggaeton…)
+  DISCO
+  /// Sala de eventos / recinto (arenas, recintos feriales)
+  EVENT_SPACE
+  /// Espacio para festivales
+  FESTIVAL_SPACE
+}
+
+/// Verified state of a place (only OPEN places are listed).
+enum VenueStatus {
+  OPEN
+  TEMPORARILY_CLOSED
+  PERMANENTLY_CLOSED
 }
 
 model Venue {
@@ -221,6 +235,13 @@ model Venue {
   city            City             @relation(fields: [cityId], references: [id])
   address         String
   neighborhood    String?
+  /// District (e.g. Sant Martí), for the zone filter.
+  district        String?
+  status          VenueStatus      @default(OPEN)
+  /// Music and event styles (free text from the verified list: "Techno", "Conciertos"…).
+  musicTags       String[]         @default([])
+  /// Other names the place is known by (old names, rooms), for matching events.
+  aliases         String[]         @default([])
   lat             Float
   lng             Float
   coverKey        String?
@@ -1265,6 +1286,8 @@ enum DiscoverySourceType {
   MADRID_AGENDA
   CATALONIA_AGENDA
   BCN_MUSIC_VENUES
+  /// Verified list of places kept in the code (src/server/discovery/curated).
+  CURATED
 }
 
 enum DiscoverySyncStatus {

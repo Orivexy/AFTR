@@ -44,6 +44,14 @@ if (failed.length) {
   await new Promise((r) => setTimeout(r, 60_000));
   for (const s of failed) await run(s, 2);
 }
+// What each listed place got from OpenStreetMap and its official website (visible in the CI log).
+for (const x of await db.venue.findMany({
+  where: { isActive: true },
+  orderBy: { name: "asc" },
+  select: { name: true, neighborhood: true, district: true, instagram: true, openingHours: true, priceMin: true, _count: { select: { photos: true, events: { where: { status: "PUBLISHED" } } } } },
+})) {
+  console.log(`  · ${x.name} — ${[x.neighborhood, x.district].filter(Boolean).join(", ") || "sin zona"} · ${x._count.photos} fotos · ${x._count.events} eventos${x.instagram ? ` · @${x.instagram}` : ""}${x.openingHours ? " · horario" : ""}${x.priceMin != null ? " · precio" : ""}`);
+}
 const [v, ev] = await Promise.all([db.venue.count(), db.event.count({ where: { status: "PUBLISHED" } })]);
 const files = readdirSync(dir).filter((f) => f.endsWith(".gz")).length;
 console.log(`Instantánea: ${files} respuestas · ${v} locales · ${ev} eventos publicados (${ok}/${sources.length} fuentes OK)`);

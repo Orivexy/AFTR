@@ -33,7 +33,7 @@ const LOCK_MINUTES = 15;
 /** Sources that provide places (venues) vs. events. */
 export function sourceKind(type: DiscoverySource["type"]): "venues" | "events" {
   const c = CONNECTORS[type];
-  return c.placeProvider || (c.fetchVenues && !c.fetchEvents) ? "venues" : "events";
+  return c.placeProvider || c.syncVenues || (c.fetchVenues && !c.fetchEvents) ? "venues" : "events";
 }
 
 export function intervalMinutes(source: Pick<DiscoverySource, "syncIntervalMin" | "type">) {
@@ -104,6 +104,10 @@ export async function syncSource(sourceId: string, opts: { mode?: SyncMode; job?
         detectMissing: provider.policy.storeContent,
         providerLabel: provider.key === "osm" ? "OpenStreetMap" : provider.label,
       });
+      const linked = await linkEventsToVenues(city.id);
+      if (linked) log(`${linked} eventos vinculados a sus locales`);
+    } else if (connector.syncVenues && mode === "full") {
+      await connector.syncVenues(source, ctx, c);
       const linked = await linkEventsToVenues(city.id);
       if (linked) log(`${linked} eventos vinculados a sus locales`);
     } else if (connector.fetchVenues && mode === "full") {
@@ -201,9 +205,12 @@ async function processEvent(
     return;
   }
   const n = attachVenue(res.event, venues);
-  // Broad agendas: only parties, festes majors and club nights. Not touched, so
-  // anything imported earlier that no longer fits is hidden as "missing".
-  if ((source.config as { nightlifeOnly?: boolean } | null)?.nightlifeOnly && !isNightlifeEvent(n, venues)) {
+  // listedVenuesOnly: only events at a place of the verified list (whatever
+  // their kind: parties, concerts, festivals…). Otherwise, for broad agendas
+  // (nightlifeOnly): only club nights. Not touched, so anything imported
+  // earlier that no longer fits is hidden as "missing".
+  const cfg = (source.config as { nightlifeOnly?: boolean; listedVenuesOnly?: boolean } | null) ?? {};
+  if (cfg.listedVenuesOnly ? !n.venueId : cfg.nightlifeOnly && !isNightlifeEvent(n, venues)) {
     c.skipped++;
     // Imported earlier under a wider filter: hidden right away.
     if (existing?.eventId) {

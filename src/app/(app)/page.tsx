@@ -41,7 +41,7 @@ export default async function HomePage() {
 
         {venues.items.length > 0 && (
           <section>
-            <Header title="Discotecas" href="/venues" />
+            <Header title="Lugares" href="/venues" />
             <Rail itemClassName="w-[70vw] sm:w-[260px]">
               {venues.items.map((v) => <VenueCard key={v.id} venue={v} />)}
             </Rail>

@@ -9,7 +9,7 @@ Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visua
 - Se instala en `C:\Program Files\ORIVEXY NIGHTS` (pide permiso de administrador): PostgreSQL para Windows no admite rutas con acentos.
 - Primera ejecución: crea la base de datos en `%APPDATA%\ORIVEXY NIGHTS\data` (o en `%ProgramData%\ORIVEXY-NIGHTS\…` si el nombre de usuario tiene acentos), aplica las migraciones y carga los datos base (ciudades, categorías, géneros, fuentes). En cada actualización aplica solo las migraciones nuevas, sin tocar tus datos.
 - No incluye contenido inventado. **La primera cuenta que registres es la de administrador.**
-- Con conexión a Internet, la sincronización descarga los locales reales de OpenStreetMap (Barcelona por defecto) en el primer minuto; los eventos llegan de las fuentes que configures en *Admin → Event Discovery* y de lo que publiquéis.
+- Con conexión a Internet, la sincronización descarga el listado verificado de locales de Barcelona (ubicación de OpenStreetMap, fotos y datos de la web oficial de cada local) en el primer minuto; los eventos llegan de las fuentes que configures en *Admin → Event Discovery* y de lo que publiquéis.
 - Arranque rápido:
   - PostgreSQL y el servidor arrancan en paralelo.
   - `initdb --no-sync` y `synchronous_commit=off`.

@@ -105,6 +105,12 @@ export interface VenueCardData {
   type: string;
   coverKey: string | null;
   neighborhood: string | null;
+  /** District (zone filter). */
+  district: string | null;
+  /** Verified state: OPEN, TEMPORARILY_CLOSED, PERMANENTLY_CLOSED. */
+  status: string;
+  /** Music and event styles. */
+  musicTags: string[];
   address: string;
   lat: number;
   lng: number;
@@ -143,6 +149,8 @@ export interface VenueDetail extends VenueCardData {
   minAge: number | null;
   website: string | null;
   instagram: string | null;
+  /** Official photos of the place (from its website), cover first. */
+  officialPhotos: Array<{ id: string; key: string; width: number; height: number; blurDataUrl: string | null }>;
   city: { slug: string; name: string };
   subScores: { ambience: number | null; music: number | null; staff: number | null; price: number | null; space: number | null };
   ratingDistribution: number[]; // index 0 → 1 star … index 4 → 5 stars

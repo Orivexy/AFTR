@@ -4,7 +4,7 @@
 
 # ORIVEXY NIGHTS
 
-**Qué pasa esta noche en las discotecas de Barcelona.**
+**Qué pasa esta noche en Barcelona: discotecas, clubs, conciertos y festivales.**
 
 <a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/ORIVEXY-NIGHTS-Windows.exe"><img src="https://img.shields.io/badge/Windows-Descargar-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar para Windows" height="48" /></a>
 &nbsp;
@@ -32,8 +32,10 @@ Descárgala, ábrela y listo. Gratis.
 
 ## Qué tiene
 
-- 🗺️ **Mapa de Barcelona** con todas las discotecas, en 3D y en vista satélite.
-- 🎉 **Fiestas de discoteca** de cada día, con foto, hora, lugar y precio.
+- ✅ **Locales verificados uno a uno**: discotecas, clubs, salas de conciertos y espacios de festivales de Barcelona, con fotos de su web oficial.
+- 🗺️ **Mapa de Barcelona** en 3D y en vista satélite.
+- 🎉 **Agenda**: fiestas, conciertos, sesiones DJ y festivales, con foto, hora, lugar y precio.
+- 🔎 **Filtros**: discotecas, clubs, conciertos, fiestas, festivales, eventos, por zona y por nombre.
 - 🎟️ **Comprar entradas** en un clic, cuando el evento las vende.
 - 🕐 **Horarios** de cada discoteca: abierto ahora o a qué hora abre.
 - 📸 **Comunidad**: fotos y vídeos de la noche, sigue a gente y a locales.
@@ -46,4 +48,4 @@ Descárgala, ábrela y listo. Gratis.
 - **Linux**: clic derecho sobre el archivo → *Propiedades* → *Permitir ejecutar*, y doble clic.
 - **Móvil**: con la app abierta en el ordenador, menú *ORIVEXY NIGHTS* → *Abrir en el móvil* y escanea el código.
 
-<div align="center"><sub>Datos oficiales abiertos del Ayuntamiento de Barcelona y de la Generalitat de Catalunya, © colaboradores de OpenStreetMap y ortofoto del ICGC.</sub></div>
+<div align="center"><sub>Información y fotos de la web oficial de cada local, ubicaciones © colaboradores de OpenStreetMap, agenda de Xceed y ortofoto del ICGC.</sub></div>

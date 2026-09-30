@@ -1,5 +1,5 @@
 import "server-only";
-import type { EventStatus, Prisma } from "@prisma/client";
+import type { EventStatus, Prisma, VenueType } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { db } from "../db";
 import { env } from "../env";
@@ -33,6 +33,12 @@ export interface EventQuery {
   maxPrice?: number;
   near?: LatLng & { radiusKm: number };
   venueId?: string;
+  /** Kinds of place (DISCO, CLUB…). */
+  venueTypes?: string[];
+  /** District of the place (zone). */
+  district?: string;
+  /** Free text over the event's title and its place's name. */
+  q?: string;
   organizerId?: string;
   featured?: boolean;
   excludeIds?: string[];
@@ -66,6 +72,10 @@ export function buildEventWhere(q: EventQuery, now = new Date()): Prisma.EventWh
   if (q.genres?.length) and.push({ genres: { some: { genre: { slug: { in: q.genres } } } } });
   if (q.maxPrice !== undefined) and.push({ priceMin: q.maxPrice === 0 ? 0 : { lte: q.maxPrice } });
   if (q.venueId) and.push({ venueId: q.venueId });
+  if (q.venueTypes?.length) and.push({ venue: { type: { in: q.venueTypes as VenueType[] } } });
+  if (q.district) and.push({ venue: { district: q.district } });
+  const text = q.q?.trim().slice(0, 80);
+  if (text) and.push({ OR: [{ title: { contains: text, mode: "insensitive" } }, { venue: { name: { contains: text, mode: "insensitive" } } }, { locationName: { contains: text, mode: "insensitive" } }] });
   if (q.organizerId) and.push({ organizerId: q.organizerId });
   if (q.featured) and.push({ isFeatured: true });
   if (q.excludeIds?.length) and.push({ id: { notIn: q.excludeIds } });

@@ -19,7 +19,7 @@ export function OpenStatus({ hours, tz, className }: { hours: Hours | null; tz: 
 
 export function OpeningHours({ hours, tz }: { hours: Hours | null; tz: string }) {
   const clean = sanitizeHours(hours);
-  if (!clean) return <p className="text-sm text-muted">Horario no disponible</p>;
+  if (!clean) return <p className="text-sm text-muted">Horario no publicado en su web oficial</p>;
   const today = todayKey(tz);
   return (
     <dl className="space-y-1.5 text-sm">

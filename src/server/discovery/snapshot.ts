@@ -6,7 +6,8 @@ import { withSnapshotReplay } from "./fetcher";
 import { runDueSources } from "./engine";
 
 /**
- * First launch of an installed app: fills the empty database from the
+ * First launch of an installed app (or first launch after an update that
+ * replaced every venue): fills the empty database from the
  * snapshot shipped with it (real public data recorded by CI when the app was
  * built), then schedules live syncs a couple of minutes later so everything
  * is refreshed from the Internet as soon as there is a connection.
@@ -14,7 +15,8 @@ import { runDueSources } from "./engine";
 export async function importSnapshotIfEmpty() {
   const dir = env.DISCOVERY_SNAPSHOT_DIR;
   if (!dir || !existsSync(dir)) return { skipped: "sin instantánea" };
-  if ((await db.venue.count()) > 0 || (await db.syncRun.count({ where: { job: "SNAPSHOT" } })) > 0) return { skipped: "ya importada" };
+  // Also after an update that replaced the whole list of places (the new app ships the new snapshot).
+  if ((await db.venue.count()) > 0) return { skipped: "ya importada" };
 
   const started = Date.now();
   const result = await withSnapshotReplay(dir, async () => ({
