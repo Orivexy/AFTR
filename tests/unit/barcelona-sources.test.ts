@@ -104,14 +104,40 @@ describe("Barcelona · espais de música i copes", () => {
   });
 });
 
-describe("nightlife-only filter", () => {
-  it("keeps parties always and concerts only at clubs", () => {
-    const venues = [{ id: "club", name: "Apolo", address: "", lat: 0, lng: 0, type: "CLUB" }, { id: "hall", name: "Palau", address: "", lat: 0, lng: 0, type: "OTHER" }];
-    expect(isNightlifeEvent({ category: "fm", venueId: null }, venues)).toBe(true);
+describe("club-only filter", () => {
+  it("keeps only events at discotecas", () => {
+    const venues = [{ id: "club", name: "Opium", address: "", lat: 0, lng: 0, type: "CLUB" }, { id: "bar", name: "Bar", address: "", lat: 0, lng: 0, type: "BAR" }];
     expect(isNightlifeEvent({ category: "concierto", venueId: "club" }, venues)).toBe(true);
-    expect(isNightlifeEvent({ category: "concierto", venueId: "hall" }, venues)).toBe(false);
-    expect(isNightlifeEvent({ category: "festival", venueId: null }, venues)).toBe(false);
     expect(isNightlifeEvent({ category: "concierto", venueId: null, venueName: "Sala Apolo" }, venues)).toBe(true);
-    expect(isNightlifeEvent({ category: "concierto", venueId: null, venueName: "Sala Gran del Teatre Nacional" }, venues)).toBe(false);
+    expect(isNightlifeEvent({ category: "dj", venueId: null, venueName: "Razzmatazz" }, venues)).toBe(true);
+    expect(isNightlifeEvent({ category: "fm", venueId: null, venueName: "Plaça del Sol" }, venues)).toBe(false);
+    expect(isNightlifeEvent({ category: "concierto", venueId: "bar" }, venues)).toBe(false);
+    expect(isNightlifeEvent({ category: "concierto", venueId: null, venueName: "Palau de la Música Catalana" }, venues)).toBe(false);
+    expect(isNightlifeEvent({ category: "festival", venueId: null, venueName: "Parc del Fòrum" }, venues)).toBe(false);
+  });
+});
+
+describe("Xceed agenda (schema.org pages)", async () => {
+  const { matchingLinks } = await import("@/server/discovery/connectors/jsonld");
+  const { jsonLdToEvents } = await import("@/server/discovery/parsers/jsonld");
+  const pattern = new RegExp("^https://xceed\\.me/es/barcelona/event/[^/]+/\\d+$");
+
+  it("follows only event links of the same site, once", () => {
+    const html = `<a href="/es/barcelona/event/humanos-x-nom/243900">a</a><a href="/es/barcelona/event/humanos-x-nom/243900?utm=x">dup</a>
+      <a href="/es/barcelona/club/opium">club</a><a href="https://other.example/es/barcelona/event/x/1">other</a><a href="/es/barcelona/event/voral/244904">b</a>`;
+    expect(matchingLinks(html, "https://xceed.me/es/barcelona/events", pattern, 10)).toEqual([
+      "https://xceed.me/es/barcelona/event/humanos-x-nom/243900",
+      "https://xceed.me/es/barcelona/event/voral/244904",
+    ]);
+  });
+
+  it("keeps only events at a NightClub and marks them as club nights", () => {
+    const nodes = [
+      { "@type": "Event", "@id": "https://xceed.me/event/1#event", name: "HUMANOS x NOM", startDate: "2026-10-18T23:30:00+02:00", location: { "@type": "NightClub", name: "SEASEACLUB" }, image: "https://images.xceed.me/a.jpg" },
+      { "@type": "Event", "@id": "https://xceed.me/event/2#event", name: "Open air", startDate: "2026-10-19T16:00:00+02:00", location: { "@type": "Place", name: "Parc" } },
+    ];
+    const events = jsonLdToEvents(nodes, "https://xceed.me/es/barcelona/events", "Europe/Madrid", { nightClubsOnly: true });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ title: "HUMANOS x NOM", categoryHint: "discoteca", place: { name: "SEASEACLUB" }, imageUrls: ["https://images.xceed.me/a.jpg"] });
   });
 });

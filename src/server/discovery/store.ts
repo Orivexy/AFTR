@@ -60,21 +60,20 @@ export interface VenueCandidate {
 }
 
 /**
- * Nightlife filter for broad agendas (config.nightlifeOnly): parties and
- * festes majors always; concerts and festivals only when they happen at a
- * club, music bar or live-music room — never opera, classical halls,
- * theatres or restaurants.
+ * Club filter for broad agendas (config.nightlifeOnly): only events at a
+ * discoteca — club nights and DJ sessions, or anything happening at a club
+ * (mapped venue of type CLUB, or a well-known club name). Concerts in halls,
+ * festivals, popular fiestas, opera, theatre and restaurants are left out.
  */
-export const NIGHTLIFE_VENUE_TYPES = ["CLUB", "BAR", "CONCERT_HALL"];
-/** Club and live-music room names ("Sala Apolo", "Razzmatazz", "Jamboree"…) when the place is not on the map yet. */
-const NIGHTLIFE_PLACE = /\b(sala|club|disco|discoteca|razzmatazz|apolo|bikini|jamboree|sidecar|upload|input|pacha|opium|sh[oô]ko|macarena|moog|marula|laut|luz de gas|paral·lel 62|garaje beat|wolf|salamandra|vol|meteoro|heliogàbal|begood|siroco)\b/i;
-const NOT_A_CLUB = /\b(teatre|teatro|auditori|palau|museu|museo|biblioteca|església|iglesia|bas[ií]lica|centre c[ií]vic|casal)\b/i;
+export const NIGHTLIFE_VENUE_TYPES = ["CLUB"];
+const CLUB_NAME = /\b(discoteca|disco|club|nightclub|razzmatazz|apolo|bikini|pacha|opium|sh[oô]ko|sutton|input|otto zutz|macarena|moog|marula|jamboree|sidecar|terrrazza|city hall|catwalk|carpe diem|cdlc|eclipse|hyde|bling bling|wolf|upload|luz de gas|twenty two|la biblio|boujee|sala b)\b/i;
+const NOT_A_CLUB = /\b(teatre|teatro|auditori|palau|museu|museo|biblioteca p[uú]blica|església|iglesia|bas[ií]lica|centre c[ií]vic|casal|escola|golf|tennis|esport)\b/i;
 export function isNightlifeEvent(n: Pick<NormalizedEvent, "category" | "venueId"> & Partial<Pick<NormalizedEvent, "venueName" | "locationName">>, venues: VenueCandidate[]): boolean {
-  if (["fm", "fiesta", "dj", "discoteca"].includes(n.category)) return true;
   const venue = n.venueId ? venues.find((v) => v.id === n.venueId) : null;
   if (venue?.type && NIGHTLIFE_VENUE_TYPES.includes(venue.type)) return true;
   const place = n.venueName ?? n.locationName ?? "";
-  return NIGHTLIFE_PLACE.test(place) && !NOT_A_CLUB.test(place);
+  if (NOT_A_CLUB.test(place)) return false;
+  return CLUB_NAME.test(place) || (["discoteca", "dj"].includes(n.category) && Boolean(place));
 }
 
 export function loadCityVenues(cityId: string): Promise<VenueCandidate[]> {

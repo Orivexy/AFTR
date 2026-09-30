@@ -4,33 +4,85 @@ import { extractJsonLdBlocks, flattenNodes, jsonLdToEvents, jsonLdToVenues } fro
 import type { Connector, SourceContext } from "../types";
 
 /**
- * Official club/promoter pages that publish schema.org structured data.
- * Only the configured pages are read (no crawling), robots.txt is honoured.
- * config: { pages?: string[] } — defaults to the source URL.
+ * Pages that publish schema.org structured data (the data sites publish for
+ * search engines): official club/promoter pages or ticketing agendas.
+ * robots.txt is honoured and requests are throttled per host.
+ * config:
+ *   pages?: string[]           extra pages (default: the source URL)
+ *   followLinks?: { pattern, max }  also read the event pages linked from
+ *                              those pages whose absolute URL matches `pattern`
+ *   nightClubsOnly?: boolean   keep only events located at a NightClub
  */
+type Config = { pages?: unknown; followLinks?: { pattern?: unknown; max?: unknown }; nightClubsOnly?: unknown };
+
 function pages(ctx: SourceContext): string[] {
-  const extra = Array.isArray(ctx.config.pages) ? (ctx.config.pages as unknown[]).filter((p): p is string => typeof p === "string") : [];
+  const cfg = ctx.config as Config;
+  const extra = Array.isArray(cfg.pages) ? cfg.pages.filter((p): p is string => typeof p === "string") : [];
   return [...new Set([ctx.url, ...extra].filter((p): p is string => Boolean(p)))].slice(0, 10);
 }
 
+/** Absolute links of a page matching the pattern (same site only), in page order. */
+export function matchingLinks(html: string, pageUrl: string, pattern: RegExp, max: number): string[] {
+  const base = new URL(pageUrl);
+  const out: string[] = [];
+  for (const m of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
+    let u: URL;
+    try {
+      u = new URL(m[1]!, base);
+    } catch {
+      continue;
+    }
+    if (u.host !== base.host) continue;
+    const href = `${u.origin}${u.pathname}`;
+    if (pattern.test(href) && !out.includes(href)) out.push(href);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 async function nodes(ctx: SourceContext) {
+  const cfg = ctx.config as Config;
+  const follow = cfg.followLinks && typeof cfg.followLinks.pattern === "string" ? new RegExp(cfg.followLinks.pattern) : null;
+  const maxFollow = Math.min(Number(cfg.followLinks?.max) || 40, 120);
   const out: Array<{ page: string; nodes: ReturnType<typeof flattenNodes> }> = [];
-  for (const page of pages(ctx)) {
+  const seen = new Set<string>();
+  const read = async (page: string) => {
+    if (seen.has(page)) return "";
+    seen.add(page);
     const html = await fetchText(page, { accept: "text/html", respectRobots: true });
-    const found = flattenNodes(extractJsonLdBlocks(html));
-    ctx.log(`${page}: ${found.length} nodos JSON-LD`);
-    out.push({ page, nodes: found });
+    out.push({ page, nodes: flattenNodes(extractJsonLdBlocks(html)) });
+    return html;
+  };
+  for (const page of pages(ctx)) {
+    const html = await read(page);
+    if (!follow) continue;
+    const links = matchingLinks(html, page, follow, maxFollow);
+    ctx.log(`${page}: ${links.length} páginas de evento enlazadas`);
+    for (const link of links) {
+      try {
+        await read(link);
+      } catch (err) {
+        ctx.log(`${link}: ${(err as Error).message}`);
+      }
+    }
   }
   if (!out.length) throw new Error("La fuente necesita al menos una URL");
   return out;
 }
 
 export const jsonLdConnector: Connector = {
-  label: "Web oficial con datos estructurados (schema.org)",
+  label: "Web con datos estructurados (schema.org)",
   async fetchEvents(ctx) {
-    return (await nodes(ctx)).flatMap(({ page, nodes }) => jsonLdToEvents(nodes, page, ctx.city.timezone));
+    const nightClubsOnly = (ctx.config as Config).nightClubsOnly === true;
+    const all = (await nodes(ctx)).flatMap(({ page, nodes }) => jsonLdToEvents(nodes, page, ctx.city.timezone, { nightClubsOnly }));
+    // The same event can appear on the list page and on its own page.
+    const unique = [...new Map(all.map((e) => [e.externalId, e])).values()];
+    ctx.log(`${unique.length} eventos${nightClubsOnly ? " en discotecas" : ""}`);
+    return unique;
   },
   async fetchVenues(ctx) {
+    // Ticketing agendas (followLinks) are read once, for their events.
+    if ((ctx.config as Config).followLinks) return [];
     return (await nodes(ctx)).flatMap(({ page, nodes }) => jsonLdToVenues(nodes, page));
   },
 };

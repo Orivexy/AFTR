@@ -114,6 +114,7 @@ export function detectCategory(title: string, hint: string | null | undefined, a
   if (/\b(festival|fest)\b/.test(t)) return "festival";
   if (/\b(concierto|concert|en directo|live|gira|tour)\b/.test(t)) return "concierto";
   if (/\b(dj set|dj)\b/.test(t)) return "dj";
+  if (/\b(discoteca|nightclub)\b/.test(normalizeSearch(hint ?? ""))) return "discoteca";
   return atVenue ? "discoteca" : "fiesta";
 }
 

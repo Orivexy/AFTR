@@ -152,7 +152,7 @@ export function EventForm({ mode, eventId, citySlug, cityName, venues, mapConfig
       </div>
 
       <Field label="Título" htmlFor="title" error={errors.title}>
-        <Input id="title" value={v.title} onChange={(e) => set("title", e.target.value)} maxLength={80} placeholder="FM GRÀCIA" required />
+        <Input id="title" value={v.title} onChange={(e) => set("title", e.target.value)} maxLength={80} placeholder="TECHNO NIGHT" required />
       </Field>
 
       <Field label="Categoría" error={errors.category}>

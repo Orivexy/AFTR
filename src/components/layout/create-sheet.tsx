@@ -7,7 +7,7 @@ import { Sheet } from "@/components/ui/sheet";
 const OPTIONS = [
   { href: "/create/post?type=video", icon: Clapperboard, title: "Publicar vídeo", text: "Hasta 90 s de la pista, el DJ o el after" },
   { href: "/create/post?type=photo", icon: Camera, title: "Publicar foto", text: "Una foto o un carrusel de la noche" },
-  { href: "/events/new", icon: CalendarPlus, title: "Crear evento", text: "Una fiesta, una FM, una sesión…" },
+  { href: "/events/new", icon: CalendarPlus, title: "Crear evento", text: "Una fiesta, una sesión de DJ, una noche de club…" },
 ];
 
 export function CreateSheet({ open, onClose }: { open: boolean; onClose: () => void }) {

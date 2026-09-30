@@ -204,6 +204,11 @@ async function processEvent(
   // anything imported earlier that no longer fits is hidden as "missing".
   if ((source.config as { nightlifeOnly?: boolean } | null)?.nightlifeOnly && !isNightlifeEvent(n, venues)) {
     c.skipped++;
+    // Imported earlier under a wider filter: hidden right away.
+    if (existing?.eventId) {
+      const { count } = await db.event.updateMany({ where: { id: existing.eventId, primarySourceId: source.id, source: "IMPORT", status: "PUBLISHED" }, data: { status: "INACTIVE" } });
+      if (count) c.deactivated++;
+    }
     return;
   }
   if (isExpired(n, now)) {

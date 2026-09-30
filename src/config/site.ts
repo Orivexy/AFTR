@@ -9,7 +9,7 @@ export const site = {
   slug: "nightly",
   tagline: "Qué pasa esta noche",
   description:
-    "Descubre fiestas, discotecas, FM y eventos cerca de ti. Mira qué hay hoy, decide a dónde ir y comparte la noche.",
+    "Descubre las discotecas de Barcelona y sus fiestas. Mira qué hay hoy, decide a dónde ir y comparte la noche.",
   defaultCitySlug: "barcelona",
   locale: "es-ES",
 } as const;

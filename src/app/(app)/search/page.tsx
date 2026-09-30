@@ -15,7 +15,7 @@ import { GENRES } from "@/config/taxonomy";
 
 export const metadata: Metadata = { title: "Buscar" };
 
-const SUGGESTIONS = ["Gràcia", "Poblenou", "Techno", "Reggaeton", "FM", "Gratis", "House", "Sala"];
+const SUGGESTIONS = ["Gràcia", "Poblenou", "Techno", "Reggaeton", "Gratis", "House", "Razzmatazz", "Apolo"];
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; lat?: string; lng?: string }> }) {
   const { q = "", lat, lng } = await searchParams;

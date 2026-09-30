@@ -30,9 +30,9 @@ const bridge = () => (typeof window === "undefined" ? null : ((window as unknown
 
 /**
  * The desktop app's window, in the style of a macOS app: unified title bar
- * with traffic lights, back/forward and a search field; translucent sidebar
- * with grouped sections. On the Mac the traffic lights are the native ones;
- * on Windows and Linux they are drawn here and drive the real window.
+ * with back/forward and a search field; translucent sidebar with grouped
+ * sections. Window buttons are the platform's own: native traffic lights on
+ * the Mac, Windows-style minimize/maximize/close on the right elsewhere.
  */
 export function MacShell({ platform, cities, city, children }: { platform: DesktopPlatform; cities: CityOption[]; city: CityOption; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -86,8 +86,9 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
   return (
     <div className="mac-ui">
       {/* Unified title bar */}
-      <header className="mac-titlebar fixed inset-x-0 top-0 z-50 flex h-[var(--mac-titlebar)] items-center gap-2 border-b border-white/[0.07] pr-3">
-        <div className={cn("flex h-full shrink-0 items-center", nativeLights ? "w-[84px]" : "w-auto pl-4")}>{platform !== "mac" && <TrafficLights fullscreen={fullscreen} />}</div>
+      <header className={cn("mac-titlebar fixed inset-x-0 top-0 z-50 flex h-[var(--mac-titlebar)] items-center gap-2 border-b border-white/[0.07]", platform === "mac" ? "pr-3" : "pr-0")}>
+        {/* Mac: room for the native traffic lights. Windows/Linux: their own controls, on the right. */}
+        <div className={cn("flex h-full shrink-0 items-center", nativeLights ? "w-[84px]" : "w-2")} />
         <div className="mac-no-drag flex items-center gap-0.5">
           <button onClick={() => router.back()} aria-label="Atrás" className="mac-tool">
             <ChevronLeft className="size-[18px]" />
@@ -98,7 +99,7 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
         </div>
         <Link href="/search" className="mac-no-drag mac-search mx-auto flex h-7 w-full max-w-[420px] items-center gap-2 rounded-[7px] px-2.5 text-[13px] text-white/45">
           <Search className="size-3.5" />
-          Buscar discotecas, fiestas, FM…
+          Buscar discotecas y fiestas…
         </Link>
         <div className="mac-no-drag flex items-center gap-1">
           <CityPicker cities={cities} current={city} className="mac-city" labelClassName="max-lg:hidden" />
@@ -116,6 +117,7 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
             </Link>
           )}
         </div>
+        {platform !== "mac" && <WindowControls fullscreen={fullscreen} />}
       </header>
 
       {/* Sidebar */}
@@ -153,19 +155,31 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
   );
 }
 
-function TrafficLights({ fullscreen }: { fullscreen: boolean }) {
+/** Windows/Linux window buttons (minimize, maximize/restore, close), in the native Windows style. */
+function WindowControls({ fullscreen }: { fullscreen: boolean }) {
+  const [maximized, setMaximized] = useState(false);
+  useEffect(() => {
+    const b = bridge();
+    if (!b) return;
+    void b.state().then((st) => setMaximized(st.maximized));
+    return b.onState((st) => setMaximized(st.maximized));
+  }, []);
   const b = bridge();
   if (!b) return null;
   return (
-    <div className="mac-lights mac-no-drag flex items-center gap-2" role="group" aria-label="Ventana">
-      <button onClick={() => void b.close()} aria-label="Cerrar" className="mac-light bg-[#ff5f57]">
-        <svg viewBox="0 0 12 12"><path d="M3.5 3.5l5 5M8.5 3.5l-5 5" /></svg>
+    <div className="mac-no-drag ml-2 flex h-full items-stretch" role="group" aria-label="Ventana">
+      <button onClick={() => void b.minimize()} aria-label="Minimizar" className="win-control">
+        <svg viewBox="0 0 10 10"><path d="M0 5h10" /></svg>
       </button>
-      <button onClick={() => void (fullscreen ? b.toggleFullScreen() : b.minimize())} aria-label="Minimizar" className="mac-light bg-[#febc2e]">
-        <svg viewBox="0 0 12 12"><path d="M3 6h6" /></svg>
+      <button onClick={() => void (fullscreen ? b.toggleFullScreen() : b.toggleMaximize())} aria-label={fullscreen ? "Salir de pantalla completa" : maximized ? "Restaurar" : "Maximizar"} className="win-control">
+        {fullscreen || maximized ? (
+          <svg viewBox="0 0 10 10"><path d="M2 0.5h7.5V8M0.5 2h7.5v7.5H0.5z" /></svg>
+        ) : (
+          <svg viewBox="0 0 10 10"><path d="M0.5 0.5h9v9h-9z" /></svg>
+        )}
       </button>
-      <button onClick={() => void b.toggleFullScreen()} aria-label={fullscreen ? "Salir de pantalla completa" : "Pantalla completa"} className="mac-light bg-[#28c840]">
-        <svg viewBox="0 0 12 12">{fullscreen ? <path d="M7 2.5v2.5h2.5M5 9.5V7H2.5" /> : <path d="M3 5.5V3h2.5M9 6.5V9H6.5" />}</svg>
+      <button onClick={() => void b.close()} aria-label="Cerrar" className="win-control win-close">
+        <svg viewBox="0 0 10 10"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" /></svg>
       </button>
     </div>
   );

@@ -105,9 +105,16 @@ function offers(v: unknown): { min: number | null; max: number | null; currency:
   };
 }
 
-export function jsonLdToEvents(nodes: Json[], pageUrl: string, defaultTz: string): ExternalEvent[] {
+const atNightClub = (o: Json) => {
+  const loc = (Array.isArray(o.location) ? o.location[0] : o.location) as Json | undefined;
+  return Boolean(loc && typeof loc === "object" && types(loc).includes("NightClub"));
+};
+
+/** Events of the page; `nightClubsOnly` keeps those whose location is a schema.org NightClub. */
+export function jsonLdToEvents(nodes: Json[], pageUrl: string, defaultTz: string, opts: { nightClubsOnly?: boolean } = {}): ExternalEvent[] {
   return nodes
     .filter((o) => types(o).some((t) => EVENT_TYPES.has(t)))
+    .filter((o) => !opts.nightClubsOnly || atNightClub(o))
     .map((o) => {
       const off = offers(o.offers);
       const url = str(o.url);
@@ -133,7 +140,7 @@ export function jsonLdToEvents(nodes: Json[], pageUrl: string, defaultTz: string
         genres: [o.genre, (o as Json).keywords].flat().filter((g): g is string => typeof g === "string").flatMap((g) => g.split(",")),
         imageUrls: imageUrls(o.image),
         cancelled: String(o.eventStatus ?? "").includes("EventCancelled"),
-        categoryHint: types(o).find((t) => EVENT_TYPES.has(t)) ?? null,
+        categoryHint: atNightClub(o) ? "discoteca" : (types(o).find((t) => EVENT_TYPES.has(t)) ?? null),
       } satisfies ExternalEvent;
     });
 }

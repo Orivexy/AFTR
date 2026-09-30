@@ -56,6 +56,17 @@ async function main() {
       update: {},
     });
     if (city.slug === "barcelona") {
+      // Club nights from Xceed's public agenda (schema.org data it publishes for search engines; robots.txt allows it).
+      await db.discoverySource.upsert({
+        where: { key: "xceed-barcelona-clubs" },
+        create: {
+          key: "xceed-barcelona-clubs", name: "Xceed · fiestas en discotecas de Barcelona", type: "JSON_LD_PAGE", cityId: city.id, trust: "IMPORTED",
+          enabled: discoveryEnabledFor(city.slug), autoPublish: true, allowImages: true, syncIntervalMin: 12 * 60,
+          url: "https://xceed.me/es/barcelona/events",
+          config: { followLinks: { pattern: "^https://xceed\\.me/es/barcelona/event/[^/]+/\\d+$", max: 60 }, nightClubsOnly: true },
+        },
+        update: {},
+      });
       // Official open data, no key: city council venues (weekly) and the Generalitat agenda (daily).
       await db.discoverySource.upsert({
         where: { key: "bcn-open-data-music-venues" },
@@ -69,7 +80,7 @@ async function main() {
         where: { key: "catalonia-agenda-bcn" },
         create: {
           key: "catalonia-agenda-bcn", name: "Agenda cultural de Catalunya · conciertos, festivales y fiestas de Barcelona", type: "CATALONIA_AGENDA", cityId: city.id, trust: "IMPORTED",
-          // Official photos of the public agenda; only parties, festes majors and club nights.
+          // Official photos of the public agenda; only events at discotecas.
           enabled: discoveryEnabledFor(city.slug), autoPublish: true, allowImages: true, syncIntervalMin: 6 * 60, config: { nightlifeOnly: true },
         },
         update: {},
@@ -81,7 +92,7 @@ async function main() {
       where: { key: `ticketmaster-${short}-music` },
       create: {
         key: `ticketmaster-${short}-music`, name: `Ticketmaster · música en ${city.name}`, type: "TICKETMASTER", cityId: city.id, trust: "IMPORTED",
-        enabled: discoveryEnabledFor(city.slug), autoPublish: true, config: { classificationName: "music", maxPages: 3 },
+        enabled: discoveryEnabledFor(city.slug), autoPublish: true, config: { classificationName: "music", maxPages: 3, nightlifeOnly: true },
       },
       update: {},
     });

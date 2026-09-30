@@ -22,7 +22,6 @@ const QUICK = [
   { label: "Hoy", href: "/discover?when=today" },
   { label: "Este finde", href: "/discover?when=weekend" },
   { label: "Gratis", href: "/discover?price=free" },
-  { label: "FM", href: "/discover?category=fm" },
   { label: "Techno", href: "/discover?genre=techno" },
   { label: "Reggaeton", href: "/discover?genre=reggaeton" },
   { label: "House", href: "/discover?genre=house" },

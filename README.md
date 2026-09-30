@@ -4,7 +4,7 @@
 
 # ORIVEXY NIGHTS
 
-**Qué pasa esta noche en Barcelona: discotecas, fiestas y FM en un mapa.**
+**Qué pasa esta noche en las discotecas de Barcelona.**
 
 <a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/ORIVEXY-NIGHTS-Windows.exe"><img src="https://img.shields.io/badge/Windows-Descargar-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar para Windows" height="48" /></a>
 &nbsp;
@@ -33,7 +33,7 @@ Descárgala, ábrela y listo. Gratis.
 ## Qué tiene
 
 - 🗺️ **Mapa de Barcelona** con todas las discotecas, en 3D y en vista satélite.
-- 🎉 **Fiestas y FM** de cada día, con foto, hora, lugar y precio.
+- 🎉 **Fiestas de discoteca** de cada día, con foto, hora, lugar y precio.
 - 🎟️ **Comprar entradas** en un clic, cuando el evento las vende.
 - 🕐 **Horarios** de cada discoteca: abierto ahora o a qué hora abre.
 - 📸 **Comunidad**: fotos y vídeos de la noche, sigue a gente y a locales.
