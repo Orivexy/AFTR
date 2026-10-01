@@ -353,6 +353,8 @@ export interface DueRunResult {
   ok: number;
   failed: number;
   errors: string[];
+  /** Sources not run (busy, or missing configuration). */
+  skipped?: string[];
 }
 
 /**
@@ -379,7 +381,10 @@ export async function runDueSources(kind: "events" | "venues", opts: { force?: b
     );
     for (const s of due) {
       const r = await syncSource(s.id, { mode: opts.mode, job: opts.job });
-      if ("skipped" in r) continue;
+      if ("skipped" in r) {
+        (result.skipped ??= []).push(`${s.name}: ${r.reason ?? "ocupada"}`);
+        continue;
+      }
       result.ran++;
       if (r.error) {
         result.failed++;

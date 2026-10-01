@@ -25,5 +25,6 @@ export async function importSnapshotIfEmpty() {
   }));
   await db.discoverySource.updateMany({ where: { enabled: true }, data: { nextSyncAt: new Date(Date.now() + 2 * 60_000) } });
   const [venues, events] = await Promise.all([db.venue.count(), db.event.count({ where: { status: "PUBLISHED" } })]);
-  return { ms: Date.now() - started, venues, events, sources: result.venues.ok + result.events.ok };
+  const errors = [...result.venues.errors, ...result.events.errors, ...(result.venues.skipped ?? []), ...(result.events.skipped ?? [])];
+  return { ms: Date.now() - started, venues, events, sources: result.venues.ok + result.events.ok, ...(errors.length ? { errors } : {}) };
 }
