@@ -273,6 +273,7 @@ async function processEvent(
   if (!source.autoPublish) issues.push("Fuente con revisión manual");
 
   if (issues.length) {
+    if (!existing) log(`En revisión «${n.title.slice(0, 60)}» (${n.locationName ?? "?"}): ${issues.join(", ")}`);
     await upsertRecord(source.id, item.externalId, { ...recordData, eventId: null, reviewStatus: "PENDING", reviewReasons: issues, duplicateOfId, matchScore: match?.score ?? null });
     if (!existing) c.queued++;
     return;
