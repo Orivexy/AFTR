@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MarkerClusters } from "../clusters";
-import type { MapMarker, MapProviderProps } from "../types";
+import { BARCELONA_BOUNDS, MIN_ZOOM, type MapMarker, type MapProviderProps } from "../types";
 import { clusterHtml, isPlace, markerHtml } from "../marker-html";
 
 /**
@@ -89,6 +89,9 @@ export default function LeafletMap({
         zoom,
         zoomControl: false,
         attributionControl: true,
+        minZoom: MIN_ZOOM,
+        maxBounds: [[BARCELONA_BOUNDS[0][1], BARCELONA_BOUNDS[0][0]], [BARCELONA_BOUNDS[1][1], BARCELONA_BOUNDS[1][0]]],
+        maxBoundsViscosity: 1,
         dragging: interactive,
         scrollWheelZoom: interactive && wheelZoom !== false,
         doubleClickZoom: interactive,

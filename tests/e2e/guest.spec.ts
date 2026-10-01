@@ -2,12 +2,10 @@ import { expect, test } from "@playwright/test";
 import { TONIGHT, TOMORROW, VENUE } from "./helpers";
 
 test.describe("guest browsing", () => {
-  test("home shows the map and the next parties", async ({ page }) => {
+  test("home shows the map", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: /¿A qué discoteca vas\?/ })).toBeVisible();
     await expect(page.getByRole("application", { name: "Mapa" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Próximas fiestas" })).toBeVisible();
-    await expect(page.getByText(TONIGHT.title).first()).toBeVisible();
     await expect(page.getByText(/Esta noche · Barcelona/i)).toBeVisible();
   });
 
@@ -26,34 +24,11 @@ test.describe("guest browsing", () => {
     await expect(page.getByRole("link", { name: "Gestionar ficha" })).toHaveCount(0);
   });
 
-  test("nightlife filters and search by name", async ({ page }) => {
-    await page.goto("/venues?tipo=clubs");
-    await expect(page.getByRole("heading", { level: 1, name: "Ocio nocturno" })).toBeVisible();
-    await expect(page.getByText(VENUE.name).first()).toBeVisible();
-    await page.goto("/venues?tipo=discotecas");
-    await expect(page.getByText("Ningún lugar con estos filtros")).toBeVisible();
-    await page.goto("/venues");
-    await page.getByRole("textbox", { name: "Buscar por nombre" }).fill("prueba");
-    await page.getByRole("button", { name: "Buscar", exact: true }).click();
-    await expect(page).toHaveURL(/q=prueba/);
-    await expect(page.getByText(VENUE.name).first()).toBeVisible();
-    await page.goto("/events?tipo=conciertos&q=zzzz");
-    await expect(page.getByText("No hay eventos con estos filtros")).toBeVisible();
-  });
-
-  test("discover filters work with real data", async ({ page }) => {
-    await page.goto("/discover");
-    await page.getByRole("button", { name: "Gratis" }).click();
-    await expect(page).toHaveURL(/price=free/);
-    await expect(page.getByText(TONIGHT.title).first()).toBeVisible();
-    await expect(page.getByText(TOMORROW.title)).toHaveCount(0);
-
-    await page.goto("/discover?category=concierto");
-    await expect(page.getByText(TOMORROW.title).first()).toBeVisible();
-    await expect(page.getByText(TONIGHT.title)).toHaveCount(0);
-
-    await page.goto("/discover?date=2031-01-15");
-    await expect(page.getByText("No hay eventos disponibles para esta fecha.")).toBeVisible();
+  test("event and club lists open the map", async ({ page }) => {
+    for (const path of ["/events", "/venues", "/discover"]) {
+      await page.goto(path);
+      await expect(page).toHaveURL(/\/map$/);
+    }
   });
 
   test("map shows the venue", async ({ page }) => {

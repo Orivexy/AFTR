@@ -54,3 +54,7 @@ export interface MapProviderProps {
   recenterKey?: number;
   className?: string;
 }
+
+/** The map stays on Barcelona (with its edge: L'Hospitalet, Montjuïc, the Fòrum). [[west, south], [east, north]] */
+export const BARCELONA_BOUNDS: [[number, number], [number, number]] = [[2.04, 41.3], [2.26, 41.48]];
+export const MIN_ZOOM = 11;

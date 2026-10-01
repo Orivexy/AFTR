@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { MarkerClusters } from "../clusters";
 import { clusterHtml, isPlace, markerHtml } from "../marker-html";
 import { nightStyle, satelliteVisibility, withSatellite, type StyleJson } from "../night-style";
-import type { MapMarker, MapProviderProps } from "../types";
+import { BARCELONA_BOUNDS, MIN_ZOOM, type MapMarker, type MapProviderProps } from "../types";
 
 /**
  * MapProvider: MapLibre GL renderer with vector tiles (OpenFreeMap, no key).
@@ -154,6 +154,8 @@ function VectorMap({
           center: [center.lng, center.lat],
           zoom: zoom - GL_OFFSET,
           maxZoom: config.maxZoom - GL_OFFSET + 1,
+          minZoom: MIN_ZOOM - GL_OFFSET,
+          maxBounds: BARCELONA_BOUNDS,
           interactive,
           scrollZoom: interactive && wheelZoom !== false,
           cooperativeGestures: false,
@@ -180,6 +182,10 @@ function VectorMap({
           m.on("moveend", () => renderRef.current());
         }
         map.current = m;
+        // Credits stay one tap away (ⓘ), folded so they do not cover the map.
+        const attrib = el.current.querySelector(".maplibregl-ctrl-attrib");
+        attrib?.classList.remove("maplibregl-compact-show");
+        attrib?.removeAttribute("open");
         frame(m);
         m.once("load", () => applySatellite());
         renderRef.current();
