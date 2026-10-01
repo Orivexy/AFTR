@@ -5,7 +5,7 @@ import { env } from "../../env";
 import { processImage, deleteImage } from "../../media/image";
 import { buildSearchText } from "@/lib/text";
 import { distanceKm } from "@/lib/geo";
-import { fetchBytes, fetchJson, fetchText } from "../fetcher";
+import { fetchBytes, fetchJson, fetchText, isReplaying } from "../fetcher";
 import { extractJsonLdBlocks, flattenNodes, jsonLdToEvents } from "../parsers/jsonld";
 import { officialSiteInfo, pagePhotos, type OfficialSiteInfo } from "../parsers/official-site";
 import { discoveryUserId } from "../store";
@@ -64,13 +64,18 @@ let lastNominatim = 0;
 async function locate(v: CuratedVenue, ctx: SourceContext): Promise<Located | null> {
   const municipality = v.municipality ?? "Barcelona";
   const d = 0.2;
-  const queries = [...new Set([v.geocodeQuery, `${v.address}, ${municipality}`].filter((q): q is string => Boolean(q)))];
-  for (const q of queries) {
+  const free = [...new Set([v.geocodeQuery, `${v.address}, ${municipality}`].filter((q): q is string => Boolean(q)))];
+  // Last try: structured search (street + number + town), stricter than free text.
+  const m = v.address.match(/^(.*?),\s*(\d+)/);
+  const queries: Array<Record<string, string>> = [...free.map((q) => ({ q })), ...(m ? [{ street: `${m[2]} ${m[1]}`, city: municipality }] : [])];
+  for (const query of queries) {
+    const q = Object.values(query).join(", ");
+    // Nominatim's policy: at most 1 request per second (not needed when replaying the bundled copy).
     const wait = lastNominatim + 1100 - Date.now();
-    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    if (wait > 0 && !isReplaying()) await new Promise((r) => setTimeout(r, wait));
     lastNominatim = Date.now();
     const params = new URLSearchParams({
-      q,
+      ...query,
       format: "jsonv2",
       limit: "5",
       addressdetails: "1",

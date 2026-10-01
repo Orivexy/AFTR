@@ -50,5 +50,19 @@ export async function applyZoneHints(venueId: string): Promise<number> {
     await db.photo.update({ where: { id: p.id }, data: { zone: h.zone, zoneScore: h.score } });
     n++;
   }
+  await preferPlaceCover(venueId);
   return n;
+}
+
+/**
+ * The cover should show the place itself: when the current cover is a photo
+ * the model did not recognise as any part of a venue (often a logo or a
+ * flyer), use the first photo that shows one.
+ */
+async function preferPlaceCover(venueId: string) {
+  const venue = await db.venue.findUnique({ where: { id: venueId }, select: { coverKey: true } });
+  const cover = venue?.coverKey ? await db.photo.findUnique({ where: { key: venue.coverKey }, select: { zone: true } }) : null;
+  if (cover?.zone) return;
+  const best = await db.photo.findFirst({ where: { venueId, zone: { not: null }, status: "VISIBLE" }, orderBy: { position: "asc" }, select: { key: true } });
+  if (best && best.key !== venue?.coverKey) await db.venue.update({ where: { id: venueId }, data: { coverKey: best.key } });
 }

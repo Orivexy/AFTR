@@ -82,6 +82,9 @@ export function withSnapshotReplay<T>(dir: string, fn: () => Promise<T>): Promis
   return replayContext.run(dir, fn);
 }
 
+/** True while replaying a snapshot (no real requests: rate limits do not apply). */
+export const isReplaying = () => Boolean(replayContext.getStore());
+
 function recordSnapshot(key: string, method: string, url: string, contentType: string, body: Buffer) {
   const dir = process.env.DISCOVERY_SNAPSHOT_RECORD;
   if (!dir) return;
@@ -97,6 +100,20 @@ const samePath = (a: string, b: string) => {
   return x.origin === y.origin && x.pathname === y.pathname;
 };
 
+// Recordings of a snapshot folder, read once (a replay asks for hundreds of files).
+const indexes = new Map<string, Array<{ k: string; meta: SnapshotMeta }>>();
+function snapshotIndex(dir: string) {
+  let index = indexes.get(dir);
+  if (!index) {
+    index = readdirSync(dir)
+      .filter((f) => f.endsWith(".json") && f !== "zones.json")
+      .map((f) => ({ k: f.slice(0, -5), meta: JSON.parse(readFileSync(path.join(dir, f), "utf8")) as SnapshotMeta }))
+      .filter(({ meta }) => typeof meta?.url === "string");
+    indexes.set(dir, index);
+  }
+  return index;
+}
+
 /**
  * Exact request first. A GET whose query changes from day to day (e.g. a
  * "from today" filter) falls back to the only recording of the same path;
@@ -111,10 +128,7 @@ function replaySnapshot(dir: string, key: string, method: string, rawUrl: string
     return load(key);
   } catch {
     if (method === "GET") {
-      const candidates = readdirSync(dir)
-        .filter((f) => f.endsWith(".json"))
-        .map((f) => ({ k: f.slice(0, -5), meta: JSON.parse(readFileSync(path.join(dir, f), "utf8")) as SnapshotMeta }))
-        .filter(({ meta }) => (meta.method ?? "GET") === "GET" && samePath(meta.url, rawUrl));
+      const candidates = snapshotIndex(dir).filter(({ meta }) => (meta.method ?? "GET") === "GET" && samePath(meta.url, rawUrl));
       if (candidates.length === 1) return load(candidates[0]!.k);
     }
     throw new FetchError(`Sin copia guardada de ${new URL(rawUrl).host}`);

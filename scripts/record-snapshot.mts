@@ -34,6 +34,9 @@ async function run(s: (typeof sources)[number], attempt: number) {
   } else {
     ok++;
     console.log(`  ✓ ${s.name} (${secs} s): ${r.counters.found} encontrados, ${r.counters.created} nuevos`);
+    // The run's own notes (skipped items, pages read, missing photos…) for the CI log.
+    const log = (await db.syncRun.findUnique({ where: { id: r.runId }, select: { log: true } }))?.log ?? "";
+    for (const line of log.split("\n").filter(Boolean).slice(0, 80)) console.log(`      ${line}`);
   }
   return true;
 }

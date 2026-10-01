@@ -146,6 +146,11 @@ jobs:
               sleep 1
             done
           fi
+          # Screenshots show the whole first-launch data: wait for the import to finish.
+          for i in $(seq 1 240); do
+            find ~/.config -name "orivexy-nights.log" -exec grep -q "Datos iniciales" {} \; -print | grep -q . && break
+            sleep 1
+          done
           find ~/.config -name "orivexy-nights.log" -exec grep -h "Datos iniciales\|Listo en" {} \;
       # Real screenshots of the running app (first launch data, live map) for the README and the release.
       - name: Screenshots
