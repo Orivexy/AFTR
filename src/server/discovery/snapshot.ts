@@ -13,15 +13,19 @@ import { setSnapshotImporting } from "./import-state";
  * built), then schedules live syncs a couple of minutes later so everything
  * is refreshed from the Internet as soon as there is a connection.
  */
+// If the import is requested twice (e.g. a retry), the second call waits for the first.
+let inFlight: Promise<Awaited<ReturnType<typeof importSnapshot>>> | null = null;
+
 export async function importSnapshotIfEmpty() {
   const dir = env.DISCOVERY_SNAPSHOT_DIR;
   if (!dir || !existsSync(dir)) return { skipped: "sin instantánea" };
+  if (inFlight) return inFlight;
   setSnapshotImporting(true);
-  try {
-    return await importSnapshot(dir);
-  } finally {
+  inFlight = importSnapshot(dir).finally(() => {
     setSnapshotImporting(false);
-  }
+    inFlight = null;
+  });
+  return inFlight;
 }
 
 async function importSnapshot(dir: string) {

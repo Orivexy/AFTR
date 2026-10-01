@@ -7,8 +7,12 @@ import { existsSync } from "node:fs";
 import { db } from "../db";
 import { env } from "../env";
 
-let importing = false;
-let attempted = false;
+// Kept on globalThis: the in-process jobs (instrumentation) and the route
+// that runs the import are separate module instances in the same process.
+const state = ((globalThis as unknown as { __orivexySnapshot?: { importing: boolean; attempted: boolean } }).__orivexySnapshot ??= {
+  importing: false,
+  attempted: false,
+});
 
 /**
  * A bundled copy is waiting to be imported (first launch, or after an update
@@ -16,12 +20,12 @@ let attempted = false;
  * live syncs go ahead whatever its result (never blocked for good).
  */
 export async function snapshotPending(): Promise<boolean> {
-  if (attempted) return false;
+  if (state.attempted) return false;
   const dir = env.DISCOVERY_SNAPSHOT_DIR;
   return Boolean(dir && existsSync(dir)) && (await db.venue.count()) === 0;
 }
-export const isSnapshotImporting = () => importing;
+export const isSnapshotImporting = () => state.importing;
 export function setSnapshotImporting(v: boolean) {
-  importing = v;
-  if (!v) attempted = true;
+  state.importing = v;
+  if (!v) state.attempted = true;
 }
