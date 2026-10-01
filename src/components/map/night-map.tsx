@@ -52,6 +52,10 @@ export function NightMap({ config, places, center, cityName, initialWhen = "all"
   const [recenterKey, setRecenterKey] = useState(0);
   const [panel, setPanel] = useState<"none" | "list" | "filters">("none");
   const [satellite, setSatellite] = useState(false);
+  // First view: every place in frame, clear of the search bar and sheet on phones and of the buttons on the right.
+  const [fit] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? { top: 130, bottom: 150, left: 20, right: 20 } : { top: 40, bottom: 40, left: 40, right: 80 },
+  );
   const { coords, status, request } = useLocation();
   const wantsCenterOnUser = useRef(false);
 
@@ -178,7 +182,7 @@ export function NightMap({ config, places, center, cityName, initialWhen = "all"
       </aside>
 
       <div className="relative size-full">
-        <MapView config={config} center={focus} zoom={13} markers={markers} selectedId={selectedId} onSelect={select} user={coords} cluster zoomControls recenterKey={recenterKey} satellite={satellite} className="size-full" />
+        <MapView config={config} center={focus} zoom={13} markers={markers} selectedId={selectedId} onSelect={select} user={coords} cluster zoomControls recenterKey={recenterKey} satellite={satellite} fitMarkers={initialQuery ? undefined : fit} className="size-full" />
 
         {/* Mobile: search + chips */}
         <div className="absolute inset-x-0 top-0 z-[500] space-y-2 p-3 md:hidden">

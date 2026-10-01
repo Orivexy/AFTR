@@ -60,7 +60,7 @@ class TiltControl implements ML.IControl {
 }
 
 function VectorMap({
-  config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, wheelZoom, cluster = false, zoomControls = false, user, recenterKey = 0, className, satellite = false, onFail,
+  config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, wheelZoom, cluster = false, zoomControls = false, user, recenterKey = 0, className, satellite = false, fitMarkers, onFail,
 }: MapProviderProps & { onFail: () => void }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<ML.Map | null>(null);
@@ -180,6 +180,7 @@ function VectorMap({
           m.on("moveend", () => renderRef.current());
         }
         map.current = m;
+        frame(m);
         m.once("load", () => applySatellite());
         renderRef.current();
         drawUser();
@@ -197,6 +198,24 @@ function VectorMap({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Frames every marker inside the part of the map not covered by overlays. */
+  function frame(m: ML.Map) {
+    if (!fitMarkers || !markers.length) return;
+    const pad = { top: fitMarkers.top ?? 24, right: fitMarkers.right ?? 24, bottom: fitMarkers.bottom ?? 24, left: fitMarkers.left ?? 24 };
+    const el = m.getContainer();
+    // Overlays larger than the map (small screens): frame the whole map instead.
+    const fits = pad.left + pad.right < el.clientWidth - 80 && pad.top + pad.bottom < el.clientHeight - 80;
+    const lngs = markers.map((mk) => mk.lng);
+    const lats = markers.map((mk) => mk.lat);
+    m.fitBounds(
+      [
+        [Math.min(...lngs), Math.min(...lats)],
+        [Math.max(...lngs), Math.max(...lats)],
+      ],
+      { padding: fits ? pad : 24, maxZoom: (fitMarkers.maxZoom ?? 15) - GL_OFFSET, duration: 0 },
+    );
+  }
 
   function applySatellite() {
     const m = map.current;

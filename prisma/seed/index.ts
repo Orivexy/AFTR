@@ -24,14 +24,14 @@ const SEED_CITIES = (process.env.SEED_DISCOVERY_CITIES ?? "all").split(",").map(
 const discoveryEnabledFor = (slug: string) => SEED_CITIES.includes("all") || SEED_CITIES.includes(slug);
 
 /** Xceed agenda pages of places in the verified list. */
-const XCEED_VENUE_PAGES = [
-  "https://xceed.me/en/barcelona/venue/sutton-barcelona",
-  "https://xceed.me/en/barcelona/venue/nitsa-club",
-  "https://xceed.me/en/barcelona/venue/draco-club",
-  "https://xceed.me/es/barcelona/venue/la-biblio-bcn",
-  "https://xceed.me/en/barcelona/venue/laut",
-  "https://xceed.me/en/barcelona/venue/sidecar-factory-club",
-];
+const XCEED_PAGE_VENUES: Record<string, string> = {
+  "https://xceed.me/en/barcelona/venue/sutton-barcelona": "Sutton Barcelona",
+  "https://xceed.me/en/barcelona/venue/nitsa-club": "Nitsa Club",
+  "https://xceed.me/en/barcelona/venue/draco-club": "Draco Disco Club",
+  "https://xceed.me/es/barcelona/venue/la-biblio-bcn": "La Biblio",
+  "https://xceed.me/en/barcelona/venue/laut": "LAUT",
+  "https://xceed.me/en/barcelona/venue/sidecar-factory-club": "Club Sauvage",
+};
 
 async function main() {
   console.log("🌙 ORIVEXY NIGHTS · datos base");
@@ -84,7 +84,8 @@ async function main() {
           enabled: discoveryEnabledFor(city.slug), autoPublish: true, allowImages: true, syncIntervalMin: 12 * 60,
           url: "https://xceed.me/es/barcelona/events",
           config: {
-            pages: XCEED_VENUE_PAGES,
+            pages: Object.keys(XCEED_PAGE_VENUES),
+            pageVenues: XCEED_PAGE_VENUES,
             followLinks: { pattern: "^https://xceed\\.me/(es|en)/barcelona/event/[^/]+/\\d+$", max: 30 },
             listedVenuesOnly: true,
           },

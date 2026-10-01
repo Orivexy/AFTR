@@ -540,6 +540,12 @@ model Photo {
   eventId     String?
   event       Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
   position    Int           @default(0)
+  /// Where an imported photo came from (the venue's official website…).
+  sourceUrl   String?
+  /// Part of the place the photo shows (pista, dj, vip, barra…), detected by
+  /// the image model (scripts/classify-zones.mts); null = unknown.
+  zone        String?
+  zoneScore   Float?
   likeCount   Int           @default(0)
   status      ContentStatus @default(VISIBLE)
   createdAt   DateTime      @default(now())

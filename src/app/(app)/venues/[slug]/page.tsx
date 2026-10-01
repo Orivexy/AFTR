@@ -27,6 +27,7 @@ import { formatNumber } from "@/lib/text";
 import { imageUrl } from "@/lib/media";
 import { cn } from "@/lib/cn";
 import { VENUE_STATUS_LABEL, VENUE_TYPE_LABEL } from "@/lib/nightlife";
+import { ZONE_LABEL } from "@/lib/zones";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -65,6 +66,10 @@ export default async function VenuePage({ params }: Props) {
         : "No verificado";
   const zone = [venue.neighborhood, venue.district].filter(Boolean).join(" · ");
   const music = venue.musicTags.length ? venue.musicTags : venue.genres.map((g) => g.name);
+  // Parts of the place seen in its photos (image model), most photos first.
+  const zoneCount = new Map<string, number>();
+  for (const p of venue.officialPhotos) if (p.zone) zoneCount.set(p.zone, (zoneCount.get(p.zone) ?? 0) + 1);
+  const zones = [...zoneCount].sort((a, b) => b[1] - a[1]);
 
   return (
     <article className="mx-auto max-w-6xl md:px-6 md:pt-6">
@@ -125,13 +130,29 @@ export default async function VenuePage({ params }: Props) {
           {venue.officialPhotos.length > 0 && (
             <section>
               <SectionHeader title="Fotos" eyebrow="De su web oficial" />
+              {zones.length > 0 && (
+                <div className="mb-3">
+                  <p className="mb-2 text-[13px] font-semibold text-muted">Zonas del local</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {zones.map(([z, n]) => (
+                      <span key={z} className="rounded-full border border-line-strong px-3 py-1 text-[13px] font-semibold">
+                        {ZONE_LABEL[z] ?? z} <span className="text-faint">· {n}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {venue.officialPhotos.map((p, i) => (
-                  <a key={p.id} href={imageUrl(p.key, "lg") ?? "#"} target="_blank" rel="noopener" className={cn("block overflow-hidden rounded-2xl", i === 0 && "col-span-2 row-span-2")}>
-                    <Cover imageKey={p.key} blurDataUrl={p.blurDataUrl} alt={`${venue.name} · foto ${i + 1}`} sizes={i === 0 ? "(min-width: 768px) 520px, 100vw" : "(min-width: 768px) 260px, 50vw"} className="aspect-square w-full" />
+                  <a key={p.id} href={imageUrl(p.key, "lg") ?? "#"} target="_blank" rel="noopener" className={cn("relative block overflow-hidden rounded-2xl", i === 0 && "col-span-2 row-span-2")}>
+                    <Cover imageKey={p.key} blurDataUrl={p.blurDataUrl} alt={`${venue.name} · ${p.zone ? (ZONE_LABEL[p.zone] ?? "foto") : `foto ${i + 1}`}`} sizes={i === 0 ? "(min-width: 768px) 520px, 100vw" : "(min-width: 768px) 260px, 50vw"} className="aspect-square w-full" />
+                    {p.zone && <span className="absolute bottom-2 left-2 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">{ZONE_LABEL[p.zone] ?? p.zone}</span>}
                   </a>
                 ))}
               </div>
+              {zones.length > 0 && (
+                <p className="mt-2 text-[11px] text-faint">Zonas detectadas automáticamente en las fotos por una red neuronal (CLIP); puede equivocarse.</p>
+              )}
             </section>
           )}
 

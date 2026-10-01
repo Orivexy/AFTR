@@ -4,11 +4,14 @@ import { db } from "../../db";
 import { env } from "../../env";
 import { processImage, deleteImage } from "../../media/image";
 import { buildSearchText } from "@/lib/text";
+import { distanceKm } from "@/lib/geo";
 import { fetchBytes, fetchJson, fetchText } from "../fetcher";
 import { extractJsonLdBlocks, flattenNodes, jsonLdToEvents } from "../parsers/jsonld";
 import { officialSiteInfo, pagePhotos, type OfficialSiteInfo } from "../parsers/official-site";
 import { discoveryUserId } from "../store";
+import { applyZoneHints } from "../../zones";
 import { BARCELONA_VENUES, MAIN_VENUES, type CuratedVenue } from "../curated/barcelona";
+import { handleMatchesVenue, pickLocation, type Located, type NominatimItem } from "../curated/checks";
 import type { Connector, ExternalEvent, SourceContext, VenueSyncCounters } from "../types";
 
 /**
@@ -56,44 +59,32 @@ function page(url: string, ctx: SourceContext): Promise<string | null> {
 
 // ─── Geocoding (Nominatim) ───────────────────────────────────────────────────
 
-interface Located {
-  lat: number;
-  lng: number;
-  neighborhood: string | null;
-  district: string | null;
-}
-
 let lastNominatim = 0;
+/** Coordinates, barrio and district of the published address (checked to be in the right town). */
 async function locate(v: CuratedVenue, ctx: SourceContext): Promise<Located | null> {
-  const wait = lastNominatim + 1100 - Date.now();
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  lastNominatim = Date.now();
   const municipality = v.municipality ?? "Barcelona";
-  const d = 0.25;
-  const params = new URLSearchParams({
-    q: v.geocodeQuery ?? `${v.address}, ${municipality}`,
-    format: "jsonv2",
-    limit: "1",
-    addressdetails: "1",
-    "accept-language": "es",
-    countrycodes: ctx.city.countryCode.toLowerCase(),
-    viewbox: [ctx.city.lng - d, ctx.city.lat + d, ctx.city.lng + d, ctx.city.lat - d].join(","),
-    bounded: "1",
-  });
-  type Item = { lat: string; lon: string; address?: Record<string, string> };
-  const [hit] = await fetchJson<Item[]>(`${env.NOMINATIM_URL}/search?${params}`, { timeoutMs: 15_000, maxBytes: 512 * 1024 });
-  if (!hit) return null;
-  const lat = Number(hit.lat);
-  const lng = Number(hit.lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  const a = hit.address ?? {};
-  const town = a.city ?? a.town ?? null;
-  return {
-    lat,
-    lng,
-    neighborhood: a.suburb ?? a.quarter ?? a.neighbourhood ?? null,
-    district: a.city_district ?? (town && town !== ctx.city.name ? town : null),
-  };
+  const d = 0.2;
+  const queries = [...new Set([v.geocodeQuery, `${v.address}, ${municipality}`].filter((q): q is string => Boolean(q)))];
+  for (const q of queries) {
+    const wait = lastNominatim + 1100 - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    lastNominatim = Date.now();
+    const params = new URLSearchParams({
+      q,
+      format: "jsonv2",
+      limit: "5",
+      addressdetails: "1",
+      "accept-language": "es",
+      countrycodes: ctx.city.countryCode.toLowerCase(),
+      viewbox: [ctx.city.lng - d, ctx.city.lat + d, ctx.city.lng + d, ctx.city.lat - d].join(","),
+      bounded: "1",
+    });
+    const items = await fetchJson<NominatimItem[]>(`${env.NOMINATIM_URL}/search?${params}`, { timeoutMs: 15_000, maxBytes: 512 * 1024 });
+    const hit = pickLocation(items, municipality, ctx.city);
+    if (hit) return hit;
+    ctx.log(`${v.name}: «${q}» no da un resultado en ${municipality}`);
+  }
+  return null;
 }
 
 // ─── Photos ──────────────────────────────────────────────────────────────────
@@ -112,7 +103,7 @@ async function importPhotos(venueId: string, urls: string[], ctx: SourceContext)
         await deleteImage(img.key).catch(() => {});
         continue;
       }
-      await db.photo.create({ data: { uploaderId, venueId, position: keys.length, ...img } });
+      await db.photo.create({ data: { uploaderId, venueId, position: keys.length, sourceUrl: url, ...img } });
       keys.push(img.key);
     } catch (err) {
       ctx.log(`Foto omitida ${url}: ${(err as Error).message}`);
@@ -154,7 +145,8 @@ export async function syncCuratedVenues(source: DiscoverySource, ctx: SourceCont
       });
       const address = fullAddress(v);
       const place =
-        existing && existing.address === address
+        // Reuse the stored location unless the address changed or it looks wrong (other town, no district).
+        existing && existing.address === address && existing.district && distanceKm(existing, ctx.city) <= 15
           ? { lat: existing.lat, lng: existing.lng, neighborhood: existing.neighborhood, district: existing.district }
           : await locate(v, ctx).catch((err) => {
               ctx.log(`${v.name}: sin ubicación (${(err as Error).message})`);
@@ -186,7 +178,8 @@ export async function syncCuratedVenues(source: DiscoverySource, ctx: SourceCont
         aliases: v.aliases ?? [],
         categories: ["verified"],
         website: v.website ?? null,
-        instagram: v.instagram ?? site.instagram ?? existing?.instagram ?? null,
+        // The site's account only when it is clearly this venue's (not a sister venue's).
+        instagram: v.instagram ?? (site.instagram && handleMatchesVenue(site.instagram, [v.name, ...(v.aliases ?? []), v.key]) ? site.instagram : null),
         openingHours: (site.hours ?? existing?.openingHours ?? undefined) as Prisma.InputJsonValue | undefined,
         ...(site.hours ? { hoursSource: "official", hoursUpdatedAt: now } : {}),
         priceMin: site.priceMin ?? existing?.priceMin ?? null,
@@ -227,6 +220,9 @@ export async function syncCuratedVenues(source: DiscoverySource, ctx: SourceCont
       } else if (!site.photos.length && !existing?.coverKey) {
         ctx.log(`${v.name}: la web oficial no publica fotos accesibles`);
       }
+      // Parts of the place (dance floor, DJ booth, VIP…) detected by the image model in its photos.
+      const zoned = await applyZoneHints(venue.id);
+      if (zoned) ctx.log(`${v.name}: ${zoned} fotos con zona detectada`);
     } catch (err) {
       c.errors++;
       ctx.log(`${v.name}: ${(err as Error).message}`);

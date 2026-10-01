@@ -45,6 +45,11 @@ export interface MapProviderProps {
   /** Show +/- buttons (desktop). */
   zoomControls?: boolean;
   user?: { lat: number; lng: number } | null;
+  /**
+   * Frame all markers on first load (instead of `center`/`zoom`), keeping
+   * clear the edges covered by overlays (px): e.g. a card on the left.
+   */
+  fitMarkers?: { top?: number; right?: number; bottom?: number; left?: number; maxZoom?: number };
   /** Bumping this number recenters the map on `center` even if it did not change. */
   recenterKey?: number;
   className?: string;

@@ -33,6 +33,7 @@ Descárgala, ábrela y listo. Gratis.
 ## Qué tiene
 
 - ✅ **Locales verificados uno a uno**: discotecas, clubs, salas de conciertos y espacios de festivales de Barcelona, con fotos de su web oficial.
+- 🧠 **Zonas de cada local** (pista, cabina del DJ, zona VIP, barra, terraza…) detectadas en sus fotos por una pequeña red neuronal.
 - 🗺️ **Mapa de Barcelona** en 3D y en vista satélite.
 - 🎉 **Agenda**: fiestas, conciertos, sesiones DJ y festivales, con foto, hora, lugar y precio.
 - 🔎 **Filtros**: discotecas, clubs, conciertos, fiestas, festivales, eventos, por zona y por nombre.

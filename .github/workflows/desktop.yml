@@ -60,6 +60,16 @@ jobs:
         continue-on-error: true
         timeout-minutes: 25
         run: npx tsx --conditions=react-server scripts/record-snapshot.mts snapshot
+      # Small image model (CLIP) that detects the parts of each place in its
+      # official photos (dance floor, DJ booth, VIP…); shipped as zones.json.
+      - uses: actions/cache@v4
+        with:
+          path: .cache/transformers
+          key: zone-model-clip-vit-base-patch32-q8
+      - name: Zones of each place (image model)
+        continue-on-error: true
+        timeout-minutes: 15
+        run: test -d snapshot && npx tsx --conditions=react-server scripts/classify-zones.mts snapshot/zones.json
       - uses: actions/upload-artifact@v4
         with:
           name: snapshot

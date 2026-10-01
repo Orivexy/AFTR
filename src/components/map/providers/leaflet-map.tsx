@@ -14,7 +14,7 @@ import { clusterHtml, isPlace, markerHtml } from "../marker-html";
  */
 
 export default function LeafletMap({
-  config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, wheelZoom, cluster = false, zoomControls = false, user, recenterKey = 0, className, satellite = false,
+  config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, wheelZoom, cluster = false, zoomControls = false, user, recenterKey = 0, className, satellite = false, fitMarkers,
 }: MapProviderProps) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
@@ -111,6 +111,17 @@ export default function LeafletMap({
       layer.current = Lf.layerGroup().addTo(m);
       userLayer.current = Lf.layerGroup().addTo(m);
       map.current = m;
+      if (fitMarkers && markers.length) {
+        const size = m.getSize();
+        const [l, r, t, b] = [fitMarkers.left ?? 24, fitMarkers.right ?? 24, fitMarkers.top ?? 24, fitMarkers.bottom ?? 24];
+        const fits = l + r < size.x - 80 && t + b < size.y - 80;
+        m.fitBounds(Lf.latLngBounds(markers.map((mk) => [mk.lat, mk.lng] as [number, number])), {
+          paddingTopLeft: fits ? [l, t] : [24, 24],
+          paddingBottomRight: fits ? [r, b] : [24, 24],
+          maxZoom: fitMarkers.maxZoom ?? 15,
+          animate: false,
+        });
+      }
       renderRef.current();
       drawUser();
     });

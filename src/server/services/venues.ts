@@ -116,7 +116,7 @@ export async function getVenueDetail(slug: string, viewer: SessionUser | null): 
     viewer ? db.venueFollow.findUnique({ where: { userId_venueId: { userId: viewer.id, venueId: v.id } } }) : null,
     viewer ? db.review.findUnique({ where: { userId_venueId: { userId: viewer.id, venueId: v.id } }, select: reviewSelect }) : null,
     viewer ? db.venue.count({ where: { id: v.id, managers: { some: { id: viewer.id } } } }) : 0,
-    db.photo.findMany({ where: { venueId: v.id, status: "VISIBLE", postId: null, ...OFFICIAL_UPLOADER }, orderBy: { position: "asc" }, select: photoSelect, take: 12 }),
+    db.photo.findMany({ where: { venueId: v.id, status: "VISIBLE", postId: null, ...OFFICIAL_UPLOADER }, orderBy: { position: "asc" }, select: { ...photoSelect, zone: true }, take: 12 }),
   ]);
 
   const distribution = [0, 0, 0, 0, 0];

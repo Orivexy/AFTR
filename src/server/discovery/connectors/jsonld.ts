@@ -12,8 +12,11 @@ import type { Connector, SourceContext } from "../types";
  *   followLinks?: { pattern, max }  also read the event pages linked from
  *                              those pages whose absolute URL matches `pattern`
  *   nightClubsOnly?: boolean   keep only events located at a NightClub
+ *   pageVenues?: { [pageUrl]: venueName }  a venue's own agenda page (e.g. its
+ *                              Xceed page): its events, and the event pages it
+ *                              links to, are at that venue
  */
-type Config = { pages?: unknown; followLinks?: { pattern?: unknown; max?: unknown }; nightClubsOnly?: unknown };
+type Config = { pages?: unknown; followLinks?: { pattern?: unknown; max?: unknown }; nightClubsOnly?: unknown; pageVenues?: unknown };
 
 function pages(ctx: SourceContext): string[] {
   const cfg = ctx.config as Config;
@@ -44,23 +47,30 @@ async function nodes(ctx: SourceContext) {
   const cfg = ctx.config as Config;
   const follow = cfg.followLinks && typeof cfg.followLinks.pattern === "string" ? new RegExp(cfg.followLinks.pattern) : null;
   const maxFollow = Math.min(Number(cfg.followLinks?.max) || 40, 120);
-  const out: Array<{ page: string; nodes: ReturnType<typeof flattenNodes>; image: string | null }> = [];
+  const venueOf = (cfg.pageVenues && typeof cfg.pageVenues === "object" ? cfg.pageVenues : {}) as Record<string, unknown>;
+  const out: Array<{ page: string; nodes: ReturnType<typeof flattenNodes>; image: string | null; venue: string | null }> = [];
   const seen = new Set<string>();
-  const read = async (page: string) => {
-    if (seen.has(page)) return "";
+  const read = async (page: string, venue: string | null) => {
+    if (seen.has(page)) {
+      // Already read from the general agenda: now we know whose event it is.
+      const known = out.find((o) => o.page === page);
+      if (known && venue && !known.venue) known.venue = venue;
+      return "";
+    }
     seen.add(page);
     const html = await fetchText(page, { accept: "text/html", respectRobots: true });
-    out.push({ page, nodes: flattenNodes(extractJsonLdBlocks(html)), image: ogImage(html) });
+    out.push({ page, nodes: flattenNodes(extractJsonLdBlocks(html)), image: ogImage(html), venue });
     return html;
   };
   for (const page of pages(ctx)) {
-    const html = await read(page);
+    const venue = typeof venueOf[page] === "string" ? (venueOf[page] as string) : null;
+    const html = await read(page, venue);
     if (!follow) continue;
     const links = matchingLinks(html, page, follow, maxFollow);
     ctx.log(`${page}: ${links.length} páginas de evento enlazadas`);
     for (const link of links) {
       try {
-        await read(link);
+        await read(link, venue);
       } catch (err) {
         ctx.log(`${link}: ${(err as Error).message}`);
       }
@@ -76,8 +86,11 @@ export const jsonLdConnector: Connector = {
     const nightClubsOnly = (ctx.config as Config).nightClubsOnly === true;
     const pagesRead = await nodes(ctx);
     // An event page's share image stands in for a missing event image (not on list pages: it would be generic).
-    const all = pagesRead.flatMap(({ page, nodes, image }) =>
-      jsonLdToEvents(nodes, page, ctx.city.timezone, { nightClubsOnly, fallbackImage: pagesRead.length > 1 && page !== pagesRead[0]!.page ? image : null }),
+    const all = pagesRead.flatMap(({ page, nodes, image, venue }) =>
+      jsonLdToEvents(nodes, page, ctx.city.timezone, { nightClubsOnly, fallbackImage: pagesRead.length > 1 && page !== pagesRead[0]!.page ? image : null }).map((e) =>
+        // Read from a venue's own agenda page: the event is at that venue (by name; coordinates kept).
+        venue ? { ...e, place: { ...e.place, name: venue } } : e,
+      ),
     );
     // The same event can appear on the list page and on its own page: keep the richest (its own page, read later).
     const unique = [...new Map(all.map((e) => [e.externalId, e])).values()];

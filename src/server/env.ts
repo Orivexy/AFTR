@@ -50,6 +50,8 @@ const schema = z.object({
   OVERPASS_API_URL: z.url().default("https://overpass-api.de/api/interpreter"),
   // Folder with the snapshot of public source responses shipped with the desktop app.
   DISCOVERY_SNAPSHOT_DIR: z.string().optional().default(""),
+  /** Zones detected by the image model (scripts/classify-zones.mts); default <DISCOVERY_SNAPSHOT_DIR>/zones.json. */
+  ZONE_HINTS_FILE: z.string().optional().default(""),
   // Public mirrors tried in order when the main instance is busy (comma separated).
   OVERPASS_MIRRORS: z.string().default("https://overpass.kumi.systems/api/interpreter,https://overpass.private.coffee/api/interpreter"),
   // Address search (OpenStreetMap Nominatim, no key; max 1 request/second by policy).

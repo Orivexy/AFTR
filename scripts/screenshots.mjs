@@ -37,7 +37,8 @@ const tryStep = async (name, fn) => {
 
 await tryStep("home", async () => {
   await page.goto(`${base}/`, { waitUntil: "networkidle" });
-  await shot("home", 4000);
+  // First page of a cold start: give the map tiles time to arrive.
+  await shot("home", 8000);
 });
 await tryStep("map", async () => {
   await page.goto(`${base}/map`, { waitUntil: "networkidle" });
@@ -59,5 +60,13 @@ await tryStep("event", async () => {
   await target.click();
   await page.waitForURL(/\/events\/[^/]+$/);
   await shot("event", 3000);
+});
+await tryStep("venue", async () => {
+  // A verified place's page: photos from its website, zones, agenda.
+  await page.goto(`${base}/venues`, { waitUntil: "networkidle" });
+  const withPhoto = page.locator('main a[href^="/venues/"]:has(img)').first();
+  await ((await withPhoto.count()) ? withPhoto : page.locator('main a[href^="/venues/"]').first()).click();
+  await page.waitForURL(/\/venues\/[^/?]+$/);
+  await shot("venue", 3000);
 });
 await browser.close();

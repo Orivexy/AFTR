@@ -150,7 +150,7 @@ export interface VenueDetail extends VenueCardData {
   website: string | null;
   instagram: string | null;
   /** Official photos of the place (from its website), cover first. */
-  officialPhotos: Array<{ id: string; key: string; width: number; height: number; blurDataUrl: string | null }>;
+  officialPhotos: Array<{ id: string; key: string; width: number; height: number; blurDataUrl: string | null; zone: string | null }>;
   city: { slug: string; name: string };
   subScores: { ambience: number | null; music: number | null; staff: number | null; price: number | null; space: number | null };
   ratingDistribution: number[]; // index 0 → 1 star … index 4 → 5 stars
