@@ -399,6 +399,8 @@ model Event {
   lat             Float
   lng             Float
   startsAt        DateTime
+  /// The source gave the date but no start time (shown as "hora no publicada", never guessed).
+  timeUnknown     Boolean          @default(false)
   endsAt          DateTime?
   /// Door opening time, when different from the start time.
   doorsAt         DateTime?

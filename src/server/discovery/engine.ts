@@ -1,3 +1,4 @@
+import { isSnapshotImporting } from "./import-state";
 import "server-only";
 import { getSettings } from "../settings";
 import type { DiscoverySource, Prisma } from "@prisma/client";
@@ -264,7 +265,7 @@ async function processEvent(
     return;
   }
 
-  const issues = qualityIssues(n, { now, city });
+  const issues = qualityIssues(n, { now, city, allowUnknownTime: source.trust === "VERIFIED" || source.trust === "OFFICIAL" });
   let duplicateOfId: string | null = null;
   if (match && match.score >= POSSIBLE_DUPLICATE_THRESHOLD) {
     issues.push(`Posible duplicado de «${match.title}»`);
@@ -366,7 +367,10 @@ export interface DueRunResult {
 export async function runDueSources(kind: "events" | "venues", opts: { force?: boolean; mode?: SyncMode; job?: string; now?: Date } = {}): Promise<DueRunResult> {
   const result: DueRunResult = { ran: 0, ok: 0, failed: 0, errors: [] };
   const key = `${kind}:${opts.mode ?? "full"}`;
-  if (!(await getSettings()).discoveryEnabled || running.has(key)) return result;
+  if (!(await getSettings()).discoveryEnabled) return result;
+  if (running.has(key)) return { ...result, skipped: ["sincronización en curso"] };
+  // Live syncs wait for the first-launch import (it replays the same sources).
+  if (opts.job !== "SNAPSHOT" && isSnapshotImporting()) return result;
   running.add(key);
   try {
     const now = opts.now ?? new Date();

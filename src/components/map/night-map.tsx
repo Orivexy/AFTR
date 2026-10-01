@@ -13,7 +13,7 @@ import { useLocation } from "@/components/providers/location-provider";
 import { GENRES } from "@/config/taxonomy";
 import { formatDistance } from "@/lib/geo";
 import { formatPrice } from "@/lib/money";
-import { formatRelativeDay, formatTime } from "@/lib/time";
+import { formatEventTime, formatRelativeDay, formatTime } from "@/lib/time";
 import { openingStatus } from "@/lib/hours";
 import {
   DEFAULT_FILTERS, PRICE_OPTIONS, TYPE_OPTIONS, WHEN_OPTIONS, activeFilterCount, directionsUrl, filterPlaces, isLive, lowestPrice, ticketLink,
@@ -249,7 +249,7 @@ function statusLine(r: FilteredPlace): { text: string; tone: "live" | "open" | "
     if (s) return { text: s.open ? `Abierto · ${s.label}` : s.label, tone: s.open ? "open" : "closed" };
   }
   const next = r.events[0];
-  if (next) return { text: `${formatRelativeDay(next.startsAt, p.timezone)} ${formatTime(next.startsAt, p.timezone)}${p.kind === "venue" ? ` · ${next.title}` : ""}`, tone: "muted" };
+  if (next) return { text: `${formatRelativeDay(next.startsAt, p.timezone)} ${formatEventTime(next.startsAt, p.timezone, next.timeUnknown)}${p.kind === "venue" ? ` · ${next.title}` : ""}`, tone: "muted" };
   return { text: p.address || p.neighborhood || "Horario no disponible", tone: "muted" };
 }
 
@@ -421,9 +421,9 @@ function PlaceSheet({ r, onClose }: { r: FilteredPlace; onClose: () => void }) {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[11px] font-bold tracking-wider text-faint uppercase">{liveNow ? "Ahora" : p.kind === "venue" ? "Próximo evento" : "Cuándo"}</span>
-              <span className="block truncate text-[14px] font-semibold">{p.kind === "venue" ? next.title : `${formatRelativeDay(next.startsAt, p.timezone)} · ${formatTime(next.startsAt, p.timezone)}`}</span>
+              <span className="block truncate text-[14px] font-semibold">{p.kind === "venue" ? next.title : `${formatRelativeDay(next.startsAt, p.timezone)} · ${formatEventTime(next.startsAt, p.timezone, next.timeUnknown)}`}</span>
               <span className="block truncate text-[12px] text-muted">
-                {p.kind === "venue" && `${formatRelativeDay(next.startsAt, p.timezone)} ${formatTime(next.startsAt, p.timezone)} · `}
+                {p.kind === "venue" && `${formatRelativeDay(next.startsAt, p.timezone)} ${formatEventTime(next.startsAt, p.timezone, next.timeUnknown)} · `}
                 {formatPrice(next.priceMin, next.priceMax, p.currency)}
               </span>
             </span>

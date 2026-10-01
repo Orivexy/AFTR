@@ -5,7 +5,7 @@ import { Cover } from "@/components/ui/cover";
 import { Badge, LiveDot, SponsorBadge } from "@/components/ui/misc";
 import { Distance } from "@/components/ui/distance";
 import { formatPrice } from "@/lib/money";
-import { formatRelativeDay, formatTime, isHappeningNow } from "@/lib/time";
+import { formatEventTime, formatRelativeDay, formatTime, isHappeningNow } from "@/lib/time";
 import { cn } from "@/lib/cn";
 import type { EventCardData } from "@/lib/types";
 
@@ -20,7 +20,7 @@ function PriceTag({ event, className }: { event: EventCardData; className?: stri
 
 /** Large visual card for rails and grids (stretched link + independent venue/save/share actions). */
 export function EventCard({ event, className, priority, size = "md" }: { event: EventCardData; className?: string; priority?: boolean; size?: "md" | "lg" }) {
-  const live = isHappeningNow(event.startsAt, event.endsAt);
+  const live = isHappeningNow(event.startsAt, event.endsAt, undefined, event.timeUnknown);
   const genres = event.genres.slice(0, 2).map((g) => g.name).join(" · ");
   return (
     <article
@@ -51,8 +51,8 @@ export function EventCard({ event, className, priority, size = "md" }: { event: 
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] space-y-1.5 p-4">
         <p className="text-[12px] font-bold tracking-wide text-volt uppercase">
-          {formatRelativeDay(event.startsAt, event.timezone)} · {formatTime(event.startsAt, event.timezone)}
-          {event.endsAt && ` — ${formatTime(event.endsAt, event.timezone)}`}
+          {formatRelativeDay(event.startsAt, event.timezone)} · {formatEventTime(event.startsAt, event.timezone, event.timeUnknown)}
+          {event.endsAt && !event.timeUnknown && ` — ${formatTime(event.endsAt, event.timezone)}`}
         </p>
         <h3 className={cn("font-display leading-tight font-semibold text-balance", size === "lg" ? "text-2xl md:text-3xl" : "text-lg")}>{event.title}</h3>
         <p className="flex items-center gap-1 text-[13px] text-muted">
@@ -89,7 +89,7 @@ export function EventCard({ event, className, priority, size = "md" }: { event: 
 
 /** Compact row — the "¿qué hay hoy?" list. */
 export function EventRow({ event, showDay }: { event: EventCardData; showDay?: boolean }) {
-  const live = isHappeningNow(event.startsAt, event.endsAt);
+  const live = isHappeningNow(event.startsAt, event.endsAt, undefined, event.timeUnknown);
   const free = event.priceMin === 0 && !event.priceMax;
   return (
     <Link href={`/events/${event.slug}`} className="group pressable flex items-center gap-3.5 rounded-2xl p-2 -mx-2 hover:bg-surface">
@@ -103,7 +103,7 @@ export function EventRow({ event, showDay }: { event: EventCardData; showDay?: b
           ) : (
             <span className="text-volt">
               {showDay && `${formatRelativeDay(event.startsAt, event.timezone)} · `}
-              {formatTime(event.startsAt, event.timezone)}
+              {formatEventTime(event.startsAt, event.timezone, event.timeUnknown)}
             </span>
           )}
           <span className="truncate text-faint">

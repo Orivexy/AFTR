@@ -217,6 +217,7 @@ export async function createEventFromNormalized(n: NormalizedEvent, source: Sour
       lat: n.lat,
       lng: n.lng,
       startsAt: new Date(n.startsAt),
+      timeUnknown: n.timeUnknown,
       endsAt: n.endsAt ? new Date(n.endsAt) : null,
       doorsAt: n.doorsAt ? new Date(n.doorsAt) : null,
       timezone: n.timezone !== city.timezone ? n.timezone : null,
@@ -247,7 +248,7 @@ export async function createEventFromNormalized(n: NormalizedEvent, source: Sour
 }
 
 const TRACKED = [
-  "title", "description", "startsAt", "endsAt", "doorsAt", "priceMin", "priceMax", "ticketUrl", "officialUrl",
+  "title", "description", "startsAt", "timeUnknown", "endsAt", "doorsAt", "priceMin", "priceMax", "ticketUrl", "officialUrl",
   "venueId", "locationName", "address", "lat", "lng", "organizerName", "sourceUrl",
 ] as const;
 type Tracked = (typeof TRACKED)[number];
@@ -277,7 +278,7 @@ export async function applySourceUpdate(eventId: string, n: NormalizedEvent, sou
     where: { id: eventId },
     select: {
       id: true, source: true, trust: true, status: true, primarySourceId: true, startsAt: true, title: true, locationName: true, address: true,
-      description: true, endsAt: true, doorsAt: true, priceMin: true, priceMax: true, ticketUrl: true, officialUrl: true, venueId: true,
+      description: true, timeUnknown: true, endsAt: true, doorsAt: true, priceMin: true, priceMax: true, ticketUrl: true, officialUrl: true, venueId: true,
       lat: true, lng: true, organizerName: true, sourceUrl: true, genres: { select: { genre: { select: { slug: true } } } },
     },
   });

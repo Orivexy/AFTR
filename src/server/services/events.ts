@@ -48,9 +48,14 @@ export interface EventQuery {
 }
 
 /** Events that haven't finished yet (ongoing ones included). */
-function notEndedWhere(now: Date): Prisma.EventWhereInput {
+export function notEndedWhere(now: Date): Prisma.EventWhereInput {
   return {
-    OR: [{ endsAt: { gt: now } }, { endsAt: null, startsAt: { gt: new Date(now.getTime() - 6 * 3600_000) } }],
+    OR: [
+      { endsAt: { gt: now } },
+      { endsAt: null, timeUnknown: false, startsAt: { gt: new Date(now.getTime() - 6 * 3600_000) } },
+      // Date without time: shown until the morning after its day.
+      { endsAt: null, timeUnknown: true, startsAt: { gt: new Date(now.getTime() - 30 * 3600_000) } },
+    ],
   };
 }
 

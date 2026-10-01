@@ -21,7 +21,7 @@ import { StaticMap } from "@/components/map/static-map";
 import { Distance } from "@/components/ui/distance";
 import { formatPrice } from "@/lib/money";
 import { DirectionsLink } from "@/components/map/directions-link";
-import { formatLongDate, formatTime, isHappeningNow, timeAgo } from "@/lib/time";
+import { eventEnd, formatEventTime, formatLongDate, formatTime, isHappeningNow, timeAgo } from "@/lib/time";
 import { imageUrl } from "@/lib/media";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -56,8 +56,8 @@ export default async function EventPage({ params }: Props) {
       ? listEvents({ timezone: event.timezone, venueId: event.venue.id, excludeIds: [event.id], limit: 6 })
       : Promise.resolve({ items: [] }),
   ]);
-  const live = isHappeningNow(event.startsAt, event.endsAt);
-  const ended = (event.endsAt ?? new Date(event.startsAt.getTime() + 6 * 3600_000)) < new Date();
+  const live = isHappeningNow(event.startsAt, event.endsAt, undefined, event.timeUnknown);
+  const ended = eventEnd(event.startsAt, event.endsAt, event.timeUnknown) < new Date();
   const tz = event.timezone;
   const banner = STATUS_BANNER[event.status];
 
@@ -112,7 +112,7 @@ export default async function EventPage({ params }: Props) {
             <Fact
               icon={<Clock className="size-4" />}
               label="Horario"
-              value={`${formatTime(event.startsAt, tz)}${event.endsAt ? ` — ${formatTime(event.endsAt, tz)}` : ""}${event.doorsAt ? ` · puertas ${formatTime(event.doorsAt, tz)}` : ""}`}
+              value={`${formatEventTime(event.startsAt, tz, event.timeUnknown)}${event.endsAt && !event.timeUnknown ? ` — ${formatTime(event.endsAt, tz)}` : ""}${event.doorsAt ? ` · puertas ${formatTime(event.doorsAt, tz)}` : ""}`}
             />
             <Fact icon={<Euro className="size-4" />} label="Entrada" value={formatPrice(event.priceMin, event.priceMax, event.currency)} highlight={event.priceMin === 0} />
             <Fact icon={<Users className="size-4" />} label="Edad" value={event.minAge ? `+${event.minAge}` : "Todas las edades"} />

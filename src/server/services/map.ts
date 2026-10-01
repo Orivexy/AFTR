@@ -1,4 +1,5 @@
 import "server-only";
+import { notEndedWhere } from "./events";
 import { db } from "../db";
 import { env } from "../env";
 import type { MapEvent, MapPlace } from "@/lib/types";
@@ -91,15 +92,15 @@ export function upstreamTileUrl(z: number, x: number, y: number): string | null 
 const MAP_HORIZON_DAYS = 60;
 
 const mapEventSelect = {
-  id: true, slug: true, title: true, startsAt: true, endsAt: true, priceMin: true, priceMax: true, coverKey: true, ticketUrl: true, officialUrl: true,
+  id: true, slug: true, title: true, startsAt: true, timeUnknown: true, endsAt: true, priceMin: true, priceMax: true, coverKey: true, ticketUrl: true, officialUrl: true,
   category: { select: { slug: true } },
   genres: { select: { genre: { select: { slug: true } } } },
 } as const;
 
-type MapEventRow = { id: string; slug: string; title: string; startsAt: Date; endsAt: Date | null; priceMin: number | null; priceMax: number | null; coverKey: string | null; ticketUrl: string | null; officialUrl: string | null; category: { slug: string }; genres: Array<{ genre: { slug: string } }> };
+type MapEventRow = { id: string; slug: string; title: string; startsAt: Date; timeUnknown: boolean; endsAt: Date | null; priceMin: number | null; priceMax: number | null; coverKey: string | null; ticketUrl: string | null; officialUrl: string | null; category: { slug: string }; genres: Array<{ genre: { slug: string } }> };
 
 const toMapEvent = (e: MapEventRow): MapEvent => ({
-  id: e.id, slug: e.slug, title: e.title, startsAt: e.startsAt, endsAt: e.endsAt, priceMin: e.priceMin, priceMax: e.priceMax,
+  id: e.id, slug: e.slug, title: e.title, startsAt: e.startsAt, timeUnknown: e.timeUnknown, endsAt: e.endsAt, priceMin: e.priceMin, priceMax: e.priceMax,
   coverKey: e.coverKey, ticketUrl: e.ticketUrl, officialUrl: e.officialUrl, category: e.category.slug, genres: e.genres.map((g) => g.genre.slug),
 });
 
@@ -119,7 +120,7 @@ export async function getMapPlaces(city: CityData, now = new Date()): Promise<Ma
   const upcoming = {
     status: "PUBLISHED" as const,
     startsAt: { lt: horizon },
-    OR: [{ endsAt: { gt: now } }, { endsAt: null, startsAt: { gt: new Date(now.getTime() - 6 * 3600_000) } }],
+    ...notEndedWhere(now),
   };
 
   const [venues, events] = await Promise.all([

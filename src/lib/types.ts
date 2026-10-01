@@ -37,6 +37,8 @@ export interface EventCardData {
   title: string;
   coverKey: string | null;
   startsAt: Date;
+  /** Date without published start time. */
+  timeUnknown: boolean;
   endsAt: Date | null;
   priceMin: number | null;
   priceMax: number | null;
@@ -226,6 +228,8 @@ export interface MapEvent {
   slug: string;
   title: string;
   startsAt: Date;
+  /** Date without published start time. */
+  timeUnknown?: boolean;
   endsAt: Date | null;
   priceMin: number | null; // cents; null = not available
   priceMax: number | null;

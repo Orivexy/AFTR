@@ -43,3 +43,21 @@ describe("Comprobaciones del listado verificado", () => {
     expect(handleMatchesVenue("palausantjordi", ["Sant Jordi Club"])).toBe(true);
   });
 });
+
+describe("Eventos oficiales sin hora", () => {
+  it("are published from verified sources and stay until the next morning", async () => {
+    const { qualityIssues, isExpired } = await import("@/server/discovery/validate");
+    const { notEnded, isLive } = await import("@/lib/map-filters");
+    const { formatEventTime } = await import("@/lib/time");
+    const day = new Date("2026-10-03T22:00:00Z"); // local midnight, Barcelona
+    const e = { title: "Nitsa: Anetha", startsAt: day.toISOString(), endsAt: null, timeUnknown: true, lat: 41.374, lng: 2.17, locationName: "Sala Apolo", address: null } as never;
+    const city = { name: "Barcelona", lat: 41.3874, lng: 2.1686, searchRadiusKm: 15 };
+    expect(qualityIssues(e, { now: day, city })).toContain("Sin hora de inicio");
+    expect(qualityIssues(e, { now: day, city, allowUnknownTime: true })).toEqual([]);
+    const evening = new Date("2026-10-04T20:00:00Z");
+    expect(isExpired(e, evening)).toBe(false);
+    expect(notEnded({ startsAt: day, endsAt: null, timeUnknown: true }, evening)).toBe(true);
+    expect(isLive({ startsAt: day, endsAt: null, timeUnknown: true }, evening)).toBe(false);
+    expect(formatEventTime(day, "Europe/Madrid", true)).toBe("Hora no publicada");
+  });
+});

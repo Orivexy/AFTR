@@ -1,4 +1,5 @@
 import "server-only";
+import { notEndedWhere } from "./events";
 import { db } from "../db";
 import { eventCardSelect, toEventCard, toVenueCard, venueCardSelect } from "./mappers";
 import type { Prisma } from "@prisma/client";
@@ -61,7 +62,7 @@ export async function globalSearch(
   // Events
   const eventAnd: Prisma.EventWhereInput[] = [
     { cityId: city.id, status: "PUBLISHED" },
-    { OR: [{ endsAt: { gt: now } }, { endsAt: null, startsAt: { gt: new Date(now.getTime() - 6 * 3600_000) } }] },
+    notEndedWhere(now),
     ...text,
   ];
   if (intent.when) {

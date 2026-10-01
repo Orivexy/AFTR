@@ -26,6 +26,7 @@ export const eventCardSelect = {
   title: true,
   coverKey: true,
   startsAt: true,
+  timeUnknown: true,
   endsAt: true,
   priceMin: true,
   priceMax: true,

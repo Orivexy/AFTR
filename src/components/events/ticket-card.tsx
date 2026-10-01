@@ -3,7 +3,7 @@ import { MapPin, Ticket } from "lucide-react";
 import { Cover } from "@/components/ui/cover";
 import { buttonClass } from "@/components/ui/button";
 import { formatPrice } from "@/lib/money";
-import { formatRelativeDay, formatTime } from "@/lib/time";
+import { formatEventTime, formatRelativeDay, formatTime } from "@/lib/time";
 import { TZDate } from "@date-fns/tz";
 import type { EventCardData } from "@/lib/types";
 
@@ -25,7 +25,7 @@ export function TicketCard({ event, priority }: { event: EventCardData; priority
         </span>
         <div className="absolute inset-x-3 bottom-3">
           <p className="text-[12px] font-bold tracking-wide text-volt uppercase">
-            {formatRelativeDay(event.startsAt, event.timezone)} · {formatTime(event.startsAt, event.timezone)}
+            {formatRelativeDay(event.startsAt, event.timezone)} · {formatEventTime(event.startsAt, event.timezone, event.timeUnknown)}
           </p>
           <h3 className="mt-0.5 line-clamp-2 font-display text-[19px] leading-tight font-bold">{event.title}</h3>
           <p className="mt-1 flex items-center gap-1 truncate text-[13px] text-white/75">

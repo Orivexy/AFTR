@@ -1,5 +1,5 @@
 import { opensDuring, openingStatus } from "./hours";
-import { dateFilterWindow, type TimeWindow } from "./time";
+import { dateFilterWindow, eventEnd, type TimeWindow } from "./time";
 import { distanceKm, type LatLng } from "./geo";
 import { normalizeSearch } from "./text";
 import type { MapEvent, MapPlace } from "./types";
@@ -106,17 +106,16 @@ export function filterWindow(when: WhenFilter, tz: string, now = new Date()): Ti
 }
 
 /** Not finished yet (events without end time count as running for 6 h). */
-export function notEnded(e: Pick<MapEvent, "startsAt" | "endsAt">, now = new Date()): boolean {
-  const end = e.endsAt ?? new Date(e.startsAt.getTime() + 6 * 3600_000);
-  return end > now;
+export function notEnded(e: Pick<MapEvent, "startsAt" | "endsAt" | "timeUnknown">, now = new Date()): boolean {
+  return eventEnd(e.startsAt, e.endsAt, e.timeUnknown) > now;
 }
 
-export function isLive(e: Pick<MapEvent, "startsAt" | "endsAt">, now = new Date()): boolean {
-  return e.startsAt <= now && notEnded(e, now);
+export function isLive(e: Pick<MapEvent, "startsAt" | "endsAt" | "timeUnknown">, now = new Date()): boolean {
+  return !e.timeUnknown && e.startsAt <= now && notEnded(e, now);
 }
 
 function inWindow(e: MapEvent, w: TimeWindow) {
-  const end = e.endsAt ?? new Date(e.startsAt.getTime() + 6 * 3600_000);
+  const end = eventEnd(e.startsAt, e.endsAt, e.timeUnknown);
   return e.startsAt < w.to && end > w.from;
 }
 

@@ -68,6 +68,16 @@ const SHORT_MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "s
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/** Start time for display; a date without published time says so (never guessed). */
+export function formatEventTime(date: Date, tz: string, timeUnknown?: boolean): string {
+  return timeUnknown ? "Hora no publicada" : formatTime(date, tz);
+}
+
+/** End used for filtering: given end, else 6 h after the start (until the next morning when the time is unknown). */
+export function eventEnd(startsAt: Date, endsAt: Date | null, timeUnknown?: boolean): Date {
+  return endsAt ?? new Date(startsAt.getTime() + (timeUnknown ? 30 : 6) * 3600_000);
+}
+
 export function formatTime(date: Date, tz: string): string {
   const d = new TZDate(date.getTime(), tz);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -95,9 +105,9 @@ export function formatRelativeDay(date: Date, tz: string, now = new Date()): str
   return `${capitalize(WEEKDAYS[d.getDay()]!.slice(0, 3))} ${formatShortDate(date, tz)}`;
 }
 
-export function isHappeningNow(startsAt: Date, endsAt: Date | null, now = new Date()): boolean {
-  const end = endsAt ?? new Date(startsAt.getTime() + 6 * 3600_000);
-  return startsAt <= now && now < end;
+export function isHappeningNow(startsAt: Date, endsAt: Date | null, now = new Date(), timeUnknown?: boolean): boolean {
+  if (timeUnknown) return false; // without a time we cannot say it is on now
+  return startsAt <= now && now < eventEnd(startsAt, endsAt);
 }
 
 /** "hace 3 h", "hace 2 d" */

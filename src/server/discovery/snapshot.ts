@@ -4,6 +4,7 @@ import { db } from "../db";
 import { env } from "../env";
 import { withSnapshotReplay } from "./fetcher";
 import { runDueSources } from "./engine";
+import { setSnapshotImporting } from "./import-state";
 
 /**
  * First launch of an installed app (or first launch after an update that
@@ -19,10 +20,20 @@ export async function importSnapshotIfEmpty() {
   if ((await db.venue.count()) > 0) return { skipped: "ya importada" };
 
   const started = Date.now();
-  const result = await withSnapshotReplay(dir, async () => ({
-    venues: await runDueSources("venues", { force: true, job: "SNAPSHOT" }),
-    events: await runDueSources("events", { force: true, job: "SNAPSHOT" }),
-  }));
+  setSnapshotImporting(true);
+  // A live sync that started just before the import may hold a source for a
+  // moment: wait for it and try again (bounded), so no source is left out.
+  const run = async (kind: "venues" | "events") => {
+    let r = await runDueSources(kind, { force: true, job: "SNAPSHOT" });
+    for (let i = 0; i < 12 && r.skipped?.length; i++) {
+      await new Promise((ok) => setTimeout(ok, 5_000));
+      r = await runDueSources(kind, { force: true, job: "SNAPSHOT" });
+    }
+    return r;
+  };
+  const result = await withSnapshotReplay(dir, async () => ({ venues: await run("venues"), events: await run("events") })).finally(() =>
+    setSnapshotImporting(false),
+  );
   await db.discoverySource.updateMany({ where: { enabled: true }, data: { nextSyncAt: new Date(Date.now() + 2 * 60_000) } });
   const [venues, events] = await Promise.all([db.venue.count(), db.event.count({ where: { status: "PUBLISHED" } })]);
   const errors = [...result.venues.errors, ...result.events.errors, ...(result.venues.skipped ?? []), ...(result.events.skipped ?? [])];
