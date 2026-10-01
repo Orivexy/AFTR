@@ -259,14 +259,19 @@ function startServer({ resourcesDir, dataDir, nodeBinary, nodeEnv, port, databas
   log(`Arrancando ORIVEXY NIGHTS en el puerto ${port}`);
   const child = spawn(nodeBinary, [path.join(appDir, "server.js")], { cwd: appDir, env, windowsHide: true });
   let alive = true;
-  child.stdout.on("data", (d) => appendFileSync(logFile, `[app] ${d}`));
-  child.stderr.on("data", (d) => appendFileSync(logFile, `[app:err] ${d}`));
+  // The server's last output goes in the error message, so the dialog shows why it stopped.
+  let recent = "";
+  const keep = (d) => (recent = `${recent}${d}`.slice(-1200));
+  child.stdout.on("data", (d) => (appendFileSync(logFile, `[app] ${d}`), keep(d)));
+  child.stderr.on("data", (d) => (appendFileSync(logFile, `[app:err] ${d}`), keep(d)));
   child.on("exit", (code) => {
     alive = false;
     log(`Servidor detenido (código ${code})`);
   });
   // /api/health answers without touching the database.
-  const ready = waitForHttp(`http://localhost:${port}/api/health`, 90_000, () => alive);
+  const ready = waitForHttp(`http://localhost:${port}/api/health`, 90_000, () => alive).catch((err) => {
+    throw new Error(recent.trim() ? `${err.message}\n\n${recent.trim()}` : err.message);
+  });
   return { ready, alive: () => alive, kill: () => child.kill() };
 }
 
