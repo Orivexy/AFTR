@@ -48,25 +48,13 @@ await tryStep("satellite", async () => {
   await page.getByRole("button", { name: "Ver satélite" }).click();
   await shot("satellite", 6000);
 });
-await tryStep("events", async () => {
-  await page.goto(`${base}/events`, { waitUntil: "networkidle" });
-  await shot("events", 3000);
-});
-await tryStep("event", async () => {
-  // An event with a photo, else the first one.
-  const eventLinks = 'main a[href^="/events/"]:not([href$="/new"])';
-  const withPhoto = page.locator(`${eventLinks}:has(img)`).first();
-  const target = (await withPhoto.count()) ? withPhoto : page.locator(eventLinks).first();
-  await target.click();
-  await page.waitForURL(/\/events\/[^/]+$/);
-  await shot("event", 3000);
-});
 await tryStep("venue", async () => {
-  // A verified place's page: photos from its website, zones, agenda.
-  await page.goto(`${base}/venues`, { waitUntil: "networkidle" });
-  const withPhoto = page.locator('main a[href^="/venues/"]:has(img)').first();
-  await ((await withPhoto.count()) ? withPhoto : page.locator('main a[href^="/venues/"]').first()).click();
-  await page.waitForURL(/\/venues\/[^/?]+$/);
+  // A verified place's page (photos from its website, zones), taken from the map's places.
+  const res = await page.request.get(`${base}/api/map/places`);
+  const { places } = await res.json();
+  const slug = (places ?? []).find((p) => p.kind === "venue" && p.coverKey)?.slug ?? places?.[0]?.slug;
+  if (!slug) throw new Error("sin lugares en el mapa");
+  await page.goto(`${base}/venues/${slug}`, { waitUntil: "networkidle" });
   await shot("venue", 3000);
 });
 await browser.close();
