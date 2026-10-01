@@ -3,7 +3,8 @@
  * (backend.mjs), opens the app in a window and offers a QR code so phones on
  * the same Wi-Fi can use this computer as their server.
  */
-import { app, BrowserWindow, Menu, Tray, clipboard, dialog, ipcMain, nativeImage, shell } from "electron";
+import { app, BrowserWindow, Menu, Tray, clipboard, dialog, ipcMain, nativeImage, net, shell } from "electron";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -277,6 +278,17 @@ function buildMenu() {
   );
 }
 
+/** Downloads the latest installer and runs it (Windows); elsewhere opens the download page. */
+async function reinstall() {
+  const page = "https://github.com/Orivexy/ORIVEXY-Nights/releases/latest";
+  if (process.platform !== "win32") return void (await shell.openExternal(page));
+  const res = await net.fetch(`${page}/download/ORIVEXY-NIGHTS-Windows.exe`);
+  if (!res.ok) throw new Error(`Descarga fallida (${res.status})`);
+  const file = path.join(app.getPath("temp"), "ORIVEXY-NIGHTS-Windows.exe");
+  writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+  spawn(file, [], { detached: true, stdio: "ignore" }).unref();
+}
+
 app.whenReady().then(async () => {
   const loading = startHidden ? null : splash();
   try {
@@ -293,6 +305,20 @@ app.whenReady().then(async () => {
   } catch (err) {
     loading?.destroy();
     const message = err instanceof Error ? err.message : String(err ?? "Error desconocido");
+    // Files missing from the app itself: an update that did not finish. Reinstalling fixes it (data is kept).
+    if (/Cannot find module|MODULE_NOT_FOUND/.test(message)) {
+      const { response } = await dialog.showMessageBox({
+        type: "error",
+        title: "ORIVEXY NIGHTS no pudo arrancar",
+        message: "La instalación está incompleta (una actualización no terminó)",
+        detail: "Reinstalar descarga la última versión y la instala. Tus datos se conservan.",
+        buttons: ["Reinstalar", "Cerrar"],
+        defaultId: 0,
+      });
+      if (response === 0) await reinstall().catch((e) => dialog.showErrorBox("No se pudo reinstalar", `${e?.message ?? e}\n\nDescárgala de https://github.com/Orivexy/ORIVEXY-Nights/releases/latest`));
+      app.exit(1);
+      return;
+    }
     dialog.showErrorBox("ORIVEXY NIGHTS no pudo arrancar", `${message}\n\nRegistro: ${path.join(dataDir, "orivexy-nights.log")}`);
     app.exit(1);
     return;
