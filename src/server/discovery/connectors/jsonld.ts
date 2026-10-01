@@ -28,7 +28,11 @@ function pages(ctx: SourceContext): string[] {
 export function matchingLinks(html: string, pageUrl: string, pattern: RegExp, max: number): string[] {
   const base = new URL(pageUrl);
   const out: string[] = [];
-  for (const m of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
+  // Links in hrefs and in the page's embedded data (apps that render their
+  // lists with scripts keep the URLs, often with escaped slashes, in JSON).
+  const text = html.replace(/\\u002[fF]/g, "/").replace(/\\\//g, "/");
+  const found = [...text.matchAll(/href=["']([^"'#]+)["']/gi), ...text.matchAll(/["'(](https?:\/\/[^"'\s<>#)]+|\/[a-z]{2}\/[^"'\s<>#)]+)/gi)];
+  for (const m of found) {
     let u: URL;
     try {
       u = new URL(m[1]!, base);
@@ -88,10 +92,13 @@ export const jsonLdConnector: Connector = {
     // An event page's share image stands in for a missing event image (not on list pages: it would be generic).
     const all = pagesRead.flatMap(({ page, nodes, image, venue }) =>
       jsonLdToEvents(nodes, page, ctx.city.timezone, { nightClubsOnly, fallbackImage: pagesRead.length > 1 && page !== pagesRead[0]!.page ? image : null }).map((e) =>
-        // Read from a venue's own agenda page: the event is at that venue (by name; coordinates kept).
-        venue ? { ...e, place: { ...e.place, name: venue } } : e,
+        // Read from a venue's own agenda page: an event without a place is at
+        // that venue. One with its own place keeps it (venue pages also link
+        // other venues' featured events).
+        venue && !e.place?.name ? { ...e, place: { ...e.place, name: venue } } : e,
       ),
     );
+    for (const { venue, page } of pagesRead) if (venue && page !== pagesRead[0]!.page) for (const e of all.filter((x) => x.sourceUrl === page)) ctx.log(`${venue}: «${e.title}» en «${e.place?.name ?? "sin lugar"}»`);
     // The same event can appear on the list page and on its own page: keep the richest (its own page, read later).
     const unique = [...new Map(all.map((e) => [e.externalId, e])).values()];
     ctx.log(`${unique.length} eventos${nightClubsOnly ? " en discotecas" : ""}`);

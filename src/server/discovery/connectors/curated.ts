@@ -11,7 +11,7 @@ import { officialSiteInfo, pagePhotos, type OfficialSiteInfo } from "../parsers/
 import { discoveryUserId } from "../store";
 import { applyZoneHints } from "../../zones";
 import { BARCELONA_VENUES, MAIN_VENUES, type CuratedVenue } from "../curated/barcelona";
-import { handleMatchesVenue, pickLocation, type Located, type NominatimItem } from "../curated/checks";
+import { handleMatchesVenue, namesVenue, pickLocation, type Located, type NominatimItem } from "../curated/checks";
 import type { Connector, ExternalEvent, SourceContext, VenueSyncCounters } from "../types";
 
 /**
@@ -257,7 +257,9 @@ async function fetchCuratedEvents(ctx: SourceContext): Promise<ExternalEvent[]> 
       const events = jsonLdToEvents(flattenNodes(extractJsonLdBlocks(html)) as Record<string, unknown>[], url, ctx.city.timezone);
       for (const e of events) {
         // An event on a venue's own site without a location is at that venue.
-        if (!e.place?.name) e.place = { ...e.place, name: v.name, address: e.place?.address ?? fullAddress(v) };
+        // So is one named after it (a club night inside another hall, e.g.
+        // Nitsa at Sala Apolo: the page gives the hall as location).
+        if (!e.place?.name || namesVenue(e.title, v)) e.place = { ...e.place, name: v.name, address: e.place?.address ?? fullAddress(v) };
         e.externalId = `${v.key}|${e.externalId}`;
         out.push(e);
       }

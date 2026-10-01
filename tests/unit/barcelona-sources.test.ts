@@ -132,6 +132,14 @@ describe("Xceed agenda (schema.org pages)", async () => {
     ]);
   });
 
+  it("finds event URLs kept in the page's embedded data", () => {
+    const html = `<script>{"url":"https:\\/\\/xceed.me\\/es\\/barcelona\\/event\\/laut-night\\/250001","p":"/es/barcelona/event/biblio/250002"}</script>`;
+    expect(matchingLinks(html, "https://xceed.me/en/barcelona/venue/laut", pattern, 10)).toEqual([
+      "https://xceed.me/es/barcelona/event/laut-night/250001",
+      "https://xceed.me/es/barcelona/event/biblio/250002",
+    ]);
+  });
+
   it("keeps only events at a NightClub and marks them as club nights", () => {
     const nodes = [
       { "@type": "Event", "@id": "https://xceed.me/event/1#event", name: "HUMANOS x NOM", startDate: "2026-10-18T23:30:00+02:00", location: { "@type": "NightClub", name: "SEASEACLUB" }, image: "https://images.xceed.me/a.jpg" },

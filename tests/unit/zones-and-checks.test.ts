@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { pickZone, zonePrompts, ZONES } from "@/lib/zones";
-import { handleMatchesVenue, pickLocation } from "@/server/discovery/curated/checks";
+import { handleMatchesVenue, namesVenue, pickLocation } from "@/server/discovery/curated/checks";
 
 const BCN = { lat: 41.3874, lng: 2.1686 };
 
@@ -38,6 +38,8 @@ describe("Comprobaciones del listado verificado", () => {
   it("accepts only the venue's own Instagram account", () => {
     expect(handleMatchesVenue("airechicas", ["Arena Xperience", "Arena Madre"])).toBe(false);
     expect(handleMatchesVenue("sala_apolo", ["Nitsa Club", "Nitsa"])).toBe(false);
+    expect(namesVenue("NITSA CLUB: Dj Seinfeld", { name: "Nitsa Club", aliases: ["Nitsa"] })).toBe(true);
+    expect(namesVenue("Monitsa live", { name: "Nitsa Club", aliases: ["Nitsa"] })).toBe(false);
     expect(handleMatchesVenue("moog_barcelona", ["Moog"])).toBe(true);
     expect(handleMatchesVenue("parallel62bcn", ["Paral·lel 62", "Parallel 62"])).toBe(true);
     expect(handleMatchesVenue("palausantjordi", ["Sant Jordi Club"])).toBe(true);

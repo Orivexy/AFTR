@@ -67,3 +67,12 @@ export function handleMatchesVenue(handle: string, names: string[]): boolean {
   const h = normalizeSearch(handle).replace(/[^a-z0-9]+/g, "");
   return names.some((n) => words(n).some((w) => h.includes(w.replace(/[^a-z0-9]+/g, ""))));
 }
+
+/** Does the title name the venue (its name or an alias, as whole words)? */
+export function namesVenue(title: string, v: { name: string; aliases?: string[] }): boolean {
+  const t = ` ${normalizeSearch(title).replace(/[^a-z0-9]+/g, " ")} `;
+  return [v.name, ...(v.aliases ?? [])].some((n) => {
+    const w = normalizeSearch(n).replace(/[^a-z0-9]+/g, " ").trim();
+    return w.length >= 4 && t.includes(` ${w} `);
+  });
+}
