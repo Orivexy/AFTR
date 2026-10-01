@@ -16,11 +16,21 @@ import { setSnapshotImporting } from "./import-state";
 export async function importSnapshotIfEmpty() {
   const dir = env.DISCOVERY_SNAPSHOT_DIR;
   if (!dir || !existsSync(dir)) return { skipped: "sin instantánea" };
+  setSnapshotImporting(true);
+  try {
+    return await importSnapshot(dir);
+  } finally {
+    setSnapshotImporting(false);
+  }
+}
+
+async function importSnapshot(dir: string) {
   // Also after an update that replaced the whole list of places (the new app ships the new snapshot).
   if ((await db.venue.count()) > 0) return { skipped: "ya importada" };
 
   const started = Date.now();
-  setSnapshotImporting(true);
+  // Locks left by a sync of a previous run of the app (closed mid-sync) would make the import skip that source.
+  await db.discoverySource.updateMany({ where: { lockedUntil: { not: null } }, data: { lockedUntil: null } });
   // A live sync that started just before the import may hold a source for a
   // moment: wait for it and try again (bounded), so no source is left out.
   const run = async (kind: "venues" | "events") => {
@@ -31,9 +41,7 @@ export async function importSnapshotIfEmpty() {
     }
     return r;
   };
-  const result = await withSnapshotReplay(dir, async () => ({ venues: await run("venues"), events: await run("events") })).finally(() =>
-    setSnapshotImporting(false),
-  );
+  const result = await withSnapshotReplay(dir, async () => ({ venues: await run("venues"), events: await run("events") }));
   await db.discoverySource.updateMany({ where: { enabled: true }, data: { nextSyncAt: new Date(Date.now() + 2 * 60_000) } });
   const [venues, events] = await Promise.all([db.venue.count(), db.event.count({ where: { status: "PUBLISHED" } })]);
   const errors = [...result.venues.errors, ...result.events.errors, ...(result.venues.skipped ?? []), ...(result.events.skipped ?? [])];

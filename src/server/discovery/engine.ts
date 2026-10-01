@@ -1,4 +1,4 @@
-import { isSnapshotImporting } from "./import-state";
+import { isSnapshotImporting, snapshotPending } from "./import-state";
 import "server-only";
 import { getSettings } from "../settings";
 import type { DiscoverySource, Prisma } from "@prisma/client";
@@ -369,8 +369,9 @@ export async function runDueSources(kind: "events" | "venues", opts: { force?: b
   const key = `${kind}:${opts.mode ?? "full"}`;
   if (!(await getSettings()).discoveryEnabled) return result;
   if (running.has(key)) return { ...result, skipped: ["sincronización en curso"] };
-  // Live syncs wait for the first-launch import (it replays the same sources).
-  if (opts.job !== "SNAPSHOT" && isSnapshotImporting()) return result;
+  // Live syncs wait for the first-launch import (it replays the same sources),
+  // also before it starts: a bundled copy exists and there are no venues yet.
+  if (opts.job !== "SNAPSHOT" && (isSnapshotImporting() || (await snapshotPending()))) return result;
   running.add(key);
   try {
     const now = opts.now ?? new Date();
