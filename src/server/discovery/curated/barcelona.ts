@@ -271,6 +271,7 @@ export const BARCELONA_VENUES: CuratedVenue[] = [
     name: "M7 Club",
     type: "CLUB",
     address: "Carrer de Mèxic, 7",
+    geocodeQuery: "Carrer de Mèxic, 7, 08004 Barcelona",
     description: "Club de techno de inspiración berlinesa cerca de plaza d'Espanya.",
     music: ["Techno", "Hard techno", "Electro", "Acid house"],
     website: "https://m7club.net/",

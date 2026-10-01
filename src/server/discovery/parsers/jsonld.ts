@@ -34,6 +34,8 @@ export function flattenNodes(data: unknown): Json[] {
       if (o["@type"]) out.push(o);
       if (o.itemListElement) walk((o.itemListElement as unknown[] | Json));
       if (o.item && typeof o.item === "object") walk(o.item);
+      // A venue's page often lists its agenda inside the place (NightClub.event / events).
+      for (const k of ["event", "events", "subEvent"]) if (o[k] && typeof o[k] === "object") walk(o[k]);
     }
   };
   walk(data);

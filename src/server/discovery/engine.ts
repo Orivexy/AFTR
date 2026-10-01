@@ -212,6 +212,7 @@ async function processEvent(
   const cfg = (source.config as { nightlifeOnly?: boolean; listedVenuesOnly?: boolean } | null) ?? {};
   if (cfg.listedVenuesOnly ? !n.venueId : cfg.nightlifeOnly && !isNightlifeEvent(n, venues)) {
     c.skipped++;
+    if (cfg.listedVenuesOnly) log(`Fuera del listado: «${n.title.slice(0, 60)}» en «${n.venueName ?? n.locationName ?? "lugar desconocido"}»`);
     // Imported earlier under a wider filter: hidden right away.
     if (existing?.eventId) {
       const { count } = await db.event.updateMany({ where: { id: existing.eventId, primarySourceId: source.id, source: "IMPORT", status: "PUBLISHED" }, data: { status: "INACTIVE" } });

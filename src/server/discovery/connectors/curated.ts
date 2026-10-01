@@ -87,7 +87,8 @@ async function locate(v: CuratedVenue, ctx: SourceContext): Promise<Located | nu
     const items = await fetchJson<NominatimItem[]>(`${env.NOMINATIM_URL}/search?${params}`, { timeoutMs: 15_000, maxBytes: 512 * 1024 });
     const hit = pickLocation(items, municipality, ctx.city);
     if (hit) return hit;
-    ctx.log(`${v.name}: «${q}» no da un resultado en ${municipality}`);
+    const seen = items.slice(0, 3).map((i) => `${i.address?.road ?? "?"}, ${i.address?.city ?? i.address?.town ?? i.address?.village ?? "?"}`).join(" | ");
+    ctx.log(`${v.name}: «${q}» no da un resultado en ${municipality}${seen ? ` (devuelve: ${seen})` : " (sin resultados)"}`);
   }
   return null;
 }
