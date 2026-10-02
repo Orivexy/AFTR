@@ -1,11 +1,11 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.ENABLE_INPROCESS_JOBS === "false") return;
-  // Background jobs must never stop the server from starting.
-  try {
-    const { startInProcessJobs } = await import("./server/jobs");
-    startInProcessJobs();
-  } catch (err) {
-    console.error("[jobs] no se pudieron iniciar:", err);
-  }
+  // Not awaited: loading the jobs (discovery, images…) takes seconds and the
+  // server must answer at once. They first run 15 s after start anyway.
+  setTimeout(() => {
+    import("./server/jobs")
+      .then(({ startInProcessJobs }) => startInProcessJobs())
+      .catch((err) => console.error("[jobs] no se pudieron iniciar:", err));
+  }, 3000).unref?.();
 }

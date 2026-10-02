@@ -351,7 +351,7 @@ export async function startBackend(opts) {
   saveState();
   log(`Listo en ${Date.now() - t0} ms: ${url}`);
   // Warm up the main sections in the background so the first clicks are instant.
-  for (const p of ["/", "/map", "/discover"]) fetch(`${url}${p}`).catch(() => {});
+  for (const p of ["/", "/map", "/events"]) fetch(`${url}${p}`).catch(() => {});
 
   return {
     url,
