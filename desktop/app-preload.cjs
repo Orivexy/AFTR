@@ -10,6 +10,16 @@ contextBridge.exposeInMainWorld("orivexyDesktop", {
   toggleFullScreen: () => ipcRenderer.invoke("window:toggle-fullscreen"),
   close: () => ipcRenderer.invoke("window:close"),
   state: () => ipcRenderer.invoke("window:state"),
+  update: {
+    state: () => ipcRenderer.invoke("update:state"),
+    check: () => ipcRenderer.invoke("update:check"),
+    install: () => ipcRenderer.invoke("update:install"),
+    onState: (cb) => {
+      const listener = (_e, s) => cb(s);
+      ipcRenderer.on("update:state", listener);
+      return () => ipcRenderer.removeListener("update:state", listener);
+    },
+  },
   onState: (cb) => {
     const listener = (_e, s) => cb(s);
     ipcRenderer.on("window:state", listener);

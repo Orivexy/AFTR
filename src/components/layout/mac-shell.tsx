@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, CalendarDays, ChevronLeft, ChevronRight, Home, LogIn, Map as MapIcon, Play, Plus, Search, Settings, Shield, User, Users } from "lucide-react";
+import { Bell, CalendarDays, ChevronLeft, ChevronRight, Home, LogIn, Map as MapIcon, Play, Plus, RefreshCw, Search, Settings, Shield, User, Users } from "lucide-react";
 import { Logo } from "./logo";
 import { CityPicker, type CityOption } from "./city-picker";
 import { CreateSheet } from "./create-sheet";
@@ -25,7 +25,14 @@ interface DesktopBridge {
   close(): Promise<void>;
   state(): Promise<{ fullscreen: boolean; maximized: boolean }>;
   onState(cb: (s: { fullscreen: boolean; maximized: boolean }) => void): () => void;
+  update?: {
+    state(): Promise<UpdateState>;
+    check(): Promise<void>;
+    install(): Promise<void>;
+    onState(cb: (s: UpdateState) => void): () => void;
+  };
 }
+type UpdateState = { status: "idle" | "checking" | "downloading" | "ready" | "latest" | "error" | "unsupported"; version: string | null; percent: number };
 const bridge = () => (typeof window === "undefined" ? null : ((window as unknown as { orivexyDesktop?: DesktopBridge }).orivexyDesktop ?? null));
 
 /**
@@ -136,7 +143,8 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
               })}
           </nav>
         ))}
-        <p className="mt-auto hidden px-2 text-[11px] leading-snug text-white/30 lg:block">Barcelona · locales verificados uno a uno; fotos, horarios y eventos de sus webs oficiales.</p>
+        <UpdateButton />
+        <p className="mt-2 hidden px-2 text-[11px] leading-snug text-white/30 lg:block">Barcelona · locales verificados uno a uno; fotos, horarios y eventos de sus webs oficiales.</p>
       </aside>
 
       <main className="min-h-dvh pt-[var(--mac-titlebar)] pl-[64px] lg:pl-[var(--mac-sidebar)]">
@@ -177,5 +185,43 @@ function WindowControls({ fullscreen }: { fullscreen: boolean }) {
         <svg viewBox="0 0 10 10"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" /></svg>
       </button>
     </div>
+  );
+}
+
+/** Bottom left of the sidebar: app updates (desktop only). */
+function UpdateButton() {
+  const [state, setState] = useState<UpdateState | null>(null);
+  useEffect(() => {
+    const u = bridge()?.update;
+    if (!u) return;
+    void u.state().then(setState);
+    return u.onState(setState);
+  }, []);
+  const u = bridge()?.update;
+  if (!u || !state) return null;
+  const ready = state.status === "ready";
+  const label = ready
+    ? `Actualizar a ${state.version}`
+    : state.status === "downloading"
+      ? `Descargando ${state.version ?? ""} · ${state.percent} %`
+      : state.status === "checking"
+        ? "Buscando actualizaciones…"
+        : state.status === "latest"
+          ? "Al día · buscar de nuevo"
+          : state.status === "error"
+            ? "Sin conexión · reintentar"
+            : "Buscar actualizaciones";
+  const busy = state.status === "checking" || state.status === "downloading";
+  return (
+    <button
+      type="button"
+      onClick={() => void (ready ? u.install() : u.check())}
+      disabled={busy}
+      title={label}
+      className={cn("mac-row mt-auto w-full text-left", ready && "!bg-volt font-bold !text-on-volt [&_svg]:!text-on-volt")}
+    >
+      <RefreshCw className={cn("size-[17px] shrink-0", busy && "animate-spin")} strokeWidth={ready ? 2.2 : 1.8} />
+      <span className="truncate max-lg:hidden">{label}</span>
+    </button>
   );
 }

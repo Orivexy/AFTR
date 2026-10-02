@@ -406,6 +406,22 @@ app.on("before-quit", async (e) => {
 // (Windows and Linux AppImage; unsigned Mac builds cannot self-update.)
 let updateReady = false;
 let manualCheck = false;
+/** Shown in the window (bottom left): idle | checking | downloading | ready | latest | error | unsupported. */
+let updateState = { status: !app.isPackaged || process.platform === "darwin" || (process.platform === "linux" && !process.env.APPIMAGE) ? "unsupported" : "idle", version: null, percent: 0 };
+function setUpdateState(patch) {
+  updateState = { ...updateState, ...patch };
+  mainWindow?.webContents.send("update:state", updateState);
+}
+ipcMain.handle("update:state", () => updateState);
+ipcMain.handle("update:check", () => {
+  if (updateState.status === "unsupported") return void shell.openExternal("https://github.com/Orivexy/ORIVEXY-Nights/releases/latest");
+  if (["checking", "downloading", "ready"].includes(updateState.status)) return;
+  setUpdateState({ status: "checking" });
+  electronUpdater.autoUpdater.checkForUpdates().catch((err) => setUpdateState({ status: "error", version: null, error: String(err?.message ?? err) }));
+});
+ipcMain.handle("update:install", () => {
+  if (updateReady) app.quit();
+});
 function checkForUpdatesNow() {
   if (!app.isPackaged || process.platform === "darwin") {
     void shell.openExternal("https://github.com/Orivexy/ORIVEXY-Nights/releases/latest");
@@ -430,27 +446,29 @@ function setupAutoUpdates() {
   };
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = false; // installed from before-quit, after PostgreSQL has stopped
-  autoUpdater.on("update-available", (i) => log(`versión ${i.version} disponible, descargando`));
+  autoUpdater.on("checking-for-update", () => updateState.status !== "ready" && setUpdateState({ status: "checking" }));
+  autoUpdater.on("update-available", (i) => {
+    log(`versión ${i.version} disponible, descargando`);
+    setUpdateState({ status: "downloading", version: i.version, percent: 0 });
+  });
+  autoUpdater.on("download-progress", (p) => setUpdateState({ status: "downloading", percent: Math.round(p.percent ?? 0) }));
   autoUpdater.on("update-not-available", () => {
     log("al día");
+    setUpdateState({ status: "latest" });
     if (manualCheck) void dialog.showMessageBox(mainWindow ?? undefined, { type: "info", message: "ORIVEXY NIGHTS está al día", detail: `Versión ${app.getVersion()}`, buttons: ["Aceptar"] });
     manualCheck = false;
   });
   autoUpdater.on("update-available", () => (manualCheck = false));
-  autoUpdater.on("error", (err) => log(`error: ${err?.message ?? err}`));
-  autoUpdater.on("update-downloaded", async (info) => {
+  autoUpdater.on("error", (err) => {
+    log(`error: ${err?.message ?? err}`);
+    if (updateState.status !== "ready") setUpdateState({ status: "error" });
+  });
+  autoUpdater.on("update-downloaded", (info) => {
     updateReady = true;
     log(`versión ${info.version} descargada`);
     tray?.setToolTip(`ORIVEXY NIGHTS · nueva versión ${info.version} lista`);
-    const { response } = await dialog.showMessageBox(mainWindow ?? undefined, {
-      type: "info",
-      title: "Nueva versión",
-      message: `Hay una versión nueva de ORIVEXY NIGHTS (${info.version})`,
-      detail: "Se instala en unos segundos y la app se vuelve a abrir. Si eliges «Más tarde», se instalará al salir.",
-      buttons: ["Actualizar ahora", "Más tarde"],
-      defaultId: 0,
-    });
-    if (response === 0) app.quit();
+    // The window shows an "Actualizar" button (bottom left); otherwise it installs on quit.
+    setUpdateState({ status: "ready", version: info.version, percent: 100 });
   });
   const check = () => autoUpdater.checkForUpdates().catch((err) => log(`sin conexión: ${err?.message ?? err}`));
   setTimeout(check, 15_000);
