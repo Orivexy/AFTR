@@ -2,10 +2,12 @@ import { expect, test } from "@playwright/test";
 import { TONIGHT, TOMORROW, VENUE } from "./helpers";
 
 test.describe("guest browsing", () => {
-  test("home shows the map", async ({ page }) => {
+  test("home shows the map and the next events", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: /¿A qué discoteca vas\?/ })).toBeVisible();
     await expect(page.getByRole("application", { name: "Mapa" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+    await expect(page.getByText(TONIGHT.title).first()).toBeVisible();
     await expect(page.getByText(/Esta noche · Barcelona/i)).toBeVisible();
   });
 
@@ -24,8 +26,8 @@ test.describe("guest browsing", () => {
     await expect(page.getByRole("link", { name: "Gestionar ficha" })).toHaveCount(0);
   });
 
-  test("event and club lists open the map", async ({ page }) => {
-    for (const path of ["/events", "/venues", "/discover"]) {
+  test("the club list opens the map", async ({ page }) => {
+    for (const path of ["/venues", "/discover"]) {
       await page.goto(path);
       await expect(page).toHaveURL(/\/map$/);
     }

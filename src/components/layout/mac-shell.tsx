@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChevronLeft, ChevronRight, Home, LogIn, Map as MapIcon, Play, Plus, Search, Settings, Shield, User, Users } from "lucide-react";
+import { Bell, CalendarDays, ChevronLeft, ChevronRight, Home, LogIn, Map as MapIcon, Play, Plus, Search, Settings, Shield, User, Users } from "lucide-react";
 import { Logo } from "./logo";
 import { CityPicker, type CityOption } from "./city-picker";
 import { CreateSheet } from "./create-sheet";
@@ -56,6 +56,7 @@ export function MacShell({ platform, cities, city, children }: { platform: Deskt
       items: [
         { href: "/", label: "Inicio", icon: Home },
         { href: "/map", label: "Mapa", icon: MapIcon },
+        { href: "/events", label: "Eventos", icon: CalendarDays },
       ],
     },
     {

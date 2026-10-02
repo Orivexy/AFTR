@@ -41,14 +41,14 @@ export function HomeMap({ config, places, center, cityName }: { config: MapConfi
   };
 
   return (
-    <section ref={section} className="relative h-[calc(100dvh-3rem)] min-h-[440px] overflow-hidden">
+    <section ref={section} className="relative h-[82vh] min-h-[480px] overflow-hidden">
       {fit && <MapView config={config} center={center} zoom={13} markers={markers} onSelect={open} cluster wheelZoom={false} fitMarkers={{ ...fit, maxZoom: 14 }} className="size-full" />}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 p-4 md:p-6">
         <div ref={card} className="glass pointer-events-auto w-full max-w-[26rem] rounded-3xl border border-line-strong p-5 shadow-2xl shadow-black/40">
           <p className="text-[12px] font-bold tracking-[0.18em] text-volt uppercase">Esta noche · {cityName}</p>
           <h1 className="mt-1 font-display text-[28px] leading-[1.05] font-bold text-balance md:text-[34px]">¿A qué discoteca vas?</h1>
           <p className="mt-1.5 text-[14px] text-muted">
-            {placesCount} {placesCount === 1 ? "lugar verificado" : "lugares verificados"} en el mapa
+            {placesCount} {placesCount === 1 ? "discoteca" : "discotecas"} en el mapa
           </p>
           <div className="mt-4 flex gap-2">
             <Link href="/search" className="pressable flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full border border-line-strong bg-ink/60 px-4 text-[14px] text-muted hover:text-fg">

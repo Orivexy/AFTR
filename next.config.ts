@@ -52,9 +52,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // Places only: the lists of events and clubs open the map.
+  // The clubs are on the map: their list opens it.
   async redirects() {
-    return ["/events", "/venues", "/discover"].map((source) => ({ source, destination: "/map", permanent: false }));
+    return ["/venues", "/discover"].map((source) => ({ source, destination: "/map", permanent: false }));
   },
   // Self-contained server bundle for the desktop (Windows) build.
   ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" as const } : {}),

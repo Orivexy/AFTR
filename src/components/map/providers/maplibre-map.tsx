@@ -59,6 +59,40 @@ class TiltControl implements ML.IControl {
   }
 }
 
+/**
+ * Map credits behind a small ⓘ button (closed by default): the tile and data
+ * licences (OpenStreetMap: ODbL) require them to be reachable, not always shown.
+ */
+class CreditsControl implements ML.IControl {
+  private wrap?: HTMLDivElement;
+  constructor(private credits: string[]) {}
+  onAdd() {
+    const wrap = (this.wrap = document.createElement("div"));
+    wrap.className = "maplibregl-ctrl nx-credits";
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = "i";
+    b.setAttribute("aria-label", "Créditos del mapa");
+    const text = document.createElement("p");
+    text.textContent = this.credits.join(" · ");
+    text.hidden = true;
+    b.onclick = () => (text.hidden = !text.hidden);
+    wrap.append(text, b);
+    return wrap;
+  }
+  onRemove() {
+    this.wrap?.remove();
+  }
+}
+
+/** Plain-text credits of a style's sources. */
+function styleCredits(style: StyleJson): string[] {
+  const all = Object.values((style as { sources?: Record<string, { attribution?: string }> }).sources ?? {})
+    .map((src) => (src.attribution ?? "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  return [...new Set(all)];
+}
+
 function VectorMap({
   config, center, zoom = 13, markers, selectedId, onSelect, onMapClick, interactive = true, wheelZoom, cluster = false, zoomControls = false, user, recenterKey = 0, className, satellite = false, fitMarkers, onFail,
 }: MapProviderProps & { onFail: () => void }) {
@@ -159,7 +193,7 @@ function VectorMap({
           interactive,
           scrollZoom: interactive && wheelZoom !== false,
           cooperativeGestures: false,
-          attributionControl: { compact: true },
+          attributionControl: false,
           fadeDuration: 150,
           maxPitch: 70,
         });
@@ -182,10 +216,7 @@ function VectorMap({
           m.on("moveend", () => renderRef.current());
         }
         map.current = m;
-        // Credits stay one tap away (ⓘ), folded so they do not cover the map.
-        const attrib = el.current.querySelector(".maplibregl-ctrl-attrib");
-        attrib?.classList.remove("maplibregl-compact-show");
-        attrib?.removeAttribute("open");
+        m.addControl(new CreditsControl(styleCredits(style)), "bottom-right");
         frame(m);
         m.once("load", () => applySatellite());
         renderRef.current();

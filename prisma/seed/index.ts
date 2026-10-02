@@ -72,7 +72,7 @@ async function main() {
         where: { key: "barcelona-verified-venues" },
         create: {
           id: "src_curated_bcn", key: "barcelona-verified-venues", name: "Listado verificado de Barcelona (web oficial de cada local)", type: "CURATED", cityId: city.id, trust: "VERIFIED",
-          enabled: discoveryEnabledFor(city.slug), autoPublish: true, allowImages: true, syncIntervalMin: 24 * 60, config: { list: "barcelona", listedVenuesOnly: true, events: false },
+          enabled: discoveryEnabledFor(city.slug), autoPublish: true, allowImages: true, syncIntervalMin: 24 * 60, config: { list: "barcelona", listedVenuesOnly: true },
         },
         update: {},
       });
@@ -81,8 +81,7 @@ async function main() {
         where: { key: "xceed-barcelona-clubs" },
         create: {
           id: "src_xceed_bcn_clubs", key: "xceed-barcelona-clubs", name: "Xceed · agenda de los locales verificados", type: "JSON_LD_PAGE", cityId: city.id, trust: "IMPORTED",
-          // The app shows places only (no events): kept for admins, off.
-          enabled: false, autoPublish: true, allowImages: true, syncIntervalMin: 12 * 60,
+          enabled: discoveryEnabledFor(city.slug), autoPublish: true, allowImages: true, syncIntervalMin: 12 * 60,
           url: "https://xceed.me/es/barcelona/events",
           config: {
             pages: Object.keys(XCEED_PAGE_VENUES),
@@ -119,7 +118,7 @@ async function main() {
       where: { key: `ticketmaster-${short}-music` },
       create: {
         key: `ticketmaster-${short}-music`, name: `Ticketmaster · música en ${city.name}`, type: "TICKETMASTER", cityId: city.id, trust: "IMPORTED",
-        enabled: discoveryEnabledFor(city.slug) && city.slug !== "barcelona", autoPublish: true, config: { classificationName: "music", maxPages: 3, ...(city.slug === "barcelona" ? { listedVenuesOnly: true } : { nightlifeOnly: true }) },
+        enabled: discoveryEnabledFor(city.slug), autoPublish: true, config: { classificationName: "music", maxPages: 3, ...(city.slug === "barcelona" ? { listedVenuesOnly: true } : { nightlifeOnly: true }) },
       },
       update: {},
     });

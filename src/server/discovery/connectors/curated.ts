@@ -248,7 +248,6 @@ export async function syncCuratedVenues(source: DiscoverySource, ctx: SourceCont
 
 async function fetchCuratedEvents(ctx: SourceContext): Promise<ExternalEvent[]> {
   const out: ExternalEvent[] = [];
-  // events: false → places only (the app currently shows no events).
   if ((ctx.config as { events?: unknown }).events === false) return out;
   for (const v of listOf(ctx)) {
     if (v.status !== "OPEN") continue;
