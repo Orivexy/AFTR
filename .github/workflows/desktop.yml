@@ -211,8 +211,8 @@ jobs:
         run: |
           $exe = Join-Path $env:ProgramFiles 'Nombre en proceso\Nombre en proceso.exe'
           if (-not (Test-Path $exe)) { Get-ChildItem $env:ProgramFiles; throw "No instalado en $exe" }
-          function Show-Log { Get-ChildItem -Recurse -Filter 'registro.log' $env:APPDATA, $env:ProgramData -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName | Select-String -Pattern '^\[20' } }
-          function Stop-App { Get-Process | Where-Object { $_.Path -like "$env:ProgramFiles\(Nombre en proceso)\*" -or $_.ProcessName -like 'postgres*' } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 3 }
+          function Show-Log { Get-ChildItem -Recurse -Filter 'registro.log' $env:APPDATA, $env:ProgramData -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 120 } }
+          function Stop-App { Get-Process | Where-Object { $_.Path -like "$env:ProgramFiles\Nombre en proceso\*" -or $_.ProcessName -like 'postgres*' } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 3 }
           function Start-AndWait([string]$label, [int]$limit) {
             $sw = [Diagnostics.Stopwatch]::StartNew()
             # Own output files: the app must not keep the step's console pipes open.
@@ -232,7 +232,7 @@ jobs:
           }
           Start-AndWait 'first launch' 240
           # With bundled data, the map must show clubs on first launch.
-          if (Test-Path "$env:ProgramFiles\(Nombre en proceso)\resources\snapshot") {
+          if (Test-Path "$env:ProgramFiles\Nombre en proceso\resources\snapshot") {
             $n = 0
             for ($i = 0; $i -lt 90 -and $n -eq 0; $i++) {
               try { $n = @((Invoke-RestMethod -Uri 'http://127.0.0.1:3000/api/map/places' -TimeoutSec 30).places).Count } catch {}
