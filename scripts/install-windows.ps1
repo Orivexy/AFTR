@@ -11,8 +11,8 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue' # la barra de progreso hace lentísima la descarga en PowerShell 5
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$url = 'https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/ORIVEXY-NIGHTS-Windows.exe'
-$setup = Join-Path $env:TEMP 'ORIVEXY-NIGHTS-Setup.exe'
+$url = 'https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/Nombre-en-proceso-Windows.exe'
+$setup = Join-Path $env:TEMP 'Nombre-en-proceso-Setup.exe'
 
 Write-Host ''
 Write-Host '  (Nombre en proceso)' -ForegroundColor Magenta
@@ -32,12 +32,14 @@ if ($p.ExitCode -ne 0) { throw "La instalacion no se completo (codigo $($p.ExitC
 
 # Dónde quedó instalada (instalaciones nuevas o actualizaciones de NIVEX).
 $candidates = @(
+  (Join-Path $env:ProgramFiles 'Nombre en proceso\Nombre en proceso.exe'),
+  (Join-Path $env:ProgramFiles 'ORIVEXY NIGHTS\Nombre en proceso.exe'),
   (Join-Path $env:ProgramFiles 'ORIVEXY NIGHTS\ORIVEXY NIGHTS.exe'),
   (Join-Path $env:ProgramFiles 'NIVEX\ORIVEXY NIGHTS.exe')
 )
 $key = Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
   Get-ItemProperty -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like '(Nombre en proceso)*' } | Select-Object -First 1
-if ($key -and $key.InstallLocation) { $candidates = @((Join-Path $key.InstallLocation 'ORIVEXY NIGHTS.exe')) + $candidates }
+if ($key -and $key.InstallLocation) { $candidates = @((Join-Path $key.InstallLocation 'Nombre en proceso.exe'), (Join-Path $key.InstallLocation 'ORIVEXY NIGHTS.exe')) + $candidates }
 $exe = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $exe) { throw 'No se encontro (Nombre en proceso) despues de instalar.' }
 

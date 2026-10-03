@@ -1,12 +1,12 @@
 # Apps de escritorio (Windows, macOS, Linux) y móvil
 
-## Windows — `ORIVEXY-NIGHTS-Windows.exe`
+## Windows — `Nombre-en-proceso-Windows.exe`
 
 Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visual C++ + ffmpeg + servidor Next.js + esquema y datos base). No hace falta instalar nada más.
 
 **Descarga:** botones al principio del README (última versión) o pestaña *Releases*. El workflow [`desktop.yml`](../.github/workflows/desktop.yml) genera y publica el `.exe` en cada push a `main` (prerelease) o al crear un tag `v*` (release).
 
-- Se instala en `C:\Program Files\ORIVEXY NIGHTS` (pide permiso de administrador): PostgreSQL para Windows no admite rutas con acentos.
+- Se instala en `C:\Program Files\Nombre en proceso` (pide permiso de administrador): PostgreSQL para Windows no admite rutas con acentos.
 - Primera ejecución: crea la base de datos en `%APPDATA%\ORIVEXY NIGHTS\data` (o en `%ProgramData%\ORIVEXY-NIGHTS\…` si el nombre de usuario tiene acentos), aplica las migraciones y carga los datos base (ciudades, categorías, géneros, fuentes). En cada actualización aplica solo las migraciones nuevas, sin tocar tus datos.
 - No incluye contenido inventado. **La primera cuenta que registres es la de administrador.**
 - Con conexión a Internet, la sincronización descarga el listado verificado de locales de Barcelona (ubicación de OpenStreetMap, fotos y datos de la web oficial de cada local) en el primer minuto; los eventos llegan de las fuentes que configures en *Admin → Event Discovery* y de lo que publiquéis.
@@ -26,8 +26,8 @@ Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visua
 
 ## macOS y Linux
 
-- **macOS** (`ORIVEXY-NIGHTS-Mac.dmg`, Apple Silicon): arrastra la app a *Aplicaciones*. No está firmada ni notarizada por Apple: la primera vez, clic derecho → *Abrir* → *Abrir* (o *Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente*). Datos en `~/Library/Application Support/(Nombre en proceso)/data`.
-- **Linux** (`ORIVEXY-NIGHTS-Linux.AppImage`, x64): `chmod +x` y ejecútalo. Datos en `~/.config/ORIVEXY NIGHTS/data`.
+- **macOS** (`Nombre-en-proceso-Mac.dmg`, Apple Silicon): arrastra la app a *Aplicaciones*. No está firmada ni notarizada por Apple: la primera vez, clic derecho → *Abrir* → *Abrir* (o *Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente*). Datos en `~/Library/Application Support/(Nombre en proceso)/data`.
+- **Linux** (`Nombre-en-proceso-Linux.AppImage`, x64): `chmod +x` y ejecútalo. Datos en `~/.config/ORIVEXY NIGHTS/data`.
 - Mismo funcionamiento que en Windows: PostgreSQL y servidor incluidos, bandeja del sistema, QR para el móvil. "Iniciar con…" existe en Windows y Mac.
 - Se generan en GitHub Actions (`desktop.yml`): Windows y Linux en Ubuntu, Mac en `macos-latest`.
 
@@ -48,9 +48,9 @@ Un APK/IPA nativo requiere el SDK de Android o un Mac con cuenta de Apple; la AP
 Requisitos (Linux): Node 22, PostgreSQL local para generar los datos base, `python3` + `pip` (runtime de Visual C++ desde PyPI) y `wine64` + `wine32` (NSIS). Con `NSIS_DOCKER=1` se usa la imagen `electronuserland/builder:wine` en lugar de wine local.
 
 ```bash
-bash scripts/build-desktop.sh                     # Windows → dist-desktop/ORIVEXY-NIGHTS-Windows.exe
-bash scripts/build-desktop.sh --platform linux    # en Linux → ORIVEXY-NIGHTS-Linux.AppImage
-bash scripts/build-desktop.sh --platform mac      # en un Mac Apple Silicon → ORIVEXY-NIGHTS-Mac.dmg
+bash scripts/build-desktop.sh                     # Windows → dist-desktop/Nombre-en-proceso-Windows.exe
+bash scripts/build-desktop.sh --platform linux    # en Linux → Nombre-en-proceso-Linux.AppImage
+bash scripts/build-desktop.sh --platform mac      # en un Mac Apple Silicon → Nombre-en-proceso-Mac.dmg
 bash scripts/build-desktop.sh --resources-only --keep-host-natives   # solo recursos (pruebas en Linux)
 ```
 
@@ -70,7 +70,7 @@ La app de escritorio se abre a pantalla completa (F11 en Windows/Linux, Ctrl+Cmd
 
 CI ejecuta las sincronizaciones reales de las fuentes sin clave (OpenStreetMap y la agenda abierta de Madrid) con `scripts/record-snapshot.mts` y guarda sus respuestas en `resources/snapshot` (`--snapshot DIR`). En el primer arranque la app las importa (`/api/cron/snapshot-import`) antes de abrir la ventana, así que el mapa ya tiene discotecas y eventos aunque no haya Internet. Dos minutos después empiezan las sincronizaciones en vivo, que lo actualizan cada día. Son los datos que publicaron las fuentes el día de la compilación; no se inventa nada. Si esas fuentes fallan en CI, la app se publica igual y el mapa se llena con la primera sincronización.
 
-Logo e iconos: `node scripts/generate-icons.mjs` genera, desde `scripts/logo.mjs`, los iconos web/PWA, el `.ico` de Windows (incrustado en `ORIVEXY NIGHTS.exe`, accesos directos e instalador) y las imágenes del asistente de instalación.
+Logo e iconos: `node scripts/generate-icons.mjs` genera, desde `scripts/logo.mjs`, los iconos web/PWA, el `.ico` de Windows (incrustado en `Nombre en proceso.exe`, accesos directos e instalador) y las imágenes del asistente de instalación.
 
 Estructura: `desktop/main.mjs` (Electron), `desktop/backend.mjs` (arranca PostgreSQL y `server.js`, ejecutable en Node puro: `node desktop/backend.mjs <resources> <data>`), `desktop/resources/server` (build *standalone* de Next).
 

@@ -103,8 +103,8 @@ jobs:
         with:
           name: app-windows
           path: |
-            dist-desktop/ORIVEXY-NIGHTS-Windows.exe
-            dist-desktop/ORIVEXY-NIGHTS-Windows.exe.blockmap
+            dist-desktop/Nombre-en-proceso-Windows.exe
+            dist-desktop/Nombre-en-proceso-Windows.exe.blockmap
             dist-desktop/latest.yml
 
   linux:
@@ -160,7 +160,7 @@ jobs:
         with:
           name: app-linux
           path: |
-            dist-desktop/ORIVEXY-NIGHTS-Linux.AppImage
+            dist-desktop/Nombre-en-proceso-Linux.AppImage
             dist-desktop/latest-linux.yml
             dist-desktop/screenshots/*.png
 
@@ -186,7 +186,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: app-mac
-          path: dist-desktop/ORIVEXY-NIGHTS-Mac.dmg
+          path: dist-desktop/Nombre-en-proceso-Mac.dmg
 
   # Installs the new .exe on a real Windows machine with the one-line
   # installer (silent, no SmartScreen) and checks the app starts.
@@ -201,7 +201,7 @@ jobs:
       - name: Install with scripts/install-windows.ps1
         shell: powershell
         env:
-          ORIVEXY_INSTALLER: dist/ORIVEXY-NIGHTS-Windows.exe
+          ORIVEXY_INSTALLER: dist/Nombre-en-proceso-Windows.exe
           ORIVEXY_NO_LAUNCH: "1"
         run: |
           $env:ORIVEXY_INSTALLER = (Resolve-Path $env:ORIVEXY_INSTALLER).Path
@@ -209,7 +209,7 @@ jobs:
       - name: The installed app starts
         shell: powershell
         run: |
-          $exe = Join-Path $env:ProgramFiles 'ORIVEXY NIGHTS\ORIVEXY NIGHTS.exe'
+          $exe = Join-Path $env:ProgramFiles 'Nombre en proceso\Nombre en proceso.exe'
           if (-not (Test-Path $exe)) { Get-ChildItem $env:ProgramFiles; throw "No instalado en $exe" }
           function Show-Log { Get-ChildItem -Recurse -Filter 'orivexy-nights.log' $env:APPDATA, $env:ProgramData -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName | Select-String -Pattern '^\[20' } }
           function Stop-App { Get-Process | Where-Object { $_.Path -like "$env:ProgramFiles\(Nombre en proceso)\*" -or $_.ProcessName -like 'postgres*' } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 3 }
@@ -267,14 +267,14 @@ jobs:
           make_latest: ${{ github.ref_name == github.event.repository.default_branch || startsWith(github.ref, 'refs/tags/') }}
           target_commitish: ${{ github.sha }}
           files: |
-            dist/ORIVEXY-NIGHTS-Windows.exe
-            dist/ORIVEXY-NIGHTS-Linux.AppImage
-            dist/ORIVEXY-NIGHTS-Mac.dmg
+            dist/Nombre-en-proceso-Windows.exe
+            dist/Nombre-en-proceso-Linux.AppImage
+            dist/Nombre-en-proceso-Mac.dmg
             dist/install.ps1
             dist/screenshots/screenshot-*.png
             dist/latest.yml
             dist/latest-linux.yml
-            dist/ORIVEXY-NIGHTS-Windows.exe.blockmap
+            dist/Nombre-en-proceso-Windows.exe.blockmap
           body: |
             ## Descargar (Nombre en proceso)
 

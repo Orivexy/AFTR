@@ -6,11 +6,11 @@
 
 **Qué pasa esta noche en Barcelona: discotecas, clubs, conciertos y festivales.**
 
-<a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/ORIVEXY-NIGHTS-Windows.exe"><img src="https://img.shields.io/badge/Windows-Descargar-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar para Windows" height="48" /></a>
+<a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/Nombre-en-proceso-Windows.exe"><img src="https://img.shields.io/badge/Windows-Descargar-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar para Windows" height="48" /></a>
 &nbsp;
-<a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/ORIVEXY-NIGHTS-Mac.dmg"><img src="https://img.shields.io/badge/Mac-Descargar-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Descargar para Mac" height="48" /></a>
+<a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/Nombre-en-proceso-Mac.dmg"><img src="https://img.shields.io/badge/Mac-Descargar-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Descargar para Mac" height="48" /></a>
 &nbsp;
-<a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/ORIVEXY-NIGHTS-Linux.AppImage"><img src="https://img.shields.io/badge/Linux-Descargar-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Descargar para Linux" height="48" /></a>
+<a href="https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/Nombre-en-proceso-Linux.AppImage"><img src="https://img.shields.io/badge/Linux-Descargar-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Descargar para Linux" height="48" /></a>
 
 Descárgala, ábrela y listo. Gratis.
 

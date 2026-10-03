@@ -16,6 +16,8 @@ import { readApiKeys, startBackend, writeApiKeys } from "./backend.mjs";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const resourcesDir = app.isPackaged ? process.resourcesPath : path.join(here, "resources");
 /** Folder name used before the app was renamed: its data is kept on upgrade. */
+// Data stays where earlier versions kept it, whatever the product name.
+app.setPath("userData", path.join(app.getPath("appData"), "ORIVEXY NIGHTS"));
 const LEGACY_FOLDER = "NIVEX";
 const DATA_FOLDER = "ORIVEXY-NIGHTS";
 const dataDir = pickDataDir();
@@ -282,9 +284,9 @@ function buildMenu() {
 async function reinstall() {
   const page = "https://github.com/Orivexy/ORIVEXY-Nights/releases/latest";
   if (process.platform !== "win32") return void (await shell.openExternal(page));
-  const res = await net.fetch(`${page}/download/ORIVEXY-NIGHTS-Windows.exe`);
+  const res = await net.fetch(`${page}/download/Nombre-en-proceso-Windows.exe`);
   if (!res.ok) throw new Error(`Descarga fallida (${res.status})`);
-  const file = path.join(app.getPath("temp"), "ORIVEXY-NIGHTS-Windows.exe");
+  const file = path.join(app.getPath("temp"), "Nombre-en-proceso-Windows.exe");
   writeFileSync(file, Buffer.from(await res.arrayBuffer()));
   spawn(file, [], { detached: true, stdio: "ignore" }).unref();
 }
@@ -293,7 +295,7 @@ app.whenReady().then(async () => {
   const loading = startHidden ? null : splash();
   try {
     if (process.platform === "win32" && !isAscii(resourcesDir)) {
-      throw new Error(`(Nombre en proceso) está instalado en una carpeta con acentos o caracteres especiales:\n${resourcesDir}\n\nReinstálalo en una carpeta sin ellos, por ejemplo C:\\Program Files\\ORIVEXY NIGHTS.`);
+      throw new Error(`(Nombre en proceso) está instalado en una carpeta con acentos o caracteres especiales:\n${resourcesDir}\n\nReinstálalo en una carpeta sin ellos, por ejemplo C:\\Program Files\\Nombre en proceso.`);
     }
     backend = await startBackend({
       resourcesDir,
