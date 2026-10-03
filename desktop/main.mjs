@@ -15,11 +15,9 @@ import { readApiKeys, startBackend, writeApiKeys } from "./backend.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const resourcesDir = app.isPackaged ? process.resourcesPath : path.join(here, "resources");
-/** Folder name used before the app was renamed: its data is kept on upgrade. */
-// Data stays where earlier versions kept it, whatever the product name.
-app.setPath("userData", path.join(app.getPath("appData"), "ORIVEXY NIGHTS"));
-const LEGACY_FOLDER = "NIVEX";
-const DATA_FOLDER = "ORIVEXY-NIGHTS";
+/** Folders of earlier names of the app ([app data folder, fallback folder]): their data is kept on upgrade. */
+const PREVIOUS_FOLDERS = [["NIVEX", "NIVEX"], ["ORIVEXY NIGHTS", "ORIVEXY-NIGHTS"]];
+const DATA_FOLDER = "Nombre-en-proceso";
 const dataDir = pickDataDir();
 
 /**
@@ -36,8 +34,10 @@ function dataDirCandidates(userData, folder) {
 
 function pickDataDir() {
   // Upgrading from the previous name: keep the existing database and files.
-  const legacy = dataDirCandidates(path.join(app.getPath("appData"), LEGACY_FOLDER), LEGACY_FOLDER).find((d) => existsSync(path.join(d, "state.json")));
-  if (legacy) return legacy;
+  for (const [appFolder, folder] of PREVIOUS_FOLDERS) {
+    const previous = dataDirCandidates(path.join(app.getPath("appData"), appFolder), folder).find((d) => existsSync(path.join(d, "state.json")));
+    if (previous) return previous;
+  }
   const candidates = dataDirCandidates(app.getPath("userData"), DATA_FOLDER);
   if (candidates.length === 1) return candidates[0];
   // A folder created by an elevated run may be read-only for the user: skip it.
@@ -321,7 +321,7 @@ app.whenReady().then(async () => {
       app.exit(1);
       return;
     }
-    dialog.showErrorBox("(Nombre en proceso) no pudo arrancar", `${message}\n\nRegistro: ${path.join(dataDir, "orivexy-nights.log")}`);
+    dialog.showErrorBox("(Nombre en proceso) no pudo arrancar", `${message}\n\nRegistro: ${path.join(dataDir, "registro.log")}`);
     app.exit(1);
     return;
   }
@@ -343,7 +343,7 @@ app.whenReady().then(async () => {
     webPreferences: { contextIsolation: true, sandbox: true, preload: path.join(here, "app-preload.cjs") },
   });
   // The web app renders its macOS-style interface for this window.
-  mainWindow.webContents.setUserAgent(`${mainWindow.webContents.getUserAgent()} OrivexyDesktop/${isMac ? "mac" : process.platform === "win32" ? "win" : "linux"}`);
+  mainWindow.webContents.setUserAgent(`${mainWindow.webContents.getUserAgent()} AppDesktop/${isMac ? "mac" : process.platform === "win32" ? "win" : "linux"}`);
   const sendState = () =>
     mainWindow.webContents.send("window:state", { fullscreen: mainWindow.isFullScreen(), maximized: mainWindow.isMaximized(), platform: process.platform });
   for (const ev of ["enter-full-screen", "leave-full-screen", "maximize", "unmaximize"]) mainWindow.on(ev, sendState);
@@ -441,7 +441,7 @@ function setupAutoUpdates() {
   const { autoUpdater } = electronUpdater;
   const log = (m) => {
     try {
-      appendFileSync(path.join(dataDir, "orivexy-nights.log"), `[${new Date().toISOString()}] Actualizaciones: ${m}\n`);
+      appendFileSync(path.join(dataDir, "registro.log"), `[${new Date().toISOString()}] Actualizaciones: ${m}\n`);
     } catch {
       /* not critical */
     }

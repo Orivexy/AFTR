@@ -37,7 +37,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U nightly" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgresql://nightly:nightly@localhost:5432/orivexy_desktop_build
+      DATABASE_URL: postgresql://nightly:nightly@localhost:5432/app_desktop_build
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -131,10 +131,10 @@ jobs:
       - name: Smoke test the packaged app
         run: |
           sudo apt-get install -y -qq xvfb >/dev/null
-          xvfb-run -a dist-desktop/linux-unpacked/orivexy-nights-desktop --no-sandbox > app.log 2>&1 &
+          xvfb-run -a dist-desktop/linux-unpacked/nombre-en-proceso-desktop --no-sandbox > app.log 2>&1 &
           for i in $(seq 1 120); do
             if curl -sf http://localhost:3000/api/health; then echo " app started"; break; fi
-            [ "$i" = 120 ] && { cat app.log; find ~/.config -name "orivexy-nights.log" -exec tail -50 {} \; ; exit 1; }
+            [ "$i" = 120 ] && { cat app.log; find ~/.config -name "registro.log" -exec tail -50 {} \; ; exit 1; }
             sleep 1
           done
           # With bundled data, the map must show clubs on first launch.
@@ -142,16 +142,16 @@ jobs:
             for i in $(seq 1 90); do
               n=$(curl -s http://localhost:3000/api/map/places | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('places') or []))" 2>/dev/null || echo 0)
               if [ "${n:-0}" -gt 0 ]; then echo "map: $n places on first launch"; break; fi
-              [ "$i" = 90 ] && { find ~/.config -name "orivexy-nights.log" -exec tail -50 {} \; ; echo "map empty on first launch"; exit 1; }
+              [ "$i" = 90 ] && { find ~/.config -name "registro.log" -exec tail -50 {} \; ; echo "map empty on first launch"; exit 1; }
               sleep 1
             done
           fi
           # Screenshots show the whole first-launch data: wait for the import to finish.
           for i in $(seq 1 240); do
-            find ~/.config -name "orivexy-nights.log" -exec grep -q "Datos iniciales" {} \; -print | grep -q . && break
+            find ~/.config -name "registro.log" -exec grep -q "Datos iniciales" {} \; -print | grep -q . && break
             sleep 1
           done
-          find ~/.config -name "orivexy-nights.log" -exec grep -h "Datos iniciales\|Listo en" {} \;
+          find ~/.config -name "registro.log" -exec grep -h "Datos iniciales\|Listo en" {} \;
       # Real screenshots of the running app (first launch data, live map) for the README and the release.
       - name: Screenshots
         continue-on-error: true
@@ -201,17 +201,17 @@ jobs:
       - name: Install with scripts/install-windows.ps1
         shell: powershell
         env:
-          ORIVEXY_INSTALLER: dist/Nombre-en-proceso-Windows.exe
-          ORIVEXY_NO_LAUNCH: "1"
+          APP_INSTALLER: dist/Nombre-en-proceso-Windows.exe
+          APP_NO_LAUNCH: "1"
         run: |
-          $env:ORIVEXY_INSTALLER = (Resolve-Path $env:ORIVEXY_INSTALLER).Path
+          $env:APP_INSTALLER = (Resolve-Path $env:APP_INSTALLER).Path
           .\scripts\install-windows.ps1
       - name: The installed app starts
         shell: powershell
         run: |
           $exe = Join-Path $env:ProgramFiles 'Nombre en proceso\Nombre en proceso.exe'
           if (-not (Test-Path $exe)) { Get-ChildItem $env:ProgramFiles; throw "No instalado en $exe" }
-          function Show-Log { Get-ChildItem -Recurse -Filter 'orivexy-nights.log' $env:APPDATA, $env:ProgramData -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName | Select-String -Pattern '^\[20' } }
+          function Show-Log { Get-ChildItem -Recurse -Filter 'registro.log' $env:APPDATA, $env:ProgramData -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName | Select-String -Pattern '^\[20' } }
           function Stop-App { Get-Process | Where-Object { $_.Path -like "$env:ProgramFiles\(Nombre en proceso)\*" -or $_.ProcessName -like 'postgres*' } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 3 }
           function Start-AndWait([string]$label, [int]$limit) {
             $sw = [Diagnostics.Stopwatch]::StartNew()

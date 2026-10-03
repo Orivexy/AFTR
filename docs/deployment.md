@@ -66,7 +66,7 @@ docker compose --env-file .env.production up -d --build
 - Escucha en `127.0.0.1:3000`: pon delante el proxy con TLS. Ejemplo Caddy:
 
 ```
-orivexy.example.com {
+app.example.com {
   encode zstd gzip
   reverse_proxy 127.0.0.1:3000
 }
@@ -101,7 +101,7 @@ O simplemente usa el `Dockerfile` (casi todos los PaaS lo detectan).
 - **Varias instancias o serverless**: `ENABLE_INPROCESS_JOBS=false` y un cron externo:
 
 ```bash
-curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://orivexy.example.com/api/cron/event-sync
+curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://app.example.com/api/cron/event-sync
 ```
 
   Ejemplo crontab: `* * * * *` para `event-sync`, `venue-sync`, `venue-hours-sync`;

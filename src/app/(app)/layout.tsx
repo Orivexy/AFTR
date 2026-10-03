@@ -7,7 +7,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [city, cities, h] = await Promise.all([getCurrentCity(), listCities(), headers()]);
   const cityProps = { city: { slug: city.slug, name: city.name }, cities: cities.map((c) => ({ slug: c.slug, name: c.name })) };
   // The desktop app (Electron) identifies itself: it gets the macOS-style window.
-  const desktop = h.get("user-agent")?.match(/OrivexyDesktop\/(mac|win|linux)/)?.[1] as DesktopPlatform | undefined;
+  const desktop = h.get("user-agent")?.match(/AppDesktop\/(mac|win|linux)/)?.[1] as DesktopPlatform | undefined;
   if (desktop) return <MacShell platform={desktop} {...cityProps}>{children}</MacShell>;
   return <AppShell {...cityProps}>{children}</AppShell>;
 }

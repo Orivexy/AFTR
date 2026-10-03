@@ -5,7 +5,7 @@
 # Descarga el instalador oficial de la última versión desde GitHub Releases,
 # lo instala en silencio (Windows pide confirmar permisos de administrador
 # una vez, como cualquier programa en "Archivos de programa") y abre la app.
-# ORIVEXY_INSTALLER=<ruta a un .exe> usa un instalador local (pruebas).
+# APP_INSTALLER=<ruta a un .exe> usa un instalador local (pruebas).
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue' # la barra de progreso hace lentísima la descarga en PowerShell 5
@@ -16,8 +16,8 @@ $setup = Join-Path $env:TEMP 'Nombre-en-proceso-Setup.exe'
 
 Write-Host ''
 Write-Host '  (Nombre en proceso)' -ForegroundColor Magenta
-if ($env:ORIVEXY_INSTALLER) {
-  Copy-Item -LiteralPath $env:ORIVEXY_INSTALLER -Destination $setup -Force
+if ($env:APP_INSTALLER) {
+  Copy-Item -LiteralPath $env:APP_INSTALLER -Destination $setup -Force
 } else {
   Write-Host '  Descargando la ultima version...'
   Invoke-WebRequest -Uri $url -OutFile $setup -UseBasicParsing
@@ -44,4 +44,4 @@ $exe = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object 
 if (-not $exe) { throw 'No se encontro (Nombre en proceso) despues de instalar.' }
 
 Write-Host '  Listo. Abriendo (Nombre en proceso)...' -ForegroundColor Green
-if (-not $env:ORIVEXY_NO_LAUNCH) { Start-Process -FilePath $exe }
+if (-not $env:APP_NO_LAUNCH) { Start-Process -FilePath $exe }

@@ -3,7 +3,7 @@
 // of Electron or Node is exposed to the page.
 const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld("orivexyDesktop", {
+contextBridge.exposeInMainWorld("appDesktop", {
   platform: process.platform,
   minimize: () => ipcRenderer.invoke("window:minimize"),
   toggleMaximize: () => ipcRenderer.invoke("window:toggle-maximize"),

@@ -152,9 +152,9 @@ describe("durations", () => {
 import { parseRobots, robotsPathAllowed } from "@/server/discovery/parsers/robots";
 
 describe("robots.txt", () => {
-  const txt = "User-agent: *\nDisallow: /private\nAllow: /private/agenda\n\nUser-agent: orivexynightsbot\nDisallow: /events/*.json$\n";
+  const txt = "User-agent: *\nDisallow: /private\nAllow: /private/agenda\n\nUser-agent: examplebot\nDisallow: /events/*.json$\n";
   it("uses the most specific group for our bot", () => {
-    const rules = parseRobots(txt, "orivexynightsbot");
+    const rules = parseRobots(txt, "examplebot");
     expect(robotsPathAllowed(rules, "/private")).toBe(true);
     expect(robotsPathAllowed(rules, "/events/list.json")).toBe(false);
   });

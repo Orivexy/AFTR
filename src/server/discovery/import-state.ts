@@ -9,7 +9,7 @@ import { env } from "../env";
 
 // Kept on globalThis: the in-process jobs (instrumentation) and the route
 // that runs the import are separate module instances in the same process.
-const state = ((globalThis as unknown as { __orivexySnapshot?: { importing: boolean; attempted: boolean } }).__orivexySnapshot ??= {
+const state = ((globalThis as unknown as { __snapshotImport?: { importing: boolean; attempted: boolean } }).__snapshotImport ??= {
   importing: false,
   attempted: false,
 });

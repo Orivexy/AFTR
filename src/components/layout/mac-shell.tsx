@@ -33,7 +33,7 @@ interface DesktopBridge {
   };
 }
 type UpdateState = { status: "idle" | "checking" | "downloading" | "ready" | "latest" | "error" | "unsupported"; version: string | null; percent: number };
-const bridge = () => (typeof window === "undefined" ? null : ((window as unknown as { orivexyDesktop?: DesktopBridge }).orivexyDesktop ?? null));
+const bridge = () => (typeof window === "undefined" ? null : ((window as unknown as { appDesktop?: DesktopBridge }).appDesktop ?? null));
 
 /**
  * The desktop app's window, in the style of a macOS app: unified title bar

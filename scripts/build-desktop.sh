@@ -40,7 +40,7 @@ case "$PLATFORM" in win|linux|mac) ;; *) echo "--platform must be win, linux or 
 [ "$PLATFORM" != win ] && KEEP_HOST=true
 
 MSVC_RUNTIME_VERSION="14.44.35112"
-BUILD_DB_URL="${BUILD_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/orivexy_desktop_build}"
+BUILD_DB_URL="${BUILD_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/app_desktop_build}"
 BUILD_DB_NAME="${BUILD_DB_URL##*/}"; BUILD_DB_NAME="${BUILD_DB_NAME%%\?*}"
 ADMIN_DB_URL="${BUILD_DB_URL%/*}/postgres"
 

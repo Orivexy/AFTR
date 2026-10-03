@@ -48,7 +48,7 @@ export function lanAddresses() {
 async function waitForHttp(url, timeoutMs, isAlive) {
   const until = Date.now() + timeoutMs;
   while (Date.now() < until) {
-    if (!isAlive()) throw new Error("El servidor se ha detenido al arrancar (ver orivexy-nights.log)");
+    if (!isAlive()) throw new Error("El servidor se ha detenido al arrancar (ver registro.log)");
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
       if (res.status < 500) return;
@@ -298,7 +298,7 @@ export async function startBackend(opts) {
   const t0 = Date.now();
   const { resourcesDir, dataDir, nodeBinary } = opts;
   mkdirSync(dataDir, { recursive: true });
-  const logFile = path.join(dataDir, "orivexy-nights.log");
+  const logFile = path.join(dataDir, "registro.log");
   const log = (m) => {
     const line = `[${new Date().toISOString()}] ${m}\n`;
     appendFileSync(logFile, line);
@@ -310,7 +310,7 @@ export async function startBackend(opts) {
   state.dbPassword ??= randomBytes(18).toString("hex");
   state.cronSecret ??= randomBytes(24).toString("hex");
   // Administrator of this installation: generated here, kept only on this computer.
-  state.admin ??= { email: "admin@orivexy.local", password: readablePassword() };
+  state.admin ??= { email: "admin@nombre-en-proceso.local", password: readablePassword() };
   const saveState = () => writeFileSync(stateFile, JSON.stringify(state, null, 2));
   saveState(); // before initdb: the cluster's password must never get lost
 

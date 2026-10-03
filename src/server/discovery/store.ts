@@ -29,7 +29,7 @@ export async function discoveryUserId(): Promise<string> {
   const user = await db.user.create({
     data: {
       email: `discovery+${randomBytes(4).toString("hex")}@system.invalid`,
-      profile: { create: { username: DISCOVERY_USERNAME, displayName: "(Nombre en proceso) Discovery", searchText: "" } },
+      profile: { create: { username: DISCOVERY_USERNAME, displayName: "Descubrimiento", searchText: "" } },
     },
     select: { id: true },
   });

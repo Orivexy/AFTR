@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-E2E_DATABASE_URL="${E2E_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/orivexy_e2e}"
+E2E_DATABASE_URL="${E2E_DATABASE_URL:-postgresql://nightly:nightly@localhost:5432/app_e2e}"
 DB_NAME="${E2E_DATABASE_URL##*/}"; DB_NAME="${DB_NAME%%\?*}"
 case "$DB_NAME" in *e2e*|*test*) ;; *) echo "Refusing to reset '$DB_NAME': the e2e database name must contain 'e2e' or 'test'." >&2; exit 1 ;; esac
 ADMIN_URL="${E2E_DATABASE_URL%/*}/postgres"

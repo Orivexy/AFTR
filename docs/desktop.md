@@ -7,7 +7,7 @@ Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visua
 **Descarga:** botones al principio del README (última versión) o pestaña *Releases*. El workflow [`desktop.yml`](../.github/workflows/desktop.yml) genera y publica el `.exe` en cada push a `main` (prerelease) o al crear un tag `v*` (release).
 
 - Se instala en `C:\Program Files\Nombre en proceso` (pide permiso de administrador): PostgreSQL para Windows no admite rutas con acentos.
-- Primera ejecución: crea la base de datos en `%APPDATA%\ORIVEXY NIGHTS\data` (o en `%ProgramData%\ORIVEXY-NIGHTS\…` si el nombre de usuario tiene acentos), aplica las migraciones y carga los datos base (ciudades, categorías, géneros, fuentes). En cada actualización aplica solo las migraciones nuevas, sin tocar tus datos.
+- Primera ejecución: crea la base de datos en `%APPDATA%\Nombre en proceso\data` (o en `%ProgramData%\Nombre-en-proceso\…` si el nombre de usuario tiene acentos), aplica las migraciones y carga los datos base (ciudades, categorías, géneros, fuentes). En cada actualización aplica solo las migraciones nuevas, sin tocar tus datos.
 - No incluye contenido inventado. **La primera cuenta que registres es la de administrador.**
 - Con conexión a Internet, la sincronización descarga el listado verificado de locales de Barcelona (ubicación de OpenStreetMap, fotos y datos de la web oficial de cada local) en el primer minuto; los eventos llegan de las fuentes que configures en *Admin → Event Discovery* y de lo que publiquéis.
 - Arranque rápido:
@@ -22,12 +22,12 @@ Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visua
 - Menú **(Nombre en proceso) → Borrar datos locales…** elimina la base de datos y los archivos de este ordenador y vuelve a empezar.
 - Sin SMTP configurado, la recuperación de contraseña indica que no está disponible: cambia la contraseña desde *Ajustes* mientras tengas sesión.
 - El `.exe` no está firmado: SmartScreen muestra "Windows protegió su PC" → *Más información* → *Ejecutar de todas formas*.
-- Log: `orivexy-nights.log` en la carpeta de datos (menú **(Nombre en proceso) → Ver carpeta de datos**).
+- Log: `registro.log` en la carpeta de datos (menú **(Nombre en proceso) → Ver carpeta de datos**).
 
 ## macOS y Linux
 
 - **macOS** (`Nombre-en-proceso-Mac.dmg`, Apple Silicon): arrastra la app a *Aplicaciones*. No está firmada ni notarizada por Apple: la primera vez, clic derecho → *Abrir* → *Abrir* (o *Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente*). Datos en `~/Library/Application Support/(Nombre en proceso)/data`.
-- **Linux** (`Nombre-en-proceso-Linux.AppImage`, x64): `chmod +x` y ejecútalo. Datos en `~/.config/ORIVEXY NIGHTS/data`.
+- **Linux** (`Nombre-en-proceso-Linux.AppImage`, x64): `chmod +x` y ejecútalo. Datos en `~/.config/Nombre en proceso/data`.
 - Mismo funcionamiento que en Windows: PostgreSQL y servidor incluidos, bandeja del sistema, QR para el móvil. "Iniciar con…" existe en Windows y Mac.
 - Se generan en GitHub Actions (`desktop.yml`): Windows y Linux en Ubuntu, Mac en `macos-latest`.
 
@@ -60,11 +60,11 @@ Cada compilación de la rama principal publica una versión nueva (`0.1.<número
 
 ### Cuenta de administrador
 
-En el primer arranque la app genera una cuenta de administrador propia de ese ordenador (`admin@orivexy.local` y una contraseña aleatoria), la crea y la muestra en un aviso; siempre se puede consultar en el menú *(Nombre en proceso) → Credenciales de administrador…*. El dueño puede elegir su propia contraseña en *Cambiar contraseña de administrador…* (mínimo 4 caracteres; ruta local `/api/desktop/admin-password`, solo en la app de escritorio y con el secreto de la instalación). Se guarda solo en `state.json` de la carpeta de datos, nunca en el repositorio.
+En el primer arranque la app genera una cuenta de administrador propia de ese ordenador (`admin@nombre-en-proceso.local` y una contraseña aleatoria), la crea y la muestra en un aviso; siempre se puede consultar en el menú *(Nombre en proceso) → Credenciales de administrador…*. El dueño puede elegir su propia contraseña en *Cambiar contraseña de administrador…* (mínimo 4 caracteres; ruta local `/api/desktop/admin-password`, solo en la app de escritorio y con el secreto de la instalación). Se guarda solo en `state.json` de la carpeta de datos, nunca en el repositorio.
 
 ### Ventana estilo macOS y pantalla completa
 
-La app de escritorio se abre a pantalla completa (F11 en Windows/Linux, Ctrl+Cmd+F en Mac o el botón verde para salir; se recuerda). La ventana imita una app de macOS: barra de título unificada con botones de ventana estilo Windows a la derecha en todos los sistemas (minimizar, maximizar, cerrar; controlan la ventana real vía `desktop/app-preload.cjs`), atrás/adelante, buscador central y barra lateral translúcida con secciones. El servidor la sirve al detectar `OrivexyDesktop/<plataforma>` en el user-agent (`MacShell`); en el navegador la web se ve como siempre.
+La app de escritorio se abre a pantalla completa (F11 en Windows/Linux, Ctrl+Cmd+F en Mac o el botón verde para salir; se recuerda). La ventana imita una app de macOS: barra de título unificada con botones de ventana estilo Windows a la derecha en todos los sistemas (minimizar, maximizar, cerrar; controlan la ventana real vía `desktop/app-preload.cjs`), atrás/adelante, buscador central y barra lateral translúcida con secciones. El servidor la sirve al detectar `AppDesktop/<plataforma>` en el user-agent (`MacShell`); en el navegador la web se ve como siempre.
 
 ### Datos iniciales (mapa lleno al abrir)
 
