@@ -286,9 +286,11 @@ async function importSnapshot(url, cronSecret, log) {
     .then(async (res) => {
       const body = await res.json().catch(() => ({}));
       log(`Datos iniciales (${res.status}) en ${Date.now() - started} ms: ${JSON.stringify(body.result ?? body)}`);
+      return res.ok;
     })
-    .catch((err) => log(`Datos iniciales no importados: ${err.message}`));
-  await Promise.race([request, new Promise((r) => setTimeout(r, 60_000))]);
+    .catch((err) => (log(`Datos iniciales no importados: ${err.message}`), false));
+  // Still running after a minute: it finishes in the background (count it as done).
+  return Promise.race([request, new Promise((r) => setTimeout(() => r(true), 60_000))]);
 }
 
 /**
@@ -345,8 +347,8 @@ export async function startBackend(opts) {
     }
   }
   if (!state.snapshotImported && existsSync(path.join(resourcesDir, "snapshot"))) {
-    await importSnapshot(url, state.cronSecret, log);
-    state.snapshotImported = true;
+    // A failed import is tried again on the next launch.
+    state.snapshotImported = await importSnapshot(url, state.cronSecret, log);
   }
   saveState();
   log(`Listo en ${Date.now() - t0} ms: ${url}`);
