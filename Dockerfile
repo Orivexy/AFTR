@@ -1,4 +1,4 @@
-# ORIVEXY NIGHTS production image.
+# (Nombre en proceso) production image.
 #   docker build -t orivexy .
 # The `builder` stage also runs database migrations + the base seed
 # (see docker-compose.yml → service "migrate").

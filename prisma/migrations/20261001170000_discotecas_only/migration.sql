@@ -1,4 +1,4 @@
--- ORIVEXY NIGHTS shows only discotecas and their events (for now).
+-- (Nombre en proceso) shows only discotecas and their events (for now).
 -- Nothing is deleted: hidden rows can be reactivated from the admin panel.
 
 -- Cultural agenda (concerts, opera, festivals…) off, and its events hidden.

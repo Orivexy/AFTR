@@ -1,5 +1,5 @@
 /**
- * ORIVEXY NIGHTS for Windows, Linux and macOS — Electron shell. Starts the embedded backend
+ * (Nombre en proceso) for Windows, Linux and macOS — Electron shell. Starts the embedded backend
  * (backend.mjs), opens the app in a window and offers a QR code so phones on
  * the same Wi-Fi can use this computer as their server.
  */
@@ -64,7 +64,7 @@ let quitting = false;
 const startHidden = process.argv.includes("--hidden") || (process.platform === "darwin" && app.getLoginItemSettings().wasOpenedAsHidden);
 
 if (!app.requestSingleInstanceLock()) app.quit();
-// Opening ORIVEXY NIGHTS again (shortcut, taskbar) just shows the running window: instant.
+// Opening (Nombre en proceso) again (shortcut, taskbar) just shows the running window: instant.
 app.on("second-instance", () => showMain());
 // macOS: clicking the Dock icon reopens the hidden window.
 app.on("activate", () => showMain());
@@ -83,17 +83,17 @@ function setOpenAtLogin(enabled) {
 }
 
 /**
- * Closing the window keeps ORIVEXY NIGHTS (and its database) running in the tray, so
+ * Closing the window keeps (Nombre en proceso) (and its database) running in the tray, so
  * reopening it is instant. "Salir" in the tray or the menu really quits.
  */
 function createTray() {
   tray = new Tray(nativeImage.createFromPath(path.join(here, "build", process.platform === "win32" ? "icon.ico" : "icon.png")).resize({ width: 16, height: 16 }));
-  tray.setToolTip("ORIVEXY NIGHTS");
+  tray.setToolTip("(Nombre en proceso)");
   tray.on("click", showMain);
   tray.on("double-click", showMain);
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: "Abrir ORIVEXY NIGHTS", click: showMain },
+      { label: "Abrir (Nombre en proceso)", click: showMain },
       { label: "Abrir en el móvil…", click: showMobile },
       { type: "separator" },
       { label: "Salir", click: () => app.quit() },
@@ -109,7 +109,7 @@ function splash() {
 
 const html = (body) =>
   "data:text/html;charset=utf-8," +
-  encodeURIComponent(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>ORIVEXY NIGHTS en tu móvil</title>
+  encodeURIComponent(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>(Nombre en proceso) en tu móvil</title>
 <style>body{margin:0;background:#07070b;color:#f4f4f7;font:15px/1.5 system-ui,sans-serif;padding:28px}h1{font-size:22px;margin:0 0 6px}
 p{color:#a1a1b3;margin:6px 0}.qr{background:#fff;border-radius:16px;padding:12px;display:inline-block;margin:14px 0}
 code{background:#17171f;padding:4px 8px;border-radius:8px;color:#d7ff3a;font-size:16px}ol{color:#a1a1b3;padding-left:18px}li{margin:4px 0}</style></head><body>${body}</body></html>`);
@@ -117,22 +117,22 @@ code{background:#17171f;padding:4px 8px;border-radius:8px;color:#d7ff3a;font-siz
 async function showMobile() {
   if (!backend) return;
   const urls = backend.lanUrls;
-  const win = new BrowserWindow({ width: 460, height: 720, title: "ORIVEXY NIGHTS en tu móvil", backgroundColor: "#07070b", autoHideMenuBar: true, icon: path.join(here, "build", "icon.png") });
+  const win = new BrowserWindow({ width: 460, height: 720, title: "(Nombre en proceso) en tu móvil", backgroundColor: "#07070b", autoHideMenuBar: true, icon: path.join(here, "build", "icon.png") });
   if (!urls.length) {
-    win.loadURL(html(`<h1>Sin red local</h1><p>Conecta este ordenador a una red Wi-Fi para abrir ORIVEXY NIGHTS desde el móvil.</p>`));
+    win.loadURL(html(`<h1>Sin red local</h1><p>Conecta este ordenador a una red Wi-Fi para abrir (Nombre en proceso) desde el móvil.</p>`));
     return;
   }
   const qr = await QRCode.toDataURL(urls[0], { margin: 1, width: 280 });
   win.loadURL(
-    html(`<h1>Abre ORIVEXY NIGHTS en tu móvil</h1>
-<p>El móvil debe estar en la <b>misma red Wi-Fi</b> que este ordenador y ORIVEXY NIGHTS debe seguir abierto aquí.</p>
+    html(`<h1>Abre (Nombre en proceso) en tu móvil</h1>
+<p>El móvil debe estar en la <b>misma red Wi-Fi</b> que este ordenador y (Nombre en proceso) debe seguir abierto aquí.</p>
 <div class="qr"><img src="${qr}" width="280" height="280" alt="QR"></div>
 <p>O escribe en el navegador del móvil:</p><p><code>${urls[0]}</code></p>
 ${urls.length > 1 ? `<p>Otras direcciones: ${urls.slice(1).map((u) => `<code>${u}</code>`).join(" ")}</p>` : ""}
 <h1 style="margin-top:20px;font-size:17px">Instalar como app</h1>
 <ol><li><b>Android (Chrome):</b> menú ⋮ → “Añadir a pantalla de inicio”.</li>
 <li><b>iPhone (Safari):</b> botón compartir → “Añadir a pantalla de inicio”.</li>
-<li>Si no carga, permite ORIVEXY NIGHTS en el firewall del ordenador (redes privadas).</li></ol>`),
+<li>Si no carga, permite (Nombre en proceso) en el firewall del ordenador (redes privadas).</li></ol>`),
   );
 }
 
@@ -144,7 +144,7 @@ function showApiKeys() {
   keysWindow = new BrowserWindow({
     width: 560,
     height: 760,
-    title: "Claves de API · ORIVEXY NIGHTS",
+    title: "Claves de API · (Nombre en proceso)",
     backgroundColor: "#07070b",
     autoHideMenuBar: true,
     icon: path.join(here, "build", "icon.png"),
@@ -172,7 +172,7 @@ async function resetData() {
     type: "warning",
     buttons: ["Cancelar", "Borrar todo"],
     defaultId: 0,
-    message: "¿Borrar todos los datos de ORIVEXY NIGHTS en este ordenador?",
+    message: "¿Borrar todos los datos de (Nombre en proceso) en este ordenador?",
     detail: "Se eliminarán las cuentas, publicaciones, fotos, eventos y locales guardados aquí. No se puede deshacer.",
   });
   if (response !== 1) return;
@@ -212,7 +212,7 @@ function showAdminPassword() {
   adminWindow = new BrowserWindow({
     width: 460,
     height: 440,
-    title: "Contraseña de administrador · ORIVEXY NIGHTS",
+    title: "Contraseña de administrador · (Nombre en proceso)",
     backgroundColor: "#07070b",
     autoHideMenuBar: true,
     resizable: false,
@@ -240,8 +240,8 @@ async function showAdminCredentials() {
   const { response } = await dialog.showMessageBox(mainWindow ?? undefined, {
     type: "info",
     title: "Cuenta de administrador",
-    message: "Tu cuenta de administrador de ORIVEXY NIGHTS",
-    detail: `Email: ${email}\nContraseña: ${password}\n\nEntra con ella en «Entrar». Puedes elegir otra en el menú ORIVEXY NIGHTS → Cambiar contraseña de administrador.`,
+    message: "Tu cuenta de administrador de (Nombre en proceso)",
+    detail: `Email: ${email}\nContraseña: ${password}\n\nEntra con ella en «Entrar». Puedes elegir otra en el menú (Nombre en proceso) → Cambiar contraseña de administrador.`,
     buttons: ["Elegir mi contraseña", "Copiar contraseña", "Aceptar"],
     defaultId: 2,
   });
@@ -254,7 +254,7 @@ function buildMenu() {
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
       {
-        label: "ORIVEXY NIGHTS",
+        label: "(Nombre en proceso)",
         submenu: [
           { label: "Abrir en el móvil…", accelerator: "CmdOrCtrl+M", click: showMobile },
           { label: "Abrir en el navegador", click: () => backend && shell.openExternal(backend.url) },
@@ -293,7 +293,7 @@ app.whenReady().then(async () => {
   const loading = startHidden ? null : splash();
   try {
     if (process.platform === "win32" && !isAscii(resourcesDir)) {
-      throw new Error(`ORIVEXY NIGHTS está instalado en una carpeta con acentos o caracteres especiales:\n${resourcesDir}\n\nReinstálalo en una carpeta sin ellos, por ejemplo C:\\Program Files\\ORIVEXY NIGHTS.`);
+      throw new Error(`(Nombre en proceso) está instalado en una carpeta con acentos o caracteres especiales:\n${resourcesDir}\n\nReinstálalo en una carpeta sin ellos, por ejemplo C:\\Program Files\\ORIVEXY NIGHTS.`);
     }
     backend = await startBackend({
       resourcesDir,
@@ -309,7 +309,7 @@ app.whenReady().then(async () => {
     if (/Cannot find module|MODULE_NOT_FOUND/.test(message)) {
       const { response } = await dialog.showMessageBox({
         type: "error",
-        title: "ORIVEXY NIGHTS no pudo arrancar",
+        title: "(Nombre en proceso) no pudo arrancar",
         message: "La instalación está incompleta (una actualización no terminó)",
         detail: "Reinstalar descarga la última versión y la instala. Tus datos se conservan.",
         buttons: ["Reinstalar", "Cerrar"],
@@ -319,7 +319,7 @@ app.whenReady().then(async () => {
       app.exit(1);
       return;
     }
-    dialog.showErrorBox("ORIVEXY NIGHTS no pudo arrancar", `${message}\n\nRegistro: ${path.join(dataDir, "orivexy-nights.log")}`);
+    dialog.showErrorBox("(Nombre en proceso) no pudo arrancar", `${message}\n\nRegistro: ${path.join(dataDir, "orivexy-nights.log")}`);
     app.exit(1);
     return;
   }
@@ -332,7 +332,7 @@ app.whenReady().then(async () => {
     height: 860,
     minWidth: 380,
     minHeight: 600,
-    title: "ORIVEXY NIGHTS",
+    title: "(Nombre en proceso)",
     backgroundColor: "#07070b",
     show: false,
     icon: path.join(here, "build", "icon.png"),
@@ -382,7 +382,7 @@ app.whenReady().then(async () => {
     mainWindow.hide();
     if (!trayHintShown && process.platform === "win32") {
       trayHintShown = true;
-      tray?.displayBalloon({ title: "ORIVEXY NIGHTS sigue abierto", content: "Está en la bandeja del sistema para abrirse al instante. Clic derecho → Salir para cerrarlo del todo.", iconType: "info" });
+      tray?.displayBalloon({ title: "(Nombre en proceso) sigue abierto", content: "Está en la bandeja del sistema para abrirse al instante. Clic derecho → Salir para cerrarlo del todo.", iconType: "info" });
     }
   });
   createTray();
@@ -455,7 +455,7 @@ function setupAutoUpdates() {
   autoUpdater.on("update-not-available", () => {
     log("al día");
     setUpdateState({ status: "latest" });
-    if (manualCheck) void dialog.showMessageBox(mainWindow ?? undefined, { type: "info", message: "ORIVEXY NIGHTS está al día", detail: `Versión ${app.getVersion()}`, buttons: ["Aceptar"] });
+    if (manualCheck) void dialog.showMessageBox(mainWindow ?? undefined, { type: "info", message: "(Nombre en proceso) está al día", detail: `Versión ${app.getVersion()}`, buttons: ["Aceptar"] });
     manualCheck = false;
   });
   autoUpdater.on("update-available", () => (manualCheck = false));
@@ -466,7 +466,7 @@ function setupAutoUpdates() {
   autoUpdater.on("update-downloaded", (info) => {
     updateReady = true;
     log(`versión ${info.version} descargada`);
-    tray?.setToolTip(`ORIVEXY NIGHTS · nueva versión ${info.version} lista`);
+    tray?.setToolTip(`(Nombre en proceso) · nueva versión ${info.version} lista`);
     // The window shows an "Actualizar" button (bottom left); otherwise it installs on quit.
     setUpdateState({ status: "ready", version: info.version, percent: 100 });
   });

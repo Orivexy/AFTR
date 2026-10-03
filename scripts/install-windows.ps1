@@ -1,4 +1,4 @@
-# ORIVEXY NIGHTS — instalador para Windows sin la ventana de SmartScreen.
+# (Nombre en proceso) — instalador para Windows sin la ventana de SmartScreen.
 #
 #   irm https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/install.ps1 | iex
 #
@@ -15,7 +15,7 @@ $url = 'https://github.com/Orivexy/ORIVEXY-Nights/releases/latest/download/ORIVE
 $setup = Join-Path $env:TEMP 'ORIVEXY-NIGHTS-Setup.exe'
 
 Write-Host ''
-Write-Host '  ORIVEXY NIGHTS' -ForegroundColor Magenta
+Write-Host '  (Nombre en proceso)' -ForegroundColor Magenta
 if ($env:ORIVEXY_INSTALLER) {
   Copy-Item -LiteralPath $env:ORIVEXY_INSTALLER -Destination $setup -Force
 } else {
@@ -36,10 +36,10 @@ $candidates = @(
   (Join-Path $env:ProgramFiles 'NIVEX\ORIVEXY NIGHTS.exe')
 )
 $key = Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
-  Get-ItemProperty -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like 'ORIVEXY NIGHTS*' } | Select-Object -First 1
+  Get-ItemProperty -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like '(Nombre en proceso)*' } | Select-Object -First 1
 if ($key -and $key.InstallLocation) { $candidates = @((Join-Path $key.InstallLocation 'ORIVEXY NIGHTS.exe')) + $candidates }
 $exe = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-if (-not $exe) { throw 'No se encontro ORIVEXY NIGHTS despues de instalar.' }
+if (-not $exe) { throw 'No se encontro (Nombre en proceso) despues de instalar.' }
 
-Write-Host '  Listo. Abriendo ORIVEXY NIGHTS...' -ForegroundColor Green
+Write-Host '  Listo. Abriendo (Nombre en proceso)...' -ForegroundColor Green
 if (-not $env:ORIVEXY_NO_LAUNCH) { Start-Process -FilePath $exe }

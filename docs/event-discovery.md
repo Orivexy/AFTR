@@ -1,6 +1,6 @@
 # Event Discovery
 
-Sistema automático para descubrir eventos y locales (inicialmente Barcelona) y convertirlos al formato de ORIVEXY NIGHTS.
+Sistema automático para descubrir eventos y locales (inicialmente Barcelona) y convertirlos al formato de (Nombre en proceso).
 
 ```
 FUENTES → DISCOVERY ENGINE → NORMALIZACIÓN → DEDUPLICACIÓN → VALIDACIÓN → BASE DE DATOS → FRONTEND
@@ -71,7 +71,7 @@ Puntuación con título (sin palabras genéricas ni el nombre del local), local 
 
 ## Actualizaciones
 
-La **fuente principal** de un evento puede cambiar cualquier campo; las demás solo rellenan huecos. Una fuente `OFFICIAL` pasa a ser la principal de un evento importado. Los eventos creados dentro de ORIVEXY NIGHTS nunca se sobrescriben. Cada cambio queda en `EventChange` (campo, antes, después, fuente, fecha). Si la fuente deja de listar un evento en dos sincronizaciones correctas, se oculta (`INACTIVE`); nunca si la fuente devuelve 0 resultados de golpe.
+La **fuente principal** de un evento puede cambiar cualquier campo; las demás solo rellenan huecos. Una fuente `OFFICIAL` pasa a ser la principal de un evento importado. Los eventos creados dentro de (Nombre en proceso) nunca se sobrescriben. Cada cambio queda en `EventChange` (campo, antes, después, fuente, fecha). Si la fuente deja de listar un evento en dos sincronizaciones correctas, se oculta (`INACTIVE`); nunca si la fuente devuelve 0 resultados de golpe.
 
 ## Verificación
 

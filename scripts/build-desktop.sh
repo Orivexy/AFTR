@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the ORIVEXY NIGHTS desktop app (desktop/).
+# Builds the (Nombre en proceso) desktop app (desktop/).
 #
 #   scripts/build-desktop.sh                     # Windows installer (cross-built on Linux) → dist-desktop/ORIVEXY-NIGHTS-Windows.exe
 #   scripts/build-desktop.sh --platform linux    # on Linux x64 → dist-desktop/ORIVEXY-NIGHTS-Linux.AppImage

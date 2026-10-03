@@ -5,11 +5,12 @@ import { cn } from "@/lib/cn";
 
 /**
  * Crescent moon + equalizer (night + party) and a two-line wordmark
- * ("ORIVEXY" / "NIGHTS") so it fits phone headers.
+ * (first word / the rest) so it fits phone headers.
  * Source of the mark: scripts/logo.mjs → public/icons/logo-mark.svg
  */
 export function Logo({ className }: { className?: string }) {
-  const [first, ...rest] = site.name.split(" ");
+  // A provisional name in brackets stays on one line.
+  const [first, ...rest] = site.name.startsWith("(") ? [site.name] : site.name.split(" ");
   return (
     <Link href="/" className={cn("group inline-flex shrink-0 items-center gap-1.5 font-display text-[19px] font-bold tracking-tight", className)} aria-label={`${site.name} — inicio`}>
       <Image src="/icons/logo-mark.svg" alt="" width={26} height={26} unoptimized priority className="-my-1 size-[26px] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6" />

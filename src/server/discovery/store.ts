@@ -29,7 +29,7 @@ export async function discoveryUserId(): Promise<string> {
   const user = await db.user.create({
     data: {
       email: `discovery+${randomBytes(4).toString("hex")}@system.invalid`,
-      profile: { create: { username: DISCOVERY_USERNAME, displayName: "ORIVEXY NIGHTS Discovery", searchText: "" } },
+      profile: { create: { username: DISCOVERY_USERNAME, displayName: "(Nombre en proceso) Discovery", searchText: "" } },
     },
     select: { id: true },
   });
@@ -271,7 +271,7 @@ function incomingValue(n: NormalizedEvent, field: Tracked): unknown {
 /**
  * Applies source data to an existing event. The event's primary source may
  * change any tracked field; other sources only fill empty fields. Events
- * created inside ORIVEXY NIGHTS (community/official) are never overwritten.
+ * created inside (Nombre en proceso) (community/official) are never overwritten.
  */
 export async function applySourceUpdate(eventId: string, n: NormalizedEvent, source: SourceLite, cityName: string): Promise<{ changed: boolean }> {
   const event = await db.event.findUniqueOrThrow({

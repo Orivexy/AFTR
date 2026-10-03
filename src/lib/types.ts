@@ -257,7 +257,7 @@ export interface MapPlace {
   /** Main place (always listed first). */
   featured?: boolean;
   genres: string[];
-  /** ORIVEXY NIGHTS community rating (never a third-party rating we may not store). */
+  /** (Nombre en proceso) community rating (never a third-party rating we may not store). */
   ratingAvg: number | null;
   ratingCount: number | null;
   priceMin: number | null;

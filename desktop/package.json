@@ -2,8 +2,8 @@
   "name": "orivexy-nights-desktop",
   "productName": "ORIVEXY NIGHTS",
   "version": "0.1.0",
-  "description": "ORIVEXY NIGHTS para Windows, Linux y Mac: app completa con servidor y base de datos incluidos.",
-  "author": "ORIVEXY NIGHTS",
+  "description": "(Nombre en proceso) para Windows, Linux y Mac: app completa con servidor y base de datos incluidos.",
+  "author": "(Nombre en proceso)",
   "private": true,
   "type": "module",
   "main": "main.mjs",
@@ -23,7 +23,7 @@
   "build": {
     "appId": "app.nivex.desktop",
     "productName": "ORIVEXY NIGHTS",
-    "copyright": "ORIVEXY NIGHTS",
+    "copyright": "(Nombre en proceso)",
     "directories": {
       "output": "../dist-desktop",
       "buildResources": "build"
@@ -78,7 +78,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "ORIVEXY NIGHTS",
+      "shortcutName": "(Nombre en proceso)",
       "artifactName": "ORIVEXY-NIGHTS-Windows.${ext}",
       "deleteAppDataOnUninstall": false,
       "installerIcon": "build/icon.ico",
@@ -133,7 +133,7 @@
       ]
     },
     "dmg": {
-      "title": "ORIVEXY NIGHTS",
+      "title": "(Nombre en proceso)",
       "artifactName": "ORIVEXY-NIGHTS-Mac.${ext}"
     }
   }

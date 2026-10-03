@@ -16,17 +16,17 @@ Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visua
   - Caché de compilación de Node (`NODE_COMPILE_CACHE`).
   - Precalentado de Inicio, Mapa y Descubrir.
   - Medido en Linux: primer arranque ~1,4 s, siguientes ~0,6 s hasta el servidor listo.
-- Cerrar la ventana deja ORIVEXY NIGHTS en la **bandeja del sistema**: volver a abrirlo es instantáneo. Para cerrarlo del todo: clic derecho en el icono de la bandeja → **Salir**.
-- Menú **ORIVEXY NIGHTS → Iniciar con Windows** arranca ORIVEXY NIGHTS oculto al encender el PC, para que esté listo al abrirlo.
-- Menú **ORIVEXY NIGHTS → Claves de API…**: claves opcionales (Ticketmaster, Google Places, estilo de mapa MapTiler/Mapbox, SMTP para recuperar contraseña). Se guardan solo en ese ordenador (`api-keys.json` en la carpeta de datos), llegan al servidor como variables de entorno y nunca al navegador. Al guardar, la app se reinicia y las fuentes que esperaban esa clave empiezan solas.
-- Menú **ORIVEXY NIGHTS → Borrar datos locales…** elimina la base de datos y los archivos de este ordenador y vuelve a empezar.
+- Cerrar la ventana deja (Nombre en proceso) en la **bandeja del sistema**: volver a abrirlo es instantáneo. Para cerrarlo del todo: clic derecho en el icono de la bandeja → **Salir**.
+- Menú **(Nombre en proceso) → Iniciar con Windows** arranca (Nombre en proceso) oculto al encender el PC, para que esté listo al abrirlo.
+- Menú **(Nombre en proceso) → Claves de API…**: claves opcionales (Ticketmaster, Google Places, estilo de mapa MapTiler/Mapbox, SMTP para recuperar contraseña). Se guardan solo en ese ordenador (`api-keys.json` en la carpeta de datos), llegan al servidor como variables de entorno y nunca al navegador. Al guardar, la app se reinicia y las fuentes que esperaban esa clave empiezan solas.
+- Menú **(Nombre en proceso) → Borrar datos locales…** elimina la base de datos y los archivos de este ordenador y vuelve a empezar.
 - Sin SMTP configurado, la recuperación de contraseña indica que no está disponible: cambia la contraseña desde *Ajustes* mientras tengas sesión.
 - El `.exe` no está firmado: SmartScreen muestra "Windows protegió su PC" → *Más información* → *Ejecutar de todas formas*.
-- Log: `orivexy-nights.log` en la carpeta de datos (menú **ORIVEXY NIGHTS → Ver carpeta de datos**).
+- Log: `orivexy-nights.log` en la carpeta de datos (menú **(Nombre en proceso) → Ver carpeta de datos**).
 
 ## macOS y Linux
 
-- **macOS** (`ORIVEXY-NIGHTS-Mac.dmg`, Apple Silicon): arrastra la app a *Aplicaciones*. No está firmada ni notarizada por Apple: la primera vez, clic derecho → *Abrir* → *Abrir* (o *Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente*). Datos en `~/Library/Application Support/ORIVEXY NIGHTS/data`.
+- **macOS** (`ORIVEXY-NIGHTS-Mac.dmg`, Apple Silicon): arrastra la app a *Aplicaciones*. No está firmada ni notarizada por Apple: la primera vez, clic derecho → *Abrir* → *Abrir* (o *Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente*). Datos en `~/Library/Application Support/(Nombre en proceso)/data`.
 - **Linux** (`ORIVEXY-NIGHTS-Linux.AppImage`, x64): `chmod +x` y ejecútalo. Datos en `~/.config/ORIVEXY NIGHTS/data`.
 - Mismo funcionamiento que en Windows: PostgreSQL y servidor incluidos, bandeja del sistema, QR para el móvil. "Iniciar con…" existe en Windows y Mac.
 - Se generan en GitHub Actions (`desktop.yml`): Windows y Linux en Ubuntu, Mac en `macos-latest`.
@@ -35,7 +35,7 @@ Instalador NSIS autocontenido (Electron + PostgreSQL embebido + runtime de Visua
 
 El servidor del PC escucha en la red local (`0.0.0.0`). Con el PC y el móvil en la misma Wi‑Fi:
 
-1. En la app de Windows: **ORIVEXY NIGHTS → Abrir en el móvil…** (Ctrl+M) muestra un QR.
+1. En la app de Windows: **(Nombre en proceso) → Abrir en el móvil…** (Ctrl+M) muestra un QR.
 2. Escanéalo con el móvil.
 3. Instálala como app (PWA): Android/Chrome → *Añadir a pantalla de inicio*; iPhone/Safari → *Compartir → Añadir a inicio*.
 
@@ -60,7 +60,7 @@ Cada compilación de la rama principal publica una versión nueva (`0.1.<número
 
 ### Cuenta de administrador
 
-En el primer arranque la app genera una cuenta de administrador propia de ese ordenador (`admin@orivexy.local` y una contraseña aleatoria), la crea y la muestra en un aviso; siempre se puede consultar en el menú *ORIVEXY NIGHTS → Credenciales de administrador…*. El dueño puede elegir su propia contraseña en *Cambiar contraseña de administrador…* (mínimo 4 caracteres; ruta local `/api/desktop/admin-password`, solo en la app de escritorio y con el secreto de la instalación). Se guarda solo en `state.json` de la carpeta de datos, nunca en el repositorio.
+En el primer arranque la app genera una cuenta de administrador propia de ese ordenador (`admin@orivexy.local` y una contraseña aleatoria), la crea y la muestra en un aviso; siempre se puede consultar en el menú *(Nombre en proceso) → Credenciales de administrador…*. El dueño puede elegir su propia contraseña en *Cambiar contraseña de administrador…* (mínimo 4 caracteres; ruta local `/api/desktop/admin-password`, solo en la app de escritorio y con el secreto de la instalación). Se guarda solo en `state.json` de la carpeta de datos, nunca en el repositorio.
 
 ### Ventana estilo macOS y pantalla completa
 
@@ -76,4 +76,4 @@ Estructura: `desktop/main.mjs` (Electron), `desktop/backend.mjs` (arranca Postgr
 
 ## Cambio de nombre (antes NIVEX)
 
-El instalador de ORIVEXY NIGHTS actualiza encima de una instalación anterior de NIVEX (mismo identificador interno `app.nivex.desktop`) y sigue usando su carpeta de datos (`%APPDATA%\NIVEX\data`), así que no se pierden cuentas, fotos ni eventos. Las instalaciones nuevas guardan los datos en `%APPDATA%\ORIVEXY NIGHTS\data`.
+El instalador de (Nombre en proceso) actualiza encima de una instalación anterior de NIVEX (mismo identificador interno `app.nivex.desktop`) y sigue usando su carpeta de datos (`%APPDATA%\NIVEX\data`), así que no se pierden cuentas, fotos ni eventos. Las instalaciones nuevas guardan los datos en `%APPDATA%\ORIVEXY NIGHTS\data`.
